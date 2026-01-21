@@ -1,0 +1,110 @@
+{
+    "product_catalog": {
+        "version": "2.1",
+        "last_updated": "2026-01-15",
+        "categories": [
+            {
+                "id": "electronics",
+                "name": "Electronics",
+                "products": [
+                    {
+                        "sku": "ELEC-001",
+                        "name": "Wireless Bluetooth Headphones",
+                        "description": "Premium noise-canceling wireless headphones with 30-hour battery life",
+                        "price": 199.99,
+                        "currency": "USD",
+                        "in_stock": true,
+                        "quantity": 150,
+                        "specifications": {
+                            "battery_life": "30 hours",
+                            "connectivity": "Bluetooth 5.2",
+                            "noise_cancellation": "Active",
+                            "weight": "250g"
+                        },
+                        "reviews": {
+                            "average_rating": 4.7,
+                            "total_reviews": 342
+                        }
+                    },
+                    {
+                        "sku": "ELEC-002",
+                        "name": "Smart Watch Pro",
+                        "description": "Advanced smartwatch with health monitoring, GPS, and 5-day battery",
+                        "price": 349.99,
+                        "currency": "USD",
+                        "in_stock": true,
+                        "quantity": 85,
+                        "specifications": {
+                            "display": "1.4 inch AMOLED",
+                            "water_resistance": "5ATM",
+                            "battery_life": "5 days",
+                            "sensors": [
+                                "heart rate",
+                                "SpO2",
+                                "accelerometer",
+                                "gyroscope"
+                            ]
+                        },
+                        "reviews": {
+                            "average_rating": 4.5,
+                            "total_reviews": 189
+                        }
+                    }
+                ]
+            },
+            {
+                "id": "office",
+                "name": "Office Supplies",
+                "products": [
+                    {
+                        "sku": "OFF-001",
+                        "name": "Ergonomic Standing Desk",
+                        "description": "Electric height-adjustable desk with memory presets",
+                        "price": 599.99,
+                        "currency": "USD",
+                        "in_stock": true,
+                        "quantity": 42,
+                        "specifications": {
+                            "dimensions": "60x30 inches",
+                            "height_range": "28-48 inches",
+                            "weight_capacity": "300 lbs",
+                            "motor": "Dual motor"
+                        },
+                        "reviews": {
+                            "average_rating": 4.8,
+                            "total_reviews": 567
+                        }
+                    },
+                    {
+                        "sku": "OFF-002",
+                        "name": "Premium Office Chair",
+                        "description": "Fully adjustable mesh office chair with lumbar support",
+                        "price": 449.99,
+                        "currency": "USD",
+                        "in_stock": false,
+                        "quantity": 0,
+                        "specifications": {
+                            "material": "Breathable mesh",
+                            "adjustable": [
+                                "height",
+                                "armrests",
+                                "tilt",
+                                "lumbar"
+                            ],
+                            "weight_capacity": "350 lbs"
+                        },
+                        "reviews": {
+                            "average_rating": 4.6,
+                            "total_reviews": 423
+                        }
+                    }
+                ]
+            }
+        ],
+        "metadata": {
+            "total_products": 4,
+            "total_categories": 2,
+            "generated_by": "Catalog Management System v3.2"
+        }
+    }
+}

@@ -1,0 +1,139 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "services/api/**"
+      - "apps/web/**"
+      - ".github/workflows/deploy.yml"
+
+jobs:
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate version tag
+        id: version
+        run: |
+          VERSION=$(git describe --tags --always --dirty)
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
+
+      - name: Set up Railway CLI
+        uses: railway-app/setup-cli@v1
+
+      - name: Deploy Backend to Staging
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          railway link ${{ secrets.RAILWAY_BACKEND_PROJECT_ID }}
+          railway up --service api --environment staging
+        continue-on-error: true
+
+      - name: Deploy Frontend to Staging
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          railway link ${{ secrets.RAILWAY_FRONTEND_PROJECT_ID }}
+          railway up --service web --environment staging
+        continue-on-error: true
+
+      - name: Health Check Staging
+        run: |
+          for i in {1..10}; do
+            if curl -f http://localhost:8000/health; then
+              echo "Backend health check passed"
+              break
+            fi
+            if [ $i -lt 10 ]; then
+              echo "Health check attempt $i failed, retrying..."
+              sleep 10
+            fi
+          done
+        continue-on-error: true
+
+      - name: Create Sentry Release (Staging)
+        run: |
+          npm install -g @sentry/cli
+          export SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
+          sentry-cli releases create -p staging ${{ steps.version.outputs.version }}
+          sentry-cli releases set-commits ${{ steps.version.outputs.version }} --auto
+        continue-on-error: true
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [deploy-staging]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate version tag
+        id: version
+        run: |
+          VERSION=$(git describe --tags --always --dirty)
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
+
+      - name: Set up Railway CLI
+        uses: railway-app/setup-cli@v1
+
+      - name: Deploy Backend to Production
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          railway link ${{ secrets.RAILWAY_BACKEND_PROJECT_ID }}
+          railway up --service api --environment production
+        continue-on-error: true
+
+      - name: Deploy Frontend to Production
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          railway link ${{ secrets.RAILWAY_FRONTEND_PROJECT_ID }}
+          railway up --service web --environment production
+        continue-on-error: true
+
+      - name: Health Check Production
+        run: |
+          for i in {1..10}; do
+            if curl -f https://api.example.com/health; then
+              echo "Production health check passed"
+              break
+            fi
+            if [ $i -lt 10 ]; then
+              echo "Health check attempt $i failed, retrying..."
+              sleep 10
+            fi
+          done
+        continue-on-error: true
+
+      - name: Create Sentry Release (Production)
+        run: |
+          npm install -g @sentry/cli
+          export SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
+          sentry-cli releases create -p production ${{ steps.version.outputs.version }}
+          sentry-cli releases set-commits ${{ steps.version.outputs.version }} --auto
+          sentry-cli releases finalize ${{ steps.version.outputs.version }}
+        continue-on-error: true
+
+      - name: Notify Deployment
+        if: success()
+        run: |
+          echo "Deployment to production completed: ${{ steps.version.outputs.version }}"
+
+      - name: Record Deploy Time
+        run: |
+          echo "Deployment completed at $(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,21 @@
+employee_id,first_name,last_name,email,department,job_title,hire_date,salary,manager_id,location
+E001,John,Smith,john.smith@acmecorp.com,Engineering,Senior Software Engineer,2020-03-15,125000,E010,San Francisco
+E002,Sarah,Johnson,sarah.johnson@acmecorp.com,Engineering,Software Engineer,2022-06-01,95000,E001,San Francisco
+E003,Michael,Williams,michael.williams@acmecorp.com,Engineering,DevOps Engineer,2021-09-20,110000,E001,San Francisco
+E004,Emily,Brown,emily.brown@acmecorp.com,Product,Product Manager,2019-11-10,130000,E015,New York
+E005,David,Jones,david.jones@acmecorp.com,Product,UX Designer,2023-01-15,85000,E004,New York
+E006,Jennifer,Davis,jennifer.davis@acmecorp.com,Sales,Sales Manager,2018-05-22,140000,E020,Chicago
+E007,Robert,Miller,robert.miller@acmecorp.com,Sales,Account Executive,2022-08-30,75000,E006,Chicago
+E008,Lisa,Wilson,lisa.wilson@acmecorp.com,Sales,Account Executive,2023-03-01,72000,E006,Chicago
+E009,James,Moore,james.moore@acmecorp.com,Marketing,Marketing Director,2017-02-14,155000,E020,New York
+E010,Amanda,Taylor,amanda.taylor@acmecorp.com,Engineering,VP of Engineering,2016-08-01,200000,E025,San Francisco
+E011,Christopher,Anderson,christopher.anderson@acmecorp.com,Engineering,Data Engineer,2021-04-15,115000,E010,Remote
+E012,Jessica,Thomas,jessica.thomas@acmecorp.com,HR,HR Manager,2019-07-08,95000,E020,Chicago
+E013,Daniel,Jackson,daniel.jackson@acmecorp.com,Finance,Financial Analyst,2022-02-28,85000,E018,New York
+E014,Michelle,White,michelle.white@acmecorp.com,Engineering,QA Engineer,2020-11-15,88000,E001,San Francisco
+E015,Matthew,Harris,matthew.harris@acmecorp.com,Product,VP of Product,2015-04-20,190000,E025,New York
+E016,Ashley,Martin,ashley.martin@acmecorp.com,Marketing,Content Strategist,2023-05-10,70000,E009,Remote
+E017,Andrew,Garcia,andrew.garcia@acmecorp.com,Engineering,Mobile Developer,2021-12-01,105000,E001,San Francisco
+E018,Stephanie,Martinez,stephanie.martinez@acmecorp.com,Finance,Finance Director,2014-09-15,175000,E025,New York
+E019,Joshua,Robinson,joshua.robinson@acmecorp.com,Customer Support,Support Lead,2020-06-22,65000,E020,Chicago
+E020,Nicole,Clark,nicole.clark@acmecorp.com,Operations,COO,2013-01-10,250000,E025,Chicago

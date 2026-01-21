@@ -1,0 +1,139 @@
+# Application Configuration
+# Environment: Production
+# Last Updated: 2026-01-10
+
+app:
+  name: "Document Ingestion Platform"
+  version: "2.5.0"
+  environment: production
+  debug: false
+
+server:
+  host: 0.0.0.0
+  port: 8080
+  workers: 4
+  timeout: 30
+  keepalive: 5
+
+database:
+  primary:
+    host: db-primary.internal
+    port: 5432
+    name: doc_ingestion
+    pool_size: 20
+    max_overflow: 10
+    ssl_mode: require
+  
+  replica:
+    enabled: true
+    hosts:
+      - db-replica-1.internal
+      - db-replica-2.internal
+    load_balance: round_robin
+
+redis:
+  host: redis-cluster.internal
+  port: 6379
+  db: 0
+  max_connections: 100
+  cluster_mode: true
+  sentinel:
+    enabled: true
+    master_name: mymaster
+    nodes:
+      - sentinel-1.internal:26379
+      - sentinel-2.internal:26379
+      - sentinel-3.internal:26379
+
+storage:
+  provider: s3
+  bucket: doc-ingestion-prod
+  region: us-east-1
+  encryption: AES256
+  versioning: true
+  lifecycle:
+    transition_to_glacier_days: 90
+    expiration_days: 365
+
+processing:
+  queue:
+    name: ingestion-queue
+    visibility_timeout: 300
+    max_retries: 3
+    dead_letter_queue: ingestion-dlq
+  
+  workers:
+    concurrency: 10
+    prefetch_multiplier: 1
+    task_acks_late: true
+  
+  limits:
+    max_file_size_mb: 100
+    allowed_formats:
+      - pdf
+      - docx
+      - xlsx
+      - pptx
+      - txt
+      - md
+      - html
+      - json
+      - csv
+      - xml
+      - yml
+
+embeddings:
+  provider: openai
+  model: text-embedding-3-small
+  dimensions: 1536
+  batch_size: 100
+  cache:
+    enabled: true
+    ttl_hours: 24
+
+security:
+  cors:
+    allowed_origins:
+      - https://app.example.com
+      - https://admin.example.com
+    allowed_methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+    max_age: 3600
+  
+  rate_limiting:
+    enabled: true
+    requests_per_minute: 100
+    burst: 20
+  
+  authentication:
+    provider: oauth2
+    issuer: https://auth.example.com
+    audience: api://doc-ingestion
+    token_expiry_minutes: 60
+
+monitoring:
+  logging:
+    level: INFO
+    format: json
+    outputs:
+      - stdout
+      - /var/log/app/application.log
+  
+  metrics:
+    enabled: true
+    port: 9090
+    path: /metrics
+  
+  tracing:
+    enabled: true
+    provider: jaeger
+    endpoint: http://jaeger.internal:14268/api/traces
+    sample_rate: 0.1
+
+  health_check:
+    enabled: true
+    path: /health
+    include_details: false

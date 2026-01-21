@@ -1,0 +1,84 @@
+ACME Corporation Employee Handbook
+===================================
+
+Welcome to ACME Corporation!
+
+This handbook provides essential information about company policies, 
+benefits, and expectations for all employees.
+
+CHAPTER 1: COMPANY VALUES
+-------------------------
+
+At ACME Corporation, we believe in:
+- Innovation: Pushing boundaries to create better solutions
+- Integrity: Acting with honesty in all our dealings  
+- Teamwork: Collaborating to achieve common goals
+- Excellence: Striving for the highest quality in everything we do
+
+CHAPTER 2: EMPLOYMENT POLICIES
+------------------------------
+
+Working Hours:
+Standard office hours are 9:00 AM to 5:00 PM, Monday through Friday.
+Flexible work arrangements may be available with manager approval.
+
+Dress Code:
+Business casual attire is expected. Client-facing roles may require
+formal business attire on meeting days.
+
+Remote Work:
+Employees may work remotely up to 2 days per week after completing
+their 90-day probationary period.
+
+CHAPTER 3: BENEFITS
+-------------------
+
+Health Insurance:
+Full-time employees are eligible for medical, dental, and vision
+coverage starting on their first day. The company covers 80% of
+premium costs for employees and 50% for dependents.
+
+Retirement:
+401(k) plan with company match up to 4% of salary.
+Fully vested after 3 years of employment.
+
+Paid Time Off:
+- 15 days PTO for employees with 0-2 years of service
+- 20 days PTO for employees with 3-5 years of service
+- 25 days PTO for employees with 6+ years of service
+
+Holidays:
+The company observes 10 paid holidays per year, including:
+New Year's Day, Memorial Day, Independence Day, Labor Day,
+Thanksgiving (2 days), Christmas Eve, Christmas Day, and 
+2 floating holidays.
+
+CHAPTER 4: PROFESSIONAL DEVELOPMENT
+-----------------------------------
+
+Training Budget:
+Each employee receives $2,500 annually for professional development,
+including courses, certifications, and conference attendance.
+
+Mentorship Program:
+New employees are paired with experienced mentors to help them
+integrate into the company culture and advance their careers.
+
+CHAPTER 5: WORKPLACE CONDUCT
+----------------------------
+
+Harassment Policy:
+ACME Corporation has zero tolerance for harassment of any kind.
+All employees must complete annual harassment prevention training.
+
+Confidentiality:
+Employees must protect confidential company and client information.
+Non-disclosure agreements must be signed upon hiring.
+
+Contact Information:
+Human Resources: hr@acmecorp.com
+IT Support: helpdesk@acmecorp.com
+Emergency: security@acmecorp.com
+
+---
+Version 4.2 | Effective January 2026
