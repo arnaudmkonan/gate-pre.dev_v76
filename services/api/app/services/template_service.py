@@ -370,3 +370,128 @@ class TemplateService:
 
         logger.info(f"Generated template from sample document {document_id}")
         return template
+
+    # ===== Sync versions for Celery worker context =====
+
+    @staticmethod
+    def get_template_sync(session, template_id: str) -> Optional[ExtractionTemplate]:
+        """
+        Get a template by ID (sync version for Celery workers).
+        """
+        from sqlalchemy.orm import Session
+        template_uuid = UUID(template_id)
+        result = session.execute(
+            select(ExtractionTemplate).where(ExtractionTemplate.id == template_uuid)
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    def match_template_sync(
+        session,
+        document_id: str,
+        classification: Optional[str] = None,
+        customer_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Find templates that match a document (sync version for Celery workers).
+        """
+        doc_uuid = UUID(document_id)
+
+        # Get document
+        doc_result = session.execute(
+            select(DocumentMetadata).where(DocumentMetadata.id == doc_uuid)
+        )
+        doc = doc_result.scalar_one_or_none()
+
+        if not doc:
+            return []
+
+        # Get content for keyword matching
+        content = (doc.extracted_text_snippet or "").lower()
+
+        # Build query for potential templates
+        query = select(ExtractionTemplate).where(
+            ExtractionTemplate.is_active == True
+        )
+
+        # Filter by customer (include global templates)
+        if customer_id:
+            query = query.where(
+                or_(
+                    ExtractionTemplate.customer_id == customer_id,
+                    ExtractionTemplate.customer_id.is_(None)
+                )
+            )
+
+        result = session.execute(query)
+        templates = result.scalars().all()
+
+        matches = []
+        for template in templates:
+            score = 0.0
+            reasons = []
+
+            # Check classification match
+            if classification and template.classification_categories:
+                if classification.lower() in [c.lower() for c in template.classification_categories]:
+                    score += 0.5
+                    reasons.append(f"Classification match: {classification}")
+
+            # Check document type match
+            if template.document_type:
+                if classification and classification.lower() == template.document_type.lower():
+                    score += 0.3
+                    reasons.append(f"Document type match: {template.document_type}")
+
+            # Check keyword matches
+            if template.matching_keywords:
+                keyword_matches = [kw for kw in template.matching_keywords if kw.lower() in content]
+                if keyword_matches:
+                    keyword_score = min(len(keyword_matches) * 0.1, 0.4)
+                    score += keyword_score
+                    reasons.append(f"Keyword matches: {', '.join(keyword_matches[:3])}")
+
+            # Only include if there's some match
+            if score > 0:
+                matches.append({
+                    "template_id": str(template.id),
+                    "template_name": template.name,
+                    "document_type": template.document_type,
+                    "confidence": min(score, 1.0),
+                    "reasons": reasons,
+                    "field_count": len(template.field_definitions) if template.field_definitions else 0,
+                })
+
+        # Sort by confidence
+        matches.sort(key=lambda x: x["confidence"], reverse=True)
+        return matches
+
+    @staticmethod
+    def record_template_usage_sync(
+        session,
+        template_id: str,
+        extraction_confidence: Optional[float] = None
+    ):
+        """
+        Record that a template was used (sync version for Celery workers).
+        """
+        template = TemplateService.get_template_sync(session, template_id)
+        if not template:
+            return
+
+        template.usage_count += 1
+        template.last_used_at = datetime.now(timezone.utc)
+
+        # Update rolling average confidence
+        if extraction_confidence is not None:
+            if template.avg_confidence is None:
+                template.avg_confidence = extraction_confidence
+            else:
+                # Exponential moving average
+                alpha = 0.1
+                template.avg_confidence = (
+                    alpha * extraction_confidence +
+                    (1 - alpha) * template.avg_confidence
+                )
+
+        session.commit()

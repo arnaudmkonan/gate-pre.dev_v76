@@ -119,8 +119,8 @@ async def _run_agent_pipeline_async(document_id: str, pipeline_type: str) -> Dic
     # Store results in database
     _store_agent_results(document_id, results)
 
-    # Evaluate for human review
-    await _evaluate_for_review(document_id, results)
+    # Evaluate for human review (sync to avoid event loop issues)
+    _evaluate_for_review_sync(document_id, results)
 
     # Format output
     output = {
@@ -239,9 +239,10 @@ async def _run_template_extraction(document_id: str, context, results: Dict):
 
         logger.info(f"Checking templates for document {document_id} (classification: {classification})")
 
-        # Find matching templates
-        async with AsyncSessionLocal() as session:
-            matches = await TemplateService.match_template(
+        # Use sync session to avoid event loop issues in Celery worker
+        with get_sync_db() as session:
+            # Run sync version of template matching
+            matches = TemplateService.match_template_sync(
                 session=session,
                 document_id=document_id,
                 classification=classification,
@@ -268,8 +269,8 @@ async def _run_template_extraction(document_id: str, context, results: Dict):
                 f"(confidence: {best_match['confidence']:.0%}) for document {document_id}"
             )
 
-            # Get full template data
-            template = await TemplateService.get_template(session, best_match["template_id"])
+            # Get full template data (sync)
+            template = TemplateService.get_template_sync(session, best_match["template_id"])
 
             if not template:
                 logger.warning(f"Template {best_match['template_id']} not found")
@@ -278,28 +279,29 @@ async def _run_template_extraction(document_id: str, context, results: Dict):
             # Convert template to dict for agent
             template_dict = template.to_dict()
 
-            # Create and run template extraction agent
-            template_agent = TemplateExtractionAgent(template=template_dict)
+        # Create and run template extraction agent (outside sync session)
+        template_agent = TemplateExtractionAgent(template=template_dict)
 
-            # Execute template extraction
-            template_result = await template_agent.execute(context)
+        # Execute template extraction (async is fine here - no DB ops)
+        template_result = await template_agent.execute(context)
 
-            # Store result
-            results["template_extraction"] = template_result
+        # Store result
+        results["template_extraction"] = template_result
 
-            # Record template usage for statistics
-            extraction_confidence = template_result.confidence if template_result else None
-            await TemplateService.record_template_usage(
+        # Record template usage for statistics (sync)
+        extraction_confidence = template_result.confidence if template_result else None
+        with get_sync_db() as session:
+            TemplateService.record_template_usage_sync(
                 session=session,
                 template_id=best_match["template_id"],
                 extraction_confidence=extraction_confidence
             )
 
-            logger.info(
-                f"Template extraction completed for document {document_id}: "
-                f"{template_result.output.get('fields_found', 0)}/{template_result.output.get('fields_total', 0)} fields extracted"
-                if template_result and template_result.output else "no output"
-            )
+        logger.info(
+            f"Template extraction completed for document {document_id}: "
+            f"{template_result.output.get('fields_found', 0)}/{template_result.output.get('fields_total', 0)} fields extracted"
+            if template_result and template_result.output else "no output"
+        )
 
     except Exception as e:
         logger.error(f"Template extraction failed for document {document_id}: {e}")
@@ -320,8 +322,8 @@ def _summarize_agent_results(results: Dict) -> Dict[str, Any]:
     return summary
 
 
-async def _evaluate_for_review(document_id: str, results: Dict):
-    """Evaluate agent results and add to review queue if needed."""
+def _evaluate_for_review_sync(document_id: str, results: Dict):
+    """Evaluate agent results and add to review queue if needed (sync version)."""
     try:
         overall_confidence = _calculate_overall_confidence(results)
 
@@ -346,8 +348,8 @@ async def _evaluate_for_review(document_id: str, results: Dict):
             reason = "Flagged by quality reviewer"
 
         if should_review:
-            async with AsyncSessionLocal() as session:
-                await ReviewService.add_to_review_queue(
+            with get_sync_db() as session:
+                ReviewService.add_to_review_queue_sync(
                     session=session,
                     document_id=document_id,
                     reason=reason,

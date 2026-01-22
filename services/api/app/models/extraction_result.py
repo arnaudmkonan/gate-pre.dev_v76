@@ -44,7 +44,7 @@ class ExtractionResult(BaseModel):
     correction_notes = Column(Text, nullable=True)
     
     # Position in document (optional)
-    page_number = Column(String(10), nullable=True)
+    page_number = Column(String(50), nullable=True)  # e.g., "1", "1-5", "all"
     position_info = Column(JSON, nullable=True)  # {x, y, width, height} if applicable
     
     __table_args__ = (

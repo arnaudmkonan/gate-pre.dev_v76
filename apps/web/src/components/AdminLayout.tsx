@@ -1,6 +1,6 @@
 import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { HardDrive, Database, Zap, FileText, Route as RouteIcon, CheckCircle, BarChart3, Users, Lock, AlertCircle, Eye, Repeat, LineChart, Sparkles, ClipboardCheck, FileCode, TrendingUp } from 'lucide-react'
+import { HardDrive, Database, Zap, FileText, Route as RouteIcon, CheckCircle, BarChart3, Users, Lock, AlertCircle, Eye, Repeat, LineChart, Sparkles, ClipboardCheck, FileCode, TrendingUp, FolderArchive, Gauge } from 'lucide-react'
 
 interface AdminLayoutProps {
   children: React.ReactNode
@@ -15,6 +15,8 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
     { path: '/review', label: 'Review Queue', icon: ClipboardCheck },
     { path: '/templates', label: 'Templates', icon: FileCode },
     { path: '/feedback', label: 'Feedback Analytics', icon: TrendingUp },
+    { path: '/batch-upload', label: 'Batch Upload', icon: FolderArchive },
+    { path: '/calibration', label: 'Calibration', icon: Gauge },
     { path: '/admin/organizations', label: 'Organizations', icon: Users },
     { path: '/admin/roles', label: 'Roles & Permissions', icon: Lock },
     { path: '/metadata', label: 'Metadata Search', icon: FileText },

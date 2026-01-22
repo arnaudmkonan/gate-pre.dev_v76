@@ -508,3 +508,63 @@ class ReviewService:
             return False, "Auto-approved (high confidence)"
         
         return True, "Moderate confidence - review recommended"
+
+    # ===== Sync versions for Celery worker context =====
+
+    @staticmethod
+    def add_to_review_queue_sync(
+        session,
+        document_id: str,
+        reason: str,
+        reason_code: str = "low_confidence",
+        confidence_score: float = 0.0,
+        priority: int = 0,
+        agent_results: Optional[Dict] = None,
+        issues_detected: Optional[List[Dict]] = None
+    ) -> ReviewQueueItem:
+        """
+        Add a document to the review queue (sync version for Celery workers).
+        """
+        doc_uuid = UUID(document_id)
+
+        # Check if already in queue
+        existing = session.execute(
+            select(ReviewQueueItem).where(
+                and_(
+                    ReviewQueueItem.document_id == doc_uuid,
+                    ReviewQueueItem.status.in_(["pending", "in_review"])
+                )
+            )
+        )
+        existing_item = existing.scalar_one_or_none()
+        if existing_item:
+            logger.info(f"Document {document_id} already in review queue")
+            return existing_item
+
+        # Calculate priority based on confidence and other factors
+        if priority == 0:
+            # Auto-calculate priority
+            if confidence_score < 0.6:
+                priority = 3  # High priority for very low confidence
+            elif confidence_score < 0.8:
+                priority = 2  # Medium priority
+            else:
+                priority = 1  # Low priority
+
+        item = ReviewQueueItem(
+            document_id=doc_uuid,
+            reason=reason,
+            reason_code=reason_code,
+            confidence_score=confidence_score,
+            priority=priority,
+            agent_results=agent_results,
+            issues_detected=issues_detected,
+            status="pending",
+        )
+
+        session.add(item)
+        session.commit()
+        session.refresh(item)
+
+        logger.info(f"Added document {document_id} to review queue with priority {priority}")
+        return item

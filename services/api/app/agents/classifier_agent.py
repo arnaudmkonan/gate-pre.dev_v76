@@ -18,7 +18,10 @@ logger = logging.getLogger(__name__)
 # Document categories with descriptions
 DOCUMENT_CATEGORIES = {
     "contract": "Legal contracts, agreements, terms of service, NDAs",
-    "invoice": "Invoices, bills, payment requests, receipts",
+    "invoice": "Invoices, bills for services rendered, payment requests from vendors",
+    "receipt": "Store receipts, purchase receipts, transaction records, point-of-sale documents showing items bought and payment made",
+    "bill_of_lading": "Bills of lading, BOL, shipping documents, freight documents, cargo manifests",
+    "shipping": "Shipping labels, packing slips, delivery receipts, waybills, tracking documents",
     "report": "Business reports, analytics, quarterly reports, annual reports",
     "correspondence": "Emails, letters, memos, internal communications",
     "technical": "Technical documentation, API docs, manuals, specifications",
