@@ -25,6 +25,7 @@ from app.core.config import settings
 from app.models.document_metadata import DocumentMetadata
 from app.services.review_service import ReviewService
 from app.services.template_service import TemplateService
+from app.services.batch_service import BatchService
 
 logger = logging.getLogger(__name__)
 
@@ -84,8 +85,19 @@ async def _run_agent_pipeline_async(document_id: str, pipeline_type: str) -> Dic
         
         # Get full text content
         content = doc.extracted_text_snippet or ""
+        job_id = str(doc.job_id) if doc.job_id else None
+
         if not content:
             logger.warning(f"No content for document {document_id}")
+            # Update batch progress for skipped document
+            if job_id:
+                BatchService.update_batch_progress_sync(
+                    session=session,
+                    batch_job_id=job_id,
+                    processed_increment=1,
+                    successful_increment=0,
+                    failed_increment=1
+                )
             return {"status": "skipped", "reason": "no_content"}
         
         # Create agent context
@@ -121,6 +133,9 @@ async def _run_agent_pipeline_async(document_id: str, pipeline_type: str) -> Dic
 
     # Evaluate for human review (sync to avoid event loop issues)
     _evaluate_for_review_sync(document_id, results)
+
+    # Update batch job progress if document belongs to a batch
+    _update_batch_progress(document_id, context, success=True)
 
     # Format output
     output = {
@@ -218,6 +233,27 @@ def _calculate_overall_confidence(results: Dict) -> float:
         if hasattr(result, 'confidence') and result.confidence is not None:
             confidences.append(result.confidence)
     return sum(confidences) / len(confidences) if confidences else 0.0
+
+
+def _update_batch_progress(document_id: str, context, success: bool = True):
+    """Update batch job progress after processing a document."""
+    try:
+        # Check if document belongs to a batch job
+        job_id = context.metadata.get("job_id") if context.metadata else None
+        if not job_id:
+            return
+
+        with get_sync_db() as session:
+            BatchService.update_batch_progress_sync(
+                session=session,
+                batch_job_id=job_id,
+                processed_increment=1,
+                successful_increment=1 if success else 0,
+                failed_increment=0 if success else 1
+            )
+            logger.info(f"Updated batch progress for job {job_id}")
+    except Exception as e:
+        logger.warning(f"Failed to update batch progress: {e}")
 
 
 async def _run_template_extraction(document_id: str, context, results: Dict):
