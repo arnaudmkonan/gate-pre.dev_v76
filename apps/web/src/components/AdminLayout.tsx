@@ -1,6 +1,6 @@
 import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { HardDrive, Database, Zap, FileText, Route as RouteIcon, CheckCircle, BarChart3, Users, Lock, AlertCircle, Eye, Repeat, LineChart } from 'lucide-react'
+import { HardDrive, Database, Zap, FileText, Route as RouteIcon, CheckCircle, BarChart3, Users, Lock, AlertCircle, Eye, Repeat, LineChart, Sparkles, ClipboardCheck, FileCode, TrendingUp } from 'lucide-react'
 
 interface AdminLayoutProps {
   children: React.ReactNode
@@ -11,6 +11,10 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 
   const navItems = [
     { path: '/admin/dashboard', label: 'Dashboard', icon: BarChart3 },
+    { path: '/agents', label: 'AI Agents', icon: Sparkles },
+    { path: '/review', label: 'Review Queue', icon: ClipboardCheck },
+    { path: '/templates', label: 'Templates', icon: FileCode },
+    { path: '/feedback', label: 'Feedback Analytics', icon: TrendingUp },
     { path: '/admin/organizations', label: 'Organizations', icon: Users },
     { path: '/admin/roles', label: 'Roles & Permissions', icon: Lock },
     { path: '/metadata', label: 'Metadata Search', icon: FileText },
@@ -25,6 +29,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
     { path: '/admin/dlq-management', label: 'DLQ Management', icon: Database },
     { path: '/admin/retry-policy', label: 'Retry Policy', icon: Repeat },
   ]
+
 
   const isActive = (path: string) => location.pathname === path
 
@@ -48,10 +53,9 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
                 className={`
                   flex items-center px-4 py-3 rounded-lg font-medium text-sm
                   transition-colors
-                  ${
-                    active
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-gray-600 hover:bg-gray-50'
+                  ${active
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'text-gray-600 hover:bg-gray-50'
                   }
                 `}
               >

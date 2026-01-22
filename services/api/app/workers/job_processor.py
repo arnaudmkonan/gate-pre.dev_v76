@@ -38,6 +38,7 @@ def get_extractor_for_file_type(file_type: str):
         SpreadsheetExtractor,
         PresentationExtractor,
     )
+    from app.services.extractors.pdf_extractor import PDFExtractor
     
     extractors = {
         "txt": TextExtractor(),
@@ -54,6 +55,7 @@ def get_extractor_for_file_type(file_type: str):
         "xls": SpreadsheetExtractor(),
         "pptx": PresentationExtractor(),
         "ppt": PresentationExtractor(),
+        "pdf": PDFExtractor(),
     }
     
     return extractors.get(file_type.lower())

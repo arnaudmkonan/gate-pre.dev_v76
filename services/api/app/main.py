@@ -9,7 +9,7 @@ from app.api.routes import (
     queue, storage, vector_store, files, audit, queue_jobs, dlq,
     batch_schedule, upload, storage_callbacks, metadata, orchestration, silver_records, routing,
     extractions, normalization, validation, vectorize, scheduler, internal_metadata, ingest_jobs, retry,
-    monitoring, alerts, metrics, dlq_management
+    monitoring, alerts, metrics, dlq_management, agents, export, review, templates, feedback
 )
 from app.api.routes import retry_policy
 from app.api.routes.admin import override, queues, errors, organizations, roles, dashboard, file_type_mapping, retry_dlq
@@ -50,8 +50,8 @@ async def lifespan(app: FastAPI):
 # Create FastAPI app
 app = FastAPI(
     title="Documentation Ingestion Platform",
-    description="Multi-agent documentation ingestion API",
-    version="0.1.0",
+    description="Multi-agent documentation ingestion API with LLM-powered analysis",
+    version="0.2.0",
     lifespan=lifespan,
 )
 
@@ -100,6 +100,11 @@ app.include_router(alerts.router)
 app.include_router(metrics.router)
 app.include_router(dlq_management.router)
 app.include_router(retry_policy.router)
+app.include_router(agents.router)
+app.include_router(export.router)
+app.include_router(review.router)
+app.include_router(templates.router)
+app.include_router(feedback.router)
 
 
 @app.get("/health")

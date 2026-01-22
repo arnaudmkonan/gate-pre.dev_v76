@@ -4,7 +4,7 @@ import { Card } from './Card'
 import { Button } from './Button'
 import { Input } from './Input'
 
-const ALLOWED_TYPES = ['.txt', '.docx', '.xlsx', '.pptx', '.html', '.md', '.json', '.csv', '.yml', '.xml']
+const ALLOWED_TYPES = ['.txt', '.docx', '.xlsx', '.pptx', '.html', '.md', '.json', '.csv', '.yml', '.xml', '.pdf']
 const MAX_FILE_SIZE_MB = 50
 
 interface UploadFormProps {

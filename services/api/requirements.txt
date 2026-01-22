@@ -47,8 +47,11 @@ python-dotenv==1.0.0
 # Scheduling
 croniter==2.0.1
 
-# PDF Processing
-PyPDF2==3.0.1
+# PDF Processing & OCR
+pymupdf>=1.23.0
+pytesseract>=0.3.10
+Pillow>=10.0.0
+pdf2image>=1.16.3
 
 # Development
 pytest==7.4.3

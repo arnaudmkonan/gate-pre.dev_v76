@@ -14,6 +14,12 @@ import { MetadataPage } from './pages/MetadataPage'
 import { RoutingDashboardPage } from './pages/RoutingDashboardPage'
 import { ExtractionStatusPage } from './pages/ExtractionStatusPage'
 import { IngestUIPage } from './pages/IngestUIPage'
+import { AgentPage } from './pages/AgentPage'
+import { ReviewQueuePage } from './pages/ReviewQueuePage'
+import { ReviewItemDetailPage } from './pages/ReviewItemDetailPage'
+import { TemplatesPage } from './pages/TemplatesPage'
+import { TemplateEditorPage } from './pages/TemplateEditorPage'
+import { FeedbackPage } from './pages/FeedbackPage'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminOrganizations from './pages/AdminOrganizations'
 import AdminRoles from './pages/AdminRoles'
@@ -22,6 +28,7 @@ import AlertsPage from './pages/AlertsPage'
 import DLQManagementPage from './pages/DLQManagementPage'
 import RetryPolicyPage from './pages/RetryPolicyPage'
 import MetricsPage from './pages/MetricsPage'
+
 
 function App() {
   return (
@@ -204,6 +211,54 @@ function App() {
           element={
             <AdminLayout>
               <MetricsPage />
+            </AdminLayout>
+          }
+        />
+        <Route
+          path="/agents"
+          element={
+            <AdminLayout>
+              <AgentPage />
+            </AdminLayout>
+          }
+        />
+        <Route
+          path="/review"
+          element={
+            <AdminLayout>
+              <ReviewQueuePage />
+            </AdminLayout>
+          }
+        />
+        <Route
+          path="/review/:itemId"
+          element={
+            <AdminLayout>
+              <ReviewItemDetailPage />
+            </AdminLayout>
+          }
+        />
+        <Route
+          path="/templates"
+          element={
+            <AdminLayout>
+              <TemplatesPage />
+            </AdminLayout>
+          }
+        />
+        <Route
+          path="/templates/:templateId"
+          element={
+            <AdminLayout>
+              <TemplateEditorPage />
+            </AdminLayout>
+          }
+        />
+        <Route
+          path="/feedback"
+          element={
+            <AdminLayout>
+              <FeedbackPage />
             </AdminLayout>
           }
         />

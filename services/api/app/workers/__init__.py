@@ -10,6 +10,7 @@ from app.workers import (
     metadata_processor,
     vectorize_worker,
     job_processor,
+    agent_processor,
 )
 
 __all__ = [
@@ -23,4 +24,5 @@ __all__ = [
     "metadata_processor",
     "vectorize_worker",
     "job_processor",
+    "agent_processor",
 ]

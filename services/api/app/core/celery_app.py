@@ -53,6 +53,10 @@ celery_app.conf.update(
             "task": "app.workers.job_processor.process_pending_jobs",
             "schedule": 30.0,  # Every 30 seconds
         },
+        "process-pending-agent-analysis": {
+            "task": "app.workers.agent_processor.process_pending_documents",
+            "schedule": 120.0,  # Every 2 minutes
+        },
     },
 )
 

@@ -19,10 +19,11 @@ ALLOWED_MIME_TYPES = {
     "application/yaml": "yml",
     "application/xml": "xml",
     "text/xml": "xml",
+    "application/pdf": "pdf",
 }
 
 ALLOWED_FILE_EXTENSIONS = {
-    "txt", "docx", "xlsx", "pptx", "html", "md", "json", "csv", "yml", "xml"
+    "txt", "docx", "xlsx", "pptx", "html", "md", "json", "csv", "yml", "xml", "pdf"
 }
 
 

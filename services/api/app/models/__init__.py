@@ -45,6 +45,10 @@ from app.models.alert import AlertRule, Alert
 from app.models.metrics_timeseries import MetricsTimeseries
 from app.models.retry_policy import RetryPolicy
 from app.models.document_embedding import DocumentEmbedding
+from app.models.extraction_result import ExtractionResult, FieldMappingTemplate
+from app.models.extraction_template import ExtractionTemplate
+from app.models.review_queue import ReviewQueueItem, ReviewAction
+from app.models.feedback_metrics import TemplateFieldMetrics, FewShotExample, CorrectionLog
 __all__ = [
     "StorageConfig",
     "UploadMetadata",
@@ -108,4 +112,12 @@ __all__ = [
     "MetricsTimeseries",
     "RetryPolicy",
     "DocumentEmbedding",
+    "ExtractionResult",
+    "FieldMappingTemplate",
+    "ExtractionTemplate",
+    "ReviewQueueItem",
+    "ReviewAction",
+    "TemplateFieldMetrics",
+    "FewShotExample",
+    "CorrectionLog",
 ]
