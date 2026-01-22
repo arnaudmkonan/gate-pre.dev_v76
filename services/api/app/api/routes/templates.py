@@ -299,3 +299,162 @@ async def test_template(
         "status": "test_pending",
         "message": "Template extraction test would run using TemplateExtractionAgent"
     }
+
+
+# ============================================
+# Template Seeding Endpoints (Admin)
+# ============================================
+
+class SeedTemplatesRequest(BaseModel):
+    force_update: bool = False
+    document_types: Optional[List[str]] = None
+
+
+class AvailableTemplateInfo(BaseModel):
+    document_type: str
+    name: str
+    description: Optional[str]
+    field_count: int
+    version: str
+    has_prompt: bool
+
+
+class SeedResult(BaseModel):
+    seeded_count: int
+    templates: List[dict]
+
+
+class TemplateStatsResponse(BaseModel):
+    total_templates: int
+    active_templates: int
+    available_on_disk: int
+    usage_by_template: List[dict]
+
+
+@router.get("/admin/available", response_model=List[AvailableTemplateInfo])
+async def list_available_templates():
+    """
+    List predefined templates available for seeding.
+    
+    Returns templates defined on disk that can be seeded into the database.
+    """
+    from app.services.template_loader_service import TemplateLoaderService
+    
+    templates = TemplateLoaderService.list_available_templates()
+    return templates
+
+
+@router.post("/admin/seed", response_model=SeedResult)
+async def seed_templates(
+    request: SeedTemplatesRequest,
+    session: AsyncSession = Depends(get_db)
+):
+    """
+    Seed predefined document type templates into the database.
+    
+    This loads the 5 core document templates for Customs & Trade:
+    - Commercial Invoice
+    - Bill of Lading
+    - Packing List
+    - Customs Entry (CBP 7501)
+    - Purchase Order
+    
+    Use force_update=true to update existing templates with latest definitions.
+    """
+    from app.services.template_loader_service import TemplateLoaderService, DOCUMENT_TYPES
+    
+    doc_types = request.document_types or DOCUMENT_TYPES
+    
+    # Validate document types
+    invalid = [dt for dt in doc_types if dt not in DOCUMENT_TYPES]
+    if invalid:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid document types: {invalid}. Available: {DOCUMENT_TYPES}"
+        )
+    
+    results = {}
+    for doc_type in doc_types:
+        template = await TemplateLoaderService.seed_template(
+            session, doc_type, request.force_update
+        )
+        if template:
+            results[doc_type] = template
+    
+    return {
+        "seeded_count": len(results),
+        "templates": [
+            {
+                "document_type": dtype,
+                "template_id": str(t.id),
+                "name": t.name,
+                "field_count": len(t.field_definitions) if t.field_definitions else 0,
+                "version": t.version,
+            }
+            for dtype, t in results.items()
+        ]
+    }
+
+
+@router.get("/admin/stats", response_model=TemplateStatsResponse)
+async def get_template_stats(
+    session: AsyncSession = Depends(get_db)
+):
+    """
+    Get template usage statistics.
+    """
+    from app.services.template_loader_service import TemplateLoaderService
+    
+    stats = await TemplateLoaderService.get_template_stats(session)
+    return stats
+
+
+@router.get("/admin/schema/{document_type}")
+async def get_template_schema(document_type: str):
+    """
+    Get the raw schema definition for a template type.
+    
+    Useful for inspecting field definitions before seeding.
+    """
+    from app.services.template_loader_service import TemplateLoaderService
+    
+    schema = TemplateLoaderService.load_template_schema(document_type)
+    if not schema:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Template schema not found: {document_type}"
+        )
+    
+    prompt = TemplateLoaderService.load_template_prompt(document_type)
+    
+    return {
+        "schema": schema,
+        "has_prompt": prompt is not None,
+        "prompt_preview": prompt[:500] + "..." if prompt and len(prompt) > 500 else prompt,
+    }
+
+
+@router.post("/admin/validate/{document_type}")
+async def validate_template_schema(document_type: str):
+    """
+    Validate a template schema definition.
+    
+    Checks for required fields, field name uniqueness, and valid configuration.
+    """
+    from app.services.template_loader_service import TemplateLoaderService
+    
+    schema = TemplateLoaderService.load_template_schema(document_type)
+    if not schema:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Template schema not found: {document_type}"
+        )
+    
+    errors = TemplateLoaderService.validate_template_schema(schema)
+    
+    return {
+        "document_type": document_type,
+        "valid": len(errors) == 0,
+        "errors": errors,
+        "field_count": len(schema.get("field_definitions", [])),
+    }

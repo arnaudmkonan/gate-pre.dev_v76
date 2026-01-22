@@ -1,0 +1,321 @@
+{
+  "template_name": "Purchase Order",
+  "template_type": "field_list",
+  "document_type": "purchase_order",
+  "description": "Extracts key fields from purchase orders. Captures buyer/seller information, order details, line items, delivery requirements, and terms.",
+  "version": "1.0.0",
+  "confidence_threshold": 0.75,
+  "classification_categories": ["purchase_order", "order", "procurement"],
+  "matching_keywords": [
+    "purchase order",
+    "PO",
+    "P.O.",
+    "order number",
+    "buyer",
+    "vendor",
+    "ship to",
+    "bill to",
+    "delivery date",
+    "order date",
+    "terms and conditions"
+  ],
+  "field_definitions": [
+    {
+      "field_name": "po_number",
+      "display_name": "Purchase Order Number",
+      "field_type": "string",
+      "description": "Unique purchase order identifier",
+      "required": true,
+      "extraction_hints": ["PO Number", "P.O. No", "Purchase Order No", "Order Number", "PO #"],
+      "entity_type": "document_id"
+    },
+    {
+      "field_name": "po_date",
+      "display_name": "Order Date",
+      "field_type": "date",
+      "description": "Date the purchase order was issued",
+      "required": true,
+      "extraction_hints": ["Date", "Order Date", "PO Date", "Dated"],
+      "entity_type": "date"
+    },
+    {
+      "field_name": "po_revision",
+      "display_name": "Revision Number",
+      "field_type": "string",
+      "description": "Revision or amendment number",
+      "required": false,
+      "extraction_hints": ["Revision", "Rev", "Amendment", "Version"]
+    },
+    {
+      "field_name": "buyer_company_name",
+      "display_name": "Buyer Company Name",
+      "field_type": "string",
+      "description": "Name of the purchasing company",
+      "required": true,
+      "extraction_hints": ["Buyer", "Purchaser", "Customer", "Ordered By"],
+      "entity_type": "organization"
+    },
+    {
+      "field_name": "buyer_address",
+      "display_name": "Buyer Address",
+      "field_type": "address",
+      "description": "Address of the purchasing company",
+      "required": false,
+      "entity_type": "location"
+    },
+    {
+      "field_name": "buyer_contact_name",
+      "display_name": "Buyer Contact Name",
+      "field_type": "string",
+      "description": "Name of buyer's contact person",
+      "required": false,
+      "extraction_hints": ["Contact", "Attention", "Attn", "Buyer Contact"],
+      "entity_type": "person"
+    },
+    {
+      "field_name": "buyer_contact_email",
+      "display_name": "Buyer Contact Email",
+      "field_type": "string",
+      "description": "Email address of buyer contact",
+      "required": false,
+      "entity_type": "email"
+    },
+    {
+      "field_name": "buyer_contact_phone",
+      "display_name": "Buyer Contact Phone",
+      "field_type": "string",
+      "description": "Phone number of buyer contact",
+      "required": false,
+      "entity_type": "phone"
+    },
+    {
+      "field_name": "vendor_name",
+      "display_name": "Vendor/Supplier Name",
+      "field_type": "string",
+      "description": "Name of the vendor/supplier company",
+      "required": true,
+      "extraction_hints": ["Vendor", "Supplier", "Seller", "Ship From", "To"],
+      "entity_type": "organization"
+    },
+    {
+      "field_name": "vendor_address",
+      "display_name": "Vendor Address",
+      "field_type": "address",
+      "description": "Address of the vendor",
+      "required": false,
+      "entity_type": "location"
+    },
+    {
+      "field_name": "vendor_contact_name",
+      "display_name": "Vendor Contact Name",
+      "field_type": "string",
+      "description": "Name of vendor's contact person",
+      "required": false,
+      "entity_type": "person"
+    },
+    {
+      "field_name": "vendor_id",
+      "display_name": "Vendor ID",
+      "field_type": "string",
+      "description": "Buyer's internal vendor/supplier ID",
+      "required": false,
+      "extraction_hints": ["Vendor ID", "Supplier No", "Vendor Number"]
+    },
+    {
+      "field_name": "ship_to_name",
+      "display_name": "Ship To Name",
+      "field_type": "string",
+      "description": "Name of delivery recipient",
+      "required": false,
+      "extraction_hints": ["Ship To", "Deliver To", "Destination"],
+      "entity_type": "organization"
+    },
+    {
+      "field_name": "ship_to_address",
+      "display_name": "Ship To Address",
+      "field_type": "address",
+      "description": "Delivery address",
+      "required": true,
+      "extraction_hints": ["Ship To", "Delivery Address", "Destination"],
+      "entity_type": "location"
+    },
+    {
+      "field_name": "bill_to_name",
+      "display_name": "Bill To Name",
+      "field_type": "string",
+      "description": "Name for billing/invoicing",
+      "required": false,
+      "extraction_hints": ["Bill To", "Invoice To"],
+      "entity_type": "organization"
+    },
+    {
+      "field_name": "bill_to_address",
+      "display_name": "Bill To Address",
+      "field_type": "address",
+      "description": "Billing address",
+      "required": false,
+      "entity_type": "location"
+    },
+    {
+      "field_name": "currency",
+      "display_name": "Currency",
+      "field_type": "string",
+      "description": "Currency code for the order",
+      "required": true,
+      "validation_regex": "^[A-Z]{3}$",
+      "extraction_hints": ["Currency", "Curr"],
+      "default_value": "USD"
+    },
+    {
+      "field_name": "total_amount",
+      "display_name": "Total Order Amount",
+      "field_type": "decimal",
+      "description": "Total value of the purchase order",
+      "required": true,
+      "extraction_hints": ["Total", "Order Total", "Grand Total", "PO Total"],
+      "entity_type": "money"
+    },
+    {
+      "field_name": "subtotal",
+      "display_name": "Subtotal",
+      "field_type": "decimal",
+      "description": "Sum of line items before taxes/shipping",
+      "required": false,
+      "extraction_hints": ["Subtotal", "Sub Total"],
+      "entity_type": "money"
+    },
+    {
+      "field_name": "tax_amount",
+      "display_name": "Tax Amount",
+      "field_type": "decimal",
+      "description": "Total tax amount",
+      "required": false,
+      "extraction_hints": ["Tax", "Sales Tax", "VAT"],
+      "entity_type": "money"
+    },
+    {
+      "field_name": "shipping_amount",
+      "display_name": "Shipping Amount",
+      "field_type": "decimal",
+      "description": "Shipping/freight charges",
+      "required": false,
+      "extraction_hints": ["Shipping", "Freight", "Delivery Charge"],
+      "entity_type": "money"
+    },
+    {
+      "field_name": "payment_terms",
+      "display_name": "Payment Terms",
+      "field_type": "string",
+      "description": "Payment conditions (Net 30, 2/10 Net 30, etc.)",
+      "required": false,
+      "extraction_hints": ["Payment Terms", "Terms", "Net"],
+      "default_value": "Net 30"
+    },
+    {
+      "field_name": "incoterms",
+      "display_name": "Incoterms/Shipping Terms",
+      "field_type": "string",
+      "description": "Delivery terms (FOB, CIF, etc.)",
+      "required": false,
+      "extraction_hints": ["Incoterms", "Shipping Terms", "FOB", "Delivery Terms"]
+    },
+    {
+      "field_name": "requested_delivery_date",
+      "display_name": "Requested Delivery Date",
+      "field_type": "date",
+      "description": "When buyer needs the goods delivered",
+      "required": false,
+      "extraction_hints": ["Delivery Date", "Required By", "Ship By", "Need By", "Due Date"],
+      "entity_type": "date"
+    },
+    {
+      "field_name": "shipping_method",
+      "display_name": "Shipping Method",
+      "field_type": "string",
+      "description": "Preferred shipping carrier/method",
+      "required": false,
+      "extraction_hints": ["Ship Via", "Carrier", "Shipping Method", "Freight Method"]
+    },
+    {
+      "field_name": "special_instructions",
+      "display_name": "Special Instructions",
+      "field_type": "string",
+      "description": "Special handling or delivery instructions",
+      "required": false,
+      "extraction_hints": ["Instructions", "Notes", "Special Instructions", "Comments"]
+    },
+    {
+      "field_name": "line_items",
+      "display_name": "Order Line Items",
+      "field_type": "array",
+      "description": "Individual products/items being ordered",
+      "required": true,
+      "extraction_hints": ["Items", "Products", "Order Details", "Line Items"],
+      "nested_fields": [
+        {
+          "field_name": "line_number",
+          "display_name": "Line #",
+          "field_type": "integer"
+        },
+        {
+          "field_name": "item_number",
+          "display_name": "Item/Part Number",
+          "field_type": "string",
+          "description": "SKU, part number, or product code"
+        },
+        {
+          "field_name": "vendor_item_number",
+          "display_name": "Vendor Item Number",
+          "field_type": "string",
+          "description": "Vendor's product code"
+        },
+        {
+          "field_name": "description",
+          "display_name": "Description",
+          "field_type": "string",
+          "required": true
+        },
+        {
+          "field_name": "quantity",
+          "display_name": "Quantity",
+          "field_type": "decimal",
+          "required": true
+        },
+        {
+          "field_name": "unit_of_measure",
+          "display_name": "Unit of Measure",
+          "field_type": "string",
+          "description": "EA, PC, CS, etc."
+        },
+        {
+          "field_name": "unit_price",
+          "display_name": "Unit Price",
+          "field_type": "decimal",
+          "required": true
+        },
+        {
+          "field_name": "line_total",
+          "display_name": "Line Total",
+          "field_type": "decimal"
+        },
+        {
+          "field_name": "requested_date",
+          "display_name": "Line Requested Date",
+          "field_type": "date",
+          "description": "Per-line delivery date if different"
+        },
+        {
+          "field_name": "gl_account",
+          "display_name": "GL Account",
+          "field_type": "string",
+          "description": "General ledger account code"
+        },
+        {
+          "field_name": "cost_center",
+          "display_name": "Cost Center",
+          "field_type": "string"
+        }
+      ]
+    }
+  ]
+}

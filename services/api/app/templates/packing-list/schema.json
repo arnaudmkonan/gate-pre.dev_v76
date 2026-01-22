@@ -1,0 +1,237 @@
+{
+  "template_name": "Packing List",
+  "template_type": "field_list",
+  "document_type": "packing_list",
+  "description": "Extracts key fields from packing lists that detail the contents of shipments. Captures item-level details, weights, dimensions, and packaging information.",
+  "version": "1.0.0",
+  "confidence_threshold": 0.70,
+  "classification_categories": ["packing_list", "shipping", "logistics"],
+  "matching_keywords": [
+    "packing list",
+    "packing slip",
+    "detailed packing",
+    "carton list",
+    "contents list",
+    "net weight",
+    "gross weight",
+    "dimensions",
+    "carton number"
+  ],
+  "field_definitions": [
+    {
+      "field_name": "packing_list_number",
+      "display_name": "Packing List Number",
+      "field_type": "string",
+      "description": "Unique identifier for the packing list",
+      "required": false,
+      "extraction_hints": ["Packing List No", "PL No", "Document No"],
+      "entity_type": "document_id"
+    },
+    {
+      "field_name": "packing_list_date",
+      "display_name": "Packing List Date",
+      "field_type": "date",
+      "description": "Date the packing list was created",
+      "required": true,
+      "extraction_hints": ["Date", "Dated", "Issue Date"],
+      "entity_type": "date"
+    },
+    {
+      "field_name": "invoice_reference",
+      "display_name": "Invoice Reference",
+      "field_type": "string",
+      "description": "Related commercial invoice number",
+      "required": false,
+      "extraction_hints": ["Invoice No", "Inv No", "Invoice Reference", "CI No"],
+      "entity_type": "document_id"
+    },
+    {
+      "field_name": "po_reference",
+      "display_name": "PO Reference",
+      "field_type": "string",
+      "description": "Related purchase order number",
+      "required": false,
+      "extraction_hints": ["PO No", "P.O.", "Order No", "Customer Order"],
+      "entity_type": "document_id"
+    },
+    {
+      "field_name": "shipper_name",
+      "display_name": "Shipper Name",
+      "field_type": "string",
+      "description": "Name of the shipper/seller",
+      "required": true,
+      "extraction_hints": ["Shipper", "Exporter", "From", "Seller"],
+      "entity_type": "organization"
+    },
+    {
+      "field_name": "shipper_address",
+      "display_name": "Shipper Address",
+      "field_type": "address",
+      "description": "Complete address of the shipper",
+      "required": false,
+      "entity_type": "location"
+    },
+    {
+      "field_name": "consignee_name",
+      "display_name": "Consignee Name",
+      "field_type": "string",
+      "description": "Name of the consignee/buyer",
+      "required": true,
+      "extraction_hints": ["Consignee", "Importer", "To", "Buyer", "Ship To"],
+      "entity_type": "organization"
+    },
+    {
+      "field_name": "consignee_address",
+      "display_name": "Consignee Address",
+      "field_type": "address",
+      "description": "Complete address of the consignee",
+      "required": false,
+      "entity_type": "location"
+    },
+    {
+      "field_name": "country_of_origin",
+      "display_name": "Country of Origin",
+      "field_type": "string",
+      "description": "Country where goods were manufactured",
+      "required": false,
+      "extraction_hints": ["Origin", "Country of Origin", "Made In", "COO"],
+      "entity_type": "location"
+    },
+    {
+      "field_name": "total_packages",
+      "display_name": "Total Number of Packages",
+      "field_type": "integer",
+      "description": "Total count of all packages/cartons",
+      "required": true,
+      "extraction_hints": ["Total Cartons", "Total Packages", "No. of Cartons", "Total Ctns"],
+      "entity_type": "quantity"
+    },
+    {
+      "field_name": "total_gross_weight",
+      "display_name": "Total Gross Weight",
+      "field_type": "decimal",
+      "description": "Total gross weight including packaging",
+      "required": true,
+      "extraction_hints": ["Gross Weight", "G.W.", "Total G.W.", "GW"],
+      "entity_type": "quantity"
+    },
+    {
+      "field_name": "total_net_weight",
+      "display_name": "Total Net Weight",
+      "field_type": "decimal",
+      "description": "Total net weight of goods only",
+      "required": false,
+      "extraction_hints": ["Net Weight", "N.W.", "Total N.W.", "NW"],
+      "entity_type": "quantity"
+    },
+    {
+      "field_name": "weight_unit",
+      "display_name": "Weight Unit",
+      "field_type": "string",
+      "description": "Unit of weight measurement",
+      "required": false,
+      "extraction_hints": ["KGS", "LBS", "KG"],
+      "default_value": "KGS"
+    },
+    {
+      "field_name": "total_volume",
+      "display_name": "Total Volume",
+      "field_type": "decimal",
+      "description": "Total cubic measurement",
+      "required": false,
+      "extraction_hints": ["Volume", "CBM", "Measurement", "Total CBM", "Cubic Meters"],
+      "entity_type": "quantity"
+    },
+    {
+      "field_name": "volume_unit",
+      "display_name": "Volume Unit",
+      "field_type": "string",
+      "description": "Unit of volume measurement",
+      "required": false,
+      "default_value": "CBM"
+    },
+    {
+      "field_name": "shipping_marks",
+      "display_name": "Shipping Marks",
+      "field_type": "string",
+      "description": "Marks and numbers on packages for identification",
+      "required": false,
+      "extraction_hints": ["Marks", "Shipping Marks", "Marks & Numbers", "Case Marks"]
+    },
+    {
+      "field_name": "line_items",
+      "display_name": "Packing Details",
+      "field_type": "array",
+      "description": "Detailed breakdown of packages and contents",
+      "required": true,
+      "extraction_hints": ["Items", "Contents", "Description"],
+      "nested_fields": [
+        {
+          "field_name": "carton_number",
+          "display_name": "Carton/Package Number",
+          "field_type": "string",
+          "description": "Carton number or range (e.g., 1-10)"
+        },
+        {
+          "field_name": "item_description",
+          "display_name": "Description",
+          "field_type": "string",
+          "required": true
+        },
+        {
+          "field_name": "sku",
+          "display_name": "SKU/Part Number",
+          "field_type": "string"
+        },
+        {
+          "field_name": "hs_code",
+          "display_name": "HS Code",
+          "field_type": "string",
+          "validation_regex": "^[0-9]{4,10}(\\.[0-9]+)?$"
+        },
+        {
+          "field_name": "quantity",
+          "display_name": "Quantity",
+          "field_type": "decimal",
+          "required": true
+        },
+        {
+          "field_name": "unit_of_measure",
+          "display_name": "Unit",
+          "field_type": "string"
+        },
+        {
+          "field_name": "qty_per_carton",
+          "display_name": "Qty per Carton",
+          "field_type": "decimal"
+        },
+        {
+          "field_name": "number_of_cartons",
+          "display_name": "Number of Cartons",
+          "field_type": "integer"
+        },
+        {
+          "field_name": "net_weight",
+          "display_name": "Net Weight (per line)",
+          "field_type": "decimal"
+        },
+        {
+          "field_name": "gross_weight",
+          "display_name": "Gross Weight (per line)",
+          "field_type": "decimal"
+        },
+        {
+          "field_name": "dimensions",
+          "display_name": "Dimensions (LxWxH)",
+          "field_type": "string",
+          "description": "Carton dimensions"
+        },
+        {
+          "field_name": "country_of_origin",
+          "display_name": "Country of Origin",
+          "field_type": "string"
+        }
+      ]
+    }
+  ]
+}

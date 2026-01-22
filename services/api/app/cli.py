@@ -4,11 +4,12 @@ from app.tools.storage_cli import storage
 from app.tools.queue_cli import queue
 from app.tools.vector_store_cli import vector_store
 from app.tools.click_cli import cli as click_commands
+from app.tools.template_cli import template_cli
 
 
 @click.group()
 def cli():
-    """Documentation Ingestion Platform CLI."""
+    """DocuMind AI - Documentation Ingestion Platform CLI."""
     pass
 
 
@@ -16,6 +17,7 @@ def cli():
 cli.add_command(storage)
 cli.add_command(queue)
 cli.add_command(vector_store)
+cli.add_command(template_cli, name="templates")
 
 # Add Click CLI commands (upload, monitor, storage configure)
 # Note: The click_cli module has its own CLI group with upload, monitor, and storage commands

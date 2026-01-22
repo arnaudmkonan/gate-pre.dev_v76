@@ -1,0 +1,284 @@
+{
+  "template_name": "Bill of Lading",
+  "template_type": "field_list",
+  "document_type": "bill_of_lading",
+  "description": "Extracts key fields from ocean and air bills of lading (BOL/AWB). Captures shipment details, parties, cargo information, and routing.",
+  "version": "1.0.0",
+  "confidence_threshold": 0.75,
+  "classification_categories": ["bill_of_lading", "shipping", "transport"],
+  "matching_keywords": [
+    "bill of lading",
+    "B/L",
+    "BL",
+    "ocean bill",
+    "master bill",
+    "house bill",
+    "air waybill",
+    "AWB",
+    "shipper",
+    "consignee",
+    "notify party",
+    "port of loading",
+    "port of discharge",
+    "vessel",
+    "voyage"
+  ],
+  "field_definitions": [
+    {
+      "field_name": "bl_number",
+      "display_name": "B/L Number",
+      "field_type": "string",
+      "description": "Unique Bill of Lading number",
+      "required": true,
+      "extraction_hints": ["B/L No", "BL Number", "Bill of Lading No", "Document Number", "AWB No"],
+      "entity_type": "document_id"
+    },
+    {
+      "field_name": "bl_type",
+      "display_name": "B/L Type",
+      "field_type": "string",
+      "description": "Type of bill of lading (Master, House, Original, etc.)",
+      "required": false,
+      "extraction_hints": ["Type", "Master B/L", "House B/L", "Original", "Copy"],
+      "default_value": "Original"
+    },
+    {
+      "field_name": "bl_date",
+      "display_name": "B/L Date",
+      "field_type": "date",
+      "description": "Date the bill of lading was issued",
+      "required": true,
+      "extraction_hints": ["Date", "B/L Date", "Issued Date", "Date of Issue"],
+      "entity_type": "date"
+    },
+    {
+      "field_name": "shipper_name",
+      "display_name": "Shipper Name",
+      "field_type": "string",
+      "description": "Name of the shipper/exporter",
+      "required": true,
+      "extraction_hints": ["Shipper", "Exporter", "Consignor"],
+      "entity_type": "organization"
+    },
+    {
+      "field_name": "shipper_address",
+      "display_name": "Shipper Address",
+      "field_type": "address",
+      "description": "Complete address of the shipper",
+      "required": false,
+      "entity_type": "location"
+    },
+    {
+      "field_name": "consignee_name",
+      "display_name": "Consignee Name",
+      "field_type": "string",
+      "description": "Name of the consignee/receiver",
+      "required": true,
+      "extraction_hints": ["Consignee", "Receiver", "Importer", "To Order"],
+      "entity_type": "organization"
+    },
+    {
+      "field_name": "consignee_address",
+      "display_name": "Consignee Address",
+      "field_type": "address",
+      "description": "Complete address of the consignee",
+      "required": false,
+      "entity_type": "location"
+    },
+    {
+      "field_name": "notify_party_name",
+      "display_name": "Notify Party Name",
+      "field_type": "string",
+      "description": "Party to be notified upon arrival",
+      "required": false,
+      "extraction_hints": ["Notify Party", "Notify", "Also Notify"],
+      "entity_type": "organization"
+    },
+    {
+      "field_name": "notify_party_address",
+      "display_name": "Notify Party Address",
+      "field_type": "address",
+      "description": "Address of notify party",
+      "required": false,
+      "entity_type": "location"
+    },
+    {
+      "field_name": "vessel_name",
+      "display_name": "Vessel Name",
+      "field_type": "string",
+      "description": "Name of the ocean vessel",
+      "required": false,
+      "extraction_hints": ["Vessel", "Ship", "Ocean Vessel", "M/V", "Carrier"],
+      "entity_type": "string"
+    },
+    {
+      "field_name": "voyage_number",
+      "display_name": "Voyage Number",
+      "field_type": "string",
+      "description": "Voyage or flight number",
+      "required": false,
+      "extraction_hints": ["Voyage", "Voy No", "Flight", "Voyage Number"],
+      "entity_type": "string"
+    },
+    {
+      "field_name": "carrier_name",
+      "display_name": "Carrier Name",
+      "field_type": "string",
+      "description": "Name of the shipping line or carrier",
+      "required": false,
+      "extraction_hints": ["Carrier", "Shipping Line", "SCAC"],
+      "entity_type": "organization"
+    },
+    {
+      "field_name": "port_of_loading",
+      "display_name": "Port of Loading",
+      "field_type": "string",
+      "description": "Origin port where cargo was loaded",
+      "required": true,
+      "extraction_hints": ["Port of Loading", "POL", "Loading Port", "Place of Receipt"],
+      "entity_type": "location"
+    },
+    {
+      "field_name": "port_of_discharge",
+      "display_name": "Port of Discharge",
+      "field_type": "string",
+      "description": "Destination port for cargo unloading",
+      "required": true,
+      "extraction_hints": ["Port of Discharge", "POD", "Discharge Port", "Final Destination"],
+      "entity_type": "location"
+    },
+    {
+      "field_name": "place_of_delivery",
+      "display_name": "Place of Delivery",
+      "field_type": "string",
+      "description": "Final delivery location (may differ from discharge port)",
+      "required": false,
+      "extraction_hints": ["Place of Delivery", "Final Destination", "Delivery Point"],
+      "entity_type": "location"
+    },
+    {
+      "field_name": "etd",
+      "display_name": "ETD (Estimated Time of Departure)",
+      "field_type": "date",
+      "description": "Estimated departure date from origin",
+      "required": false,
+      "extraction_hints": ["ETD", "Departure Date", "Sailing Date", "On Board Date"],
+      "entity_type": "date"
+    },
+    {
+      "field_name": "eta",
+      "display_name": "ETA (Estimated Time of Arrival)",
+      "field_type": "date",
+      "description": "Estimated arrival date at destination",
+      "required": false,
+      "extraction_hints": ["ETA", "Arrival Date", "Expected Arrival"],
+      "entity_type": "date"
+    },
+    {
+      "field_name": "container_numbers",
+      "display_name": "Container Numbers",
+      "field_type": "array",
+      "description": "List of container numbers in the shipment",
+      "required": false,
+      "extraction_hints": ["Container No", "Container Number", "Equipment No"],
+      "nested_fields": [
+        {
+          "field_name": "container_number",
+          "display_name": "Container Number",
+          "field_type": "string",
+          "validation_regex": "^[A-Z]{4}[0-9]{7}$"
+        },
+        {
+          "field_name": "container_type",
+          "display_name": "Container Type",
+          "field_type": "string",
+          "description": "20GP, 40HC, 40RF, etc."
+        },
+        {
+          "field_name": "seal_number",
+          "display_name": "Seal Number",
+          "field_type": "string"
+        }
+      ]
+    },
+    {
+      "field_name": "total_packages",
+      "display_name": "Total Packages",
+      "field_type": "integer",
+      "description": "Total number of packages/pieces",
+      "required": false,
+      "extraction_hints": ["Packages", "No. of Packages", "Total Pieces", "Quantity"],
+      "entity_type": "quantity"
+    },
+    {
+      "field_name": "package_type",
+      "display_name": "Package Type",
+      "field_type": "string",
+      "description": "Type of packaging (Cartons, Pallets, Drums, etc.)",
+      "required": false,
+      "extraction_hints": ["Kind of Packages", "Package Type", "Cartons", "Pallets"]
+    },
+    {
+      "field_name": "gross_weight",
+      "display_name": "Gross Weight",
+      "field_type": "decimal",
+      "description": "Total gross weight of cargo",
+      "required": false,
+      "extraction_hints": ["Gross Weight", "Weight", "Total Weight", "KGS", "LBS"],
+      "entity_type": "quantity"
+    },
+    {
+      "field_name": "weight_unit",
+      "display_name": "Weight Unit",
+      "field_type": "string",
+      "description": "Unit of weight measurement",
+      "required": false,
+      "default_value": "KGS"
+    },
+    {
+      "field_name": "volume",
+      "display_name": "Volume/Measurement",
+      "field_type": "decimal",
+      "description": "Total volume/cubic measurement",
+      "required": false,
+      "extraction_hints": ["Measurement", "Volume", "CBM", "Cubic Meters"],
+      "entity_type": "quantity"
+    },
+    {
+      "field_name": "cargo_description",
+      "display_name": "Description of Goods",
+      "field_type": "string",
+      "description": "General description of the cargo",
+      "required": true,
+      "extraction_hints": ["Description of Goods", "Cargo Description", "Particulars", "Marks and Numbers"],
+      "entity_type": "string"
+    },
+    {
+      "field_name": "freight_terms",
+      "display_name": "Freight Terms",
+      "field_type": "string",
+      "description": "Freight payment terms (Prepaid, Collect, etc.)",
+      "required": false,
+      "extraction_hints": ["Freight", "Prepaid", "Collect", "Freight Payable"],
+      "default_value": "Prepaid"
+    },
+    {
+      "field_name": "declared_value",
+      "display_name": "Declared Value",
+      "field_type": "decimal",
+      "description": "Declared value for customs/carriage",
+      "required": false,
+      "extraction_hints": ["Declared Value", "Value"],
+      "entity_type": "money"
+    },
+    {
+      "field_name": "booking_number",
+      "display_name": "Booking Number",
+      "field_type": "string",
+      "description": "Carrier booking reference number",
+      "required": false,
+      "extraction_hints": ["Booking No", "Booking Reference", "Reference Number"],
+      "entity_type": "document_id"
+    }
+  ]
+}

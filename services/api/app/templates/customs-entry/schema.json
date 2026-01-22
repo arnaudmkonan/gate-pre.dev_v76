@@ -1,0 +1,315 @@
+{
+  "template_name": "Customs Entry (CBP 7501)",
+  "template_type": "field_list",
+  "document_type": "customs_entry",
+  "description": "Extracts key fields from U.S. Customs Entry Summary (CBP Form 7501) and similar customs declarations. Captures entry details, tariff classifications, duties, and importer information.",
+  "version": "1.0.0",
+  "confidence_threshold": 0.80,
+  "classification_categories": ["customs", "entry", "cbp", "regulatory"],
+  "matching_keywords": [
+    "entry summary",
+    "CBP 7501",
+    "customs entry",
+    "entry number",
+    "port of entry",
+    "importer of record",
+    "HTS",
+    "tariff",
+    "duty rate",
+    "antidumping",
+    "countervailing"
+  ],
+  "field_definitions": [
+    {
+      "field_name": "entry_number",
+      "display_name": "Entry Number",
+      "field_type": "string",
+      "description": "11-digit customs entry number (3-digit filer code + 7-digit entry + check digit)",
+      "required": true,
+      "validation_regex": "^[A-Z0-9]{3}[0-9]{8}$",
+      "extraction_hints": ["Entry Number", "Entry No", "Entry #"],
+      "entity_type": "document_id"
+    },
+    {
+      "field_name": "entry_type",
+      "display_name": "Entry Type",
+      "field_type": "string",
+      "description": "Type of entry (01=Consumption, 06=FTZ, etc.)",
+      "required": true,
+      "extraction_hints": ["Entry Type", "Type"],
+      "validation_regex": "^[0-9]{2}$"
+    },
+    {
+      "field_name": "entry_date",
+      "display_name": "Entry Date",
+      "field_type": "date",
+      "description": "Date of entry",
+      "required": true,
+      "extraction_hints": ["Entry Date", "Date of Entry"],
+      "entity_type": "date"
+    },
+    {
+      "field_name": "port_code",
+      "display_name": "Port of Entry Code",
+      "field_type": "string",
+      "description": "4-digit port code where goods entered",
+      "required": true,
+      "validation_regex": "^[0-9]{4}$",
+      "extraction_hints": ["Port", "Port of Entry", "POE", "Port Code"]
+    },
+    {
+      "field_name": "importer_of_record_name",
+      "display_name": "Importer of Record Name",
+      "field_type": "string",
+      "description": "Legal entity responsible for the import",
+      "required": true,
+      "extraction_hints": ["Importer of Record", "IOR", "Importer"],
+      "entity_type": "organization"
+    },
+    {
+      "field_name": "importer_of_record_number",
+      "display_name": "Importer of Record Number",
+      "field_type": "string",
+      "description": "IRS/EIN number of importer",
+      "required": true,
+      "extraction_hints": ["IOR No", "Importer Number", "EIN"],
+      "entity_type": "document_id"
+    },
+    {
+      "field_name": "importer_address",
+      "display_name": "Importer Address",
+      "field_type": "address",
+      "description": "Address of the importer of record",
+      "required": false,
+      "entity_type": "location"
+    },
+    {
+      "field_name": "consignee_name",
+      "display_name": "Consignee Name",
+      "field_type": "string",
+      "description": "Ultimate consignee of the goods",
+      "required": false,
+      "extraction_hints": ["Consignee", "Ultimate Consignee"],
+      "entity_type": "organization"
+    },
+    {
+      "field_name": "consignee_number",
+      "display_name": "Consignee Number",
+      "field_type": "string",
+      "description": "ID number of consignee",
+      "required": false,
+      "entity_type": "document_id"
+    },
+    {
+      "field_name": "exporting_country",
+      "display_name": "Exporting Country",
+      "field_type": "string",
+      "description": "Country from which goods were exported",
+      "required": true,
+      "extraction_hints": ["Export Country", "Country of Export", "Exporting Country"],
+      "entity_type": "location"
+    },
+    {
+      "field_name": "country_of_origin",
+      "display_name": "Country of Origin",
+      "field_type": "string",
+      "description": "Country where goods were manufactured",
+      "required": true,
+      "extraction_hints": ["Origin", "Country of Origin", "COO"],
+      "entity_type": "location"
+    },
+    {
+      "field_name": "mode_of_transport",
+      "display_name": "Mode of Transport",
+      "field_type": "string",
+      "description": "Mode code (10=Vessel, 40=Air, 11=Truck, etc.)",
+      "required": false,
+      "extraction_hints": ["Mode", "MOT", "Transport Mode"]
+    },
+    {
+      "field_name": "carrier_code",
+      "display_name": "Carrier Code",
+      "field_type": "string",
+      "description": "SCAC code of carrier",
+      "required": false,
+      "extraction_hints": ["Carrier", "SCAC", "Carrier Code"]
+    },
+    {
+      "field_name": "import_date",
+      "display_name": "Import Date",
+      "field_type": "date",
+      "description": "Date goods arrived in the US",
+      "required": false,
+      "extraction_hints": ["Import Date", "Arrival Date", "Date of Import"],
+      "entity_type": "date"
+    },
+    {
+      "field_name": "bl_number",
+      "display_name": "Bill of Lading Number",
+      "field_type": "string",
+      "description": "Reference B/L or AWB number",
+      "required": false,
+      "extraction_hints": ["B/L", "BL", "AWB", "IT/BL"],
+      "entity_type": "document_id"
+    },
+    {
+      "field_name": "manufacturer_id",
+      "display_name": "Manufacturer ID",
+      "field_type": "string",
+      "description": "MID code of the manufacturer",
+      "required": false,
+      "extraction_hints": ["MID", "Manufacturer ID", "Manufacturer"]
+    },
+    {
+      "field_name": "broker_name",
+      "display_name": "Customs Broker Name",
+      "field_type": "string",
+      "description": "Licensed customs broker handling the entry",
+      "required": false,
+      "extraction_hints": ["Broker", "Customs Broker", "Filer"],
+      "entity_type": "organization"
+    },
+    {
+      "field_name": "broker_filer_code",
+      "display_name": "Broker Filer Code",
+      "field_type": "string",
+      "description": "3-character broker filer code",
+      "required": false,
+      "extraction_hints": ["Filer Code", "Filer ID"]
+    },
+    {
+      "field_name": "total_entered_value",
+      "display_name": "Total Entered Value",
+      "field_type": "decimal",
+      "description": "Total value for customs purposes",
+      "required": true,
+      "extraction_hints": ["Entered Value", "Total Value", "Customs Value"],
+      "entity_type": "money"
+    },
+    {
+      "field_name": "total_duty",
+      "display_name": "Total Duty",
+      "field_type": "decimal",
+      "description": "Total duties owed",
+      "required": true,
+      "extraction_hints": ["Total Duty", "Duty", "Duties"],
+      "entity_type": "money"
+    },
+    {
+      "field_name": "total_tax",
+      "display_name": "Total Tax",
+      "field_type": "decimal",
+      "description": "Total taxes owed",
+      "required": false,
+      "extraction_hints": ["Tax", "Total Tax"],
+      "entity_type": "money"
+    },
+    {
+      "field_name": "total_fees",
+      "display_name": "Total Fees",
+      "field_type": "decimal",
+      "description": "Total fees (MPF, HMF, etc.)",
+      "required": false,
+      "extraction_hints": ["Fees", "Total Fees", "MPF", "HMF"],
+      "entity_type": "money"
+    },
+    {
+      "field_name": "total_amount_due",
+      "display_name": "Total Amount Due",
+      "field_type": "decimal",
+      "description": "Total duties, taxes, and fees owed",
+      "required": true,
+      "extraction_hints": ["Total", "Amount Due", "Total Due", "Grand Total"],
+      "entity_type": "money"
+    },
+    {
+      "field_name": "line_items",
+      "display_name": "Entry Line Items",
+      "field_type": "array",
+      "description": "Individual tariff lines on the entry",
+      "required": true,
+      "extraction_hints": ["Lines", "Line Items", "Tariff Lines"],
+      "nested_fields": [
+        {
+          "field_name": "line_number",
+          "display_name": "Line Number",
+          "field_type": "integer",
+          "required": true
+        },
+        {
+          "field_name": "hts_number",
+          "display_name": "HTS Number",
+          "field_type": "string",
+          "description": "Harmonized Tariff Schedule number (10 digits)",
+          "required": true,
+          "validation_regex": "^[0-9]{4}\\.[0-9]{2}\\.[0-9]{4}$"
+        },
+        {
+          "field_name": "description",
+          "display_name": "Description",
+          "field_type": "string",
+          "required": true
+        },
+        {
+          "field_name": "country_of_origin",
+          "display_name": "Country of Origin",
+          "field_type": "string"
+        },
+        {
+          "field_name": "quantity_1",
+          "display_name": "Quantity 1",
+          "field_type": "decimal"
+        },
+        {
+          "field_name": "uom_1",
+          "display_name": "Unit of Measure 1",
+          "field_type": "string"
+        },
+        {
+          "field_name": "quantity_2",
+          "display_name": "Quantity 2",
+          "field_type": "decimal"
+        },
+        {
+          "field_name": "uom_2",
+          "display_name": "Unit of Measure 2",
+          "field_type": "string"
+        },
+        {
+          "field_name": "entered_value",
+          "display_name": "Entered Value",
+          "field_type": "decimal",
+          "required": true
+        },
+        {
+          "field_name": "duty_rate",
+          "display_name": "Duty Rate",
+          "field_type": "string",
+          "description": "Duty rate as percentage or specific rate"
+        },
+        {
+          "field_name": "duty_amount",
+          "display_name": "Duty Amount",
+          "field_type": "decimal"
+        },
+        {
+          "field_name": "spi",
+          "display_name": "Special Program Indicator",
+          "field_type": "string",
+          "description": "SPI code for special tariff programs (GSP, USMCA, etc.)"
+        },
+        {
+          "field_name": "ad_cvd_case",
+          "display_name": "AD/CVD Case Number",
+          "field_type": "string",
+          "description": "Antidumping or Countervailing duty case"
+        },
+        {
+          "field_name": "ad_cvd_rate",
+          "display_name": "AD/CVD Rate",
+          "field_type": "decimal"
+        }
+      ]
+    }
+  ]
+}

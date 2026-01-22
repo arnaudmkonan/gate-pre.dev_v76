@@ -1,0 +1,237 @@
+{
+  "template_name": "Commercial Invoice",
+  "template_type": "field_list",
+  "document_type": "commercial_invoice",
+  "description": "Extracts key fields from commercial invoices used in international trade. Captures seller/buyer information, line items, totals, and trade terms.",
+  "version": "1.0.0",
+  "confidence_threshold": 0.75,
+  "classification_categories": ["invoice", "commercial_invoice", "financial"],
+  "matching_keywords": [
+    "commercial invoice",
+    "invoice number",
+    "bill to",
+    "ship to",
+    "terms of sale",
+    "incoterms",
+    "country of origin",
+    "HS code",
+    "harmonized code"
+  ],
+  "field_definitions": [
+    {
+      "field_name": "invoice_number",
+      "display_name": "Invoice Number",
+      "field_type": "string",
+      "description": "Unique identifier for the invoice",
+      "required": true,
+      "validation_regex": "^[A-Za-z0-9\\-\\/]+$",
+      "extraction_hints": ["Invoice No", "Invoice #", "Inv No", "Invoice Number"],
+      "entity_type": "document_id"
+    },
+    {
+      "field_name": "invoice_date",
+      "display_name": "Invoice Date",
+      "field_type": "date",
+      "description": "Date the invoice was issued",
+      "required": true,
+      "extraction_hints": ["Date", "Invoice Date", "Dated"],
+      "entity_type": "date"
+    },
+    {
+      "field_name": "seller_name",
+      "display_name": "Seller/Exporter Name",
+      "field_type": "string",
+      "description": "Name of the selling company or exporter",
+      "required": true,
+      "extraction_hints": ["Seller", "Exporter", "Shipper", "From", "Sold By"],
+      "entity_type": "organization"
+    },
+    {
+      "field_name": "seller_address",
+      "display_name": "Seller Address",
+      "field_type": "address",
+      "description": "Complete address of the seller",
+      "required": false,
+      "extraction_hints": ["Address", "Location"],
+      "entity_type": "location"
+    },
+    {
+      "field_name": "seller_tax_id",
+      "display_name": "Seller Tax ID",
+      "field_type": "string",
+      "description": "Tax identification number of seller (VAT, EIN, etc.)",
+      "required": false,
+      "extraction_hints": ["Tax ID", "VAT", "EIN", "Tax Number", "GST"],
+      "entity_type": "document_id"
+    },
+    {
+      "field_name": "buyer_name",
+      "display_name": "Buyer/Importer Name",
+      "field_type": "string",
+      "description": "Name of the buying company or importer",
+      "required": true,
+      "extraction_hints": ["Buyer", "Importer", "Consignee", "Bill To", "Sold To", "Customer"],
+      "entity_type": "organization"
+    },
+    {
+      "field_name": "buyer_address",
+      "display_name": "Buyer Address",
+      "field_type": "address",
+      "description": "Complete address of the buyer",
+      "required": false,
+      "extraction_hints": ["Ship To", "Deliver To", "Consignee Address"],
+      "entity_type": "location"
+    },
+    {
+      "field_name": "buyer_tax_id",
+      "display_name": "Buyer Tax ID",
+      "field_type": "string",
+      "description": "Tax identification number of buyer",
+      "required": false,
+      "extraction_hints": ["Importer Tax ID", "IOR Number"],
+      "entity_type": "document_id"
+    },
+    {
+      "field_name": "currency",
+      "display_name": "Currency",
+      "field_type": "string",
+      "description": "Currency code for all monetary amounts (USD, EUR, etc.)",
+      "required": true,
+      "validation_regex": "^[A-Z]{3}$",
+      "extraction_hints": ["Currency", "Curr", "CCY"],
+      "default_value": "USD"
+    },
+    {
+      "field_name": "total_amount",
+      "display_name": "Total Invoice Amount",
+      "field_type": "decimal",
+      "description": "Total value of the invoice including all charges",
+      "required": true,
+      "extraction_hints": ["Total", "Invoice Total", "Grand Total", "Amount Due", "Total Value"],
+      "entity_type": "money"
+    },
+    {
+      "field_name": "subtotal",
+      "display_name": "Subtotal",
+      "field_type": "decimal",
+      "description": "Sum of line items before additional charges",
+      "required": false,
+      "extraction_hints": ["Subtotal", "Sub Total", "Merchandise Total"],
+      "entity_type": "money"
+    },
+    {
+      "field_name": "freight_charges",
+      "display_name": "Freight Charges",
+      "field_type": "decimal",
+      "description": "Shipping/freight costs",
+      "required": false,
+      "extraction_hints": ["Freight", "Shipping", "Delivery Charges", "Transport"],
+      "entity_type": "money"
+    },
+    {
+      "field_name": "insurance_charges",
+      "display_name": "Insurance Charges",
+      "field_type": "decimal",
+      "description": "Insurance costs for the shipment",
+      "required": false,
+      "extraction_hints": ["Insurance", "Ins"],
+      "entity_type": "money"
+    },
+    {
+      "field_name": "incoterms",
+      "display_name": "Incoterms",
+      "field_type": "string",
+      "description": "International Commercial Terms (FOB, CIF, EXW, etc.)",
+      "required": false,
+      "validation_regex": "^(EXW|FCA|FAS|FOB|CFR|CIF|CPT|CIP|DAP|DPU|DDP).*$",
+      "extraction_hints": ["Terms", "Incoterms", "Terms of Sale", "Delivery Terms", "Trade Terms"],
+      "entity_type": "string"
+    },
+    {
+      "field_name": "country_of_origin",
+      "display_name": "Country of Origin",
+      "field_type": "string",
+      "description": "Country where goods were manufactured",
+      "required": true,
+      "extraction_hints": ["Origin", "Country of Origin", "Made In", "COO", "Manufactured In"],
+      "entity_type": "location"
+    },
+    {
+      "field_name": "ship_date",
+      "display_name": "Ship Date",
+      "field_type": "date",
+      "description": "Date goods were or will be shipped",
+      "required": false,
+      "extraction_hints": ["Ship Date", "Shipping Date", "Date of Shipment"],
+      "entity_type": "date"
+    },
+    {
+      "field_name": "payment_terms",
+      "display_name": "Payment Terms",
+      "field_type": "string",
+      "description": "Payment conditions (Net 30, LC, etc.)",
+      "required": false,
+      "extraction_hints": ["Payment Terms", "Terms of Payment", "Due", "Net"],
+      "entity_type": "string"
+    },
+    {
+      "field_name": "po_number",
+      "display_name": "Purchase Order Number",
+      "field_type": "string",
+      "description": "Reference to buyer's purchase order",
+      "required": false,
+      "extraction_hints": ["PO", "P.O.", "Purchase Order", "Order Number", "Customer Order"],
+      "entity_type": "document_id"
+    },
+    {
+      "field_name": "line_items",
+      "display_name": "Line Items",
+      "field_type": "array",
+      "description": "Individual products/items on the invoice",
+      "required": true,
+      "extraction_hints": ["Items", "Products", "Description of Goods"],
+      "nested_fields": [
+        {
+          "field_name": "item_description",
+          "display_name": "Description",
+          "field_type": "string",
+          "required": true
+        },
+        {
+          "field_name": "hs_code",
+          "display_name": "HS Code",
+          "field_type": "string",
+          "description": "Harmonized System tariff code",
+          "validation_regex": "^[0-9]{4,10}(\\.[0-9]+)?$"
+        },
+        {
+          "field_name": "quantity",
+          "display_name": "Quantity",
+          "field_type": "decimal",
+          "required": true
+        },
+        {
+          "field_name": "unit_of_measure",
+          "display_name": "Unit of Measure",
+          "field_type": "string"
+        },
+        {
+          "field_name": "unit_price",
+          "display_name": "Unit Price",
+          "field_type": "decimal",
+          "required": true
+        },
+        {
+          "field_name": "line_total",
+          "display_name": "Line Total",
+          "field_type": "decimal"
+        },
+        {
+          "field_name": "country_of_origin",
+          "display_name": "Item Country of Origin",
+          "field_type": "string"
+        }
+      ]
+    }
+  ]
+}
