@@ -29,6 +29,22 @@ interface BatchJob {
   created_at: string;
 }
 
+interface DuplicateMatch {
+  document_id: string;
+  filename: string;
+  match_type: string;
+  confidence: number;
+  match_details: Record<string, any>;
+  created_at: string;
+}
+
+interface DuplicateCheckResult {
+  is_duplicate: boolean;
+  highest_confidence: number;
+  matches: DuplicateMatch[];
+  checks_performed: string[];
+}
+
 export function BatchUploadPage() {
   const [batchJobs, setBatchJobs] = useState<BatchJob[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,6 +57,11 @@ export function BatchUploadPage() {
   const [description, setDescription] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   const [uploadMode, setUploadMode] = useState<'zip' | 'multi'>('zip');
+
+  // Duplicate detection state
+  const [checkingDuplicates, setCheckingDuplicates] = useState(false);
+  const [duplicateResults, setDuplicateResults] = useState<Map<string, DuplicateCheckResult>>(new Map());
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
 
   const loadBatchJobs = useCallback(async () => {
     try {
@@ -60,6 +81,40 @@ export function BatchUploadPage() {
     return () => clearInterval(interval);
   }, [loadBatchJobs]);
 
+  // Check for duplicates before uploading
+  const checkDuplicates = async () => {
+    if (!selectedFiles || selectedFiles.length === 0 || uploadMode === 'zip') {
+      return;
+    }
+
+    setCheckingDuplicates(true);
+    const results = new Map<string, DuplicateCheckResult>();
+
+    for (let i = 0; i < selectedFiles.length; i++) {
+      const file = selectedFiles[i];
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await axios.post<DuplicateCheckResult>(
+          `${API_URL}/api/duplicates/check-file`,
+          formData,
+          { headers: { 'Content-Type': 'multipart/form-data' } }
+        );
+
+        if (response.data.is_duplicate) {
+          results.set(file.name, response.data);
+        }
+      } catch (err) {
+        console.error(`Failed to check duplicate for ${file.name}:`, err);
+      }
+    }
+
+    setDuplicateResults(results);
+    setShowDuplicateWarning(results.size > 0);
+    setCheckingDuplicates(false);
+  };
+
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -76,6 +131,7 @@ export function BatchUploadPage() {
     setUploading(true);
     setUploadProgress(0);
     setError(null);
+    setShowDuplicateWarning(false);
 
     try {
       const formData = new FormData();
@@ -272,6 +328,53 @@ export function BatchUploadPage() {
               </label>
             </div>
           </div>
+
+          {/* Duplicate Check Button (for multi-file mode) */}
+          {uploadMode === 'multi' && selectedFiles && selectedFiles.length > 0 && (
+            <button
+              type="button"
+              onClick={checkDuplicates}
+              disabled={checkingDuplicates}
+              className="px-4 py-2 bg-yellow-100 text-yellow-800 rounded-lg hover:bg-yellow-200 disabled:opacity-50"
+            >
+              {checkingDuplicates ? 'Checking for duplicates...' : 'Check for Duplicates'}
+            </button>
+          )}
+
+          {/* Duplicate Warning */}
+          {showDuplicateWarning && duplicateResults.size > 0 && (
+            <div className="p-4 bg-yellow-50 border border-yellow-300 rounded-lg">
+              <div className="flex items-start gap-2">
+                <svg className="w-5 h-5 text-yellow-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-yellow-800">Potential Duplicates Detected</h4>
+                  <p className="text-sm text-yellow-700 mb-2">
+                    {duplicateResults.size} file(s) may already exist in the system:
+                  </p>
+                  <ul className="text-sm space-y-2">
+                    {Array.from(duplicateResults.entries()).map(([filename, result]) => (
+                      <li key={filename} className="bg-white p-2 rounded border border-yellow-200">
+                        <span className="font-medium">{filename}</span>
+                        <span className="text-yellow-600 ml-2">
+                          ({Math.round(result.highest_confidence * 100)}% match)
+                        </span>
+                        {result.matches[0] && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            Matches: {result.matches[0].filename} ({result.matches[0].match_type})
+                          </div>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-xs text-yellow-600 mt-2">
+                    You can still upload these files. They will be flagged for review.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {error && (
             <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg">

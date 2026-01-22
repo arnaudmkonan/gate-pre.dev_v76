@@ -26,6 +26,7 @@ from app.models.document_metadata import DocumentMetadata
 from app.services.review_service import ReviewService
 from app.services.template_service import TemplateService
 from app.services.batch_service import BatchService
+from app.services.duplicate_service import DuplicateDetectionService
 
 logger = logging.getLogger(__name__)
 
@@ -133,6 +134,9 @@ async def _run_agent_pipeline_async(document_id: str, pipeline_type: str) -> Dic
 
     # Evaluate for human review (sync to avoid event loop issues)
     _evaluate_for_review_sync(document_id, results)
+
+    # Check for duplicate documents
+    _check_duplicates_sync(document_id)
 
     # Update batch job progress if document belongs to a batch
     _update_batch_progress(document_id, context, success=True)
@@ -254,6 +258,62 @@ def _update_batch_progress(document_id: str, context, success: bool = True):
             logger.info(f"Updated batch progress for job {job_id}")
     except Exception as e:
         logger.warning(f"Failed to update batch progress: {e}")
+
+
+def _check_duplicates_sync(document_id: str):
+    """Check for duplicate documents after extraction and flag if found."""
+    try:
+        with get_sync_db() as session:
+            # Run duplicate detection
+            result = DuplicateDetectionService.check_all_duplicates_sync(
+                session=session,
+                document_id=document_id,
+                days_back=365
+            )
+
+            if result["is_duplicate"] and result["matches"]:
+                best_match = result["matches"][0]
+                logger.warning(
+                    f"Potential duplicate detected for document {document_id}: "
+                    f"{best_match['match_type']} match with {best_match['document_id']} "
+                    f"(confidence: {best_match['confidence']:.0%})"
+                )
+
+                # Update review queue item with duplicate flag
+                from app.models.review_queue import ReviewQueueItem
+                review_result = session.execute(
+                    select(ReviewQueueItem).where(
+                        ReviewQueueItem.document_id == UUID(document_id)
+                    )
+                )
+                review_item = review_result.scalar_one_or_none()
+
+                if review_item:
+                    # Add duplicate info to issues
+                    issues = review_item.issues_detected or []
+                    issues.insert(0, {
+                        "type": "potential_duplicate",
+                        "description": f"Potential duplicate of document {best_match['filename']}",
+                        "severity": "high" if best_match["confidence"] >= 0.95 else "medium",
+                        "suggestion": f"Review existing document {best_match['document_id'][:8]}... before approving",
+                        "duplicate_info": {
+                            "match_type": best_match["match_type"],
+                            "confidence": best_match["confidence"],
+                            "matched_document_id": best_match["document_id"],
+                            "matched_filename": best_match["filename"],
+                        }
+                    })
+                    review_item.issues_detected = issues
+
+                    # Increase priority for duplicates
+                    if review_item.priority < 3:
+                        review_item.priority = 3
+
+                    session.commit()
+                    logger.info(f"Flagged review item for document {document_id} as potential duplicate")
+
+    except Exception as e:
+        logger.error(f"Duplicate check failed for document {document_id}: {e}")
 
 
 async def _run_template_extraction(document_id: str, context, results: Dict):
