@@ -30,6 +30,7 @@ from . import (
     data_fabric,
     trade_compliance,
     reference_data,
+    entry_reconciliation,
 )
 
 __all__ = [
@@ -63,4 +64,5 @@ __all__ = [
     "data_fabric",
     "trade_compliance",
     "reference_data",
+    "entry_reconciliation",
 ]
