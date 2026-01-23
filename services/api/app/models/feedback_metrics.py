@@ -164,7 +164,7 @@ class CorrectionLog(BaseModel):
     review_notes = Column(Text, nullable=True)
 
     # Analysis flags
-    used_for_training = Column(String(10), nullable=False, default="no")  # yes, no, pending
+    used_for_training = Column(String(20), nullable=False, default="no")  # yes, no, pending, skipped
     pattern_identified = Column(String(255), nullable=True)  # Type of pattern this represents
 
     __table_args__ = (

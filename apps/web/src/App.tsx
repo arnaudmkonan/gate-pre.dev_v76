@@ -20,6 +20,8 @@ import { ReviewItemDetailPage } from './pages/ReviewItemDetailPage'
 import { TemplatesPage } from './pages/TemplatesPage'
 import { TemplateEditorPage } from './pages/TemplateEditorPage'
 import { FeedbackPage } from './pages/FeedbackPage'
+import { BatchUploadPage } from './pages/BatchUploadPage'
+import { CalibrationDashboardPage } from './pages/CalibrationDashboardPage'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminOrganizations from './pages/AdminOrganizations'
 import AdminRoles from './pages/AdminRoles'
@@ -259,6 +261,22 @@ function App() {
           element={
             <AdminLayout>
               <FeedbackPage />
+            </AdminLayout>
+          }
+        />
+        <Route
+          path="/batch-upload"
+          element={
+            <AdminLayout>
+              <BatchUploadPage />
+            </AdminLayout>
+          }
+        />
+        <Route
+          path="/calibration"
+          element={
+            <AdminLayout>
+              <CalibrationDashboardPage />
             </AdminLayout>
           }
         />

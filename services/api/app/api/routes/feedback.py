@@ -379,3 +379,197 @@ async def sync_few_shot_examples(
     except Exception as e:
         logger.error(f"Error syncing examples: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== Active Learning & Calibration Dashboard Endpoints =====
+
+@router.get("/dashboard/calibration")
+async def get_calibration_dashboard(
+    days: int = Query(default=30, le=365, description="Analysis period in days"),
+    session: AsyncSession = Depends(get_db)
+):
+    """
+    Get data for the calibration dashboard.
+
+    Shows model confidence vs actual accuracy across all templates.
+    This is the core view for monitoring model calibration and
+    identifying where the model is overconfident or underconfident.
+
+    Returns:
+    - Overall accuracy and confidence metrics
+    - Per-template health breakdown
+    - Calibration curve data for visualization
+    """
+    try:
+        dashboard = await FeedbackService.get_calibration_dashboard(
+            session=session,
+            days=days,
+        )
+        return dashboard
+
+    except Exception as e:
+        logger.error(f"Error getting calibration dashboard: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/dashboard/templates-needing-retraining")
+async def get_templates_needing_retraining(
+    accuracy_threshold: float = Query(default=0.80, ge=0.0, le=1.0),
+    min_extractions: int = Query(default=20, ge=1),
+    session: AsyncSession = Depends(get_db)
+):
+    """
+    Get templates that need retraining based on accuracy decline.
+
+    Returns templates where accuracy is below threshold with
+    sufficient sample size to be statistically meaningful.
+    """
+    try:
+        templates = await FeedbackService.get_templates_needing_retraining(
+            session=session,
+            accuracy_threshold=accuracy_threshold,
+            min_extractions=min_extractions,
+        )
+        return {
+            "templates": templates,
+            "count": len(templates),
+            "threshold": accuracy_threshold,
+            "min_extractions": min_extractions,
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting templates needing retraining: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/dashboard/auto-correction-suggestions")
+async def get_auto_correction_suggestions(
+    template_id: Optional[str] = Query(default=None),
+    min_frequency: int = Query(default=5, ge=2),
+    min_confidence: float = Query(default=0.9, ge=0.5, le=1.0),
+    session: AsyncSession = Depends(get_db)
+):
+    """
+    Get suggestions for corrections that can be applied automatically.
+
+    Identifies patterns where the same correction is made repeatedly
+    with high consistency (e.g., "USD" always corrected to "US Dollars").
+    """
+    try:
+        suggestions = await FeedbackService.suggest_auto_corrections(
+            session=session,
+            template_id=template_id,
+            min_frequency=min_frequency,
+            min_confidence=min_confidence,
+        )
+        return {
+            "suggestions": suggestions,
+            "count": len(suggestions),
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting auto-correction suggestions: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/learning/trigger-cycle")
+async def trigger_learning_cycle(
+    template_id: Optional[str] = Query(default=None, description="Specific template or all if not provided"),
+    session: AsyncSession = Depends(get_db)
+):
+    """
+    Trigger a complete learning cycle.
+
+    This:
+    1. Processes pending corrections
+    2. Generates new few-shot examples
+    3. Recalibrates confidence thresholds
+    4. Updates template prompts if needed
+
+    Can be run for a specific template or all templates.
+    """
+    try:
+        result = await FeedbackService.trigger_learning_cycle(
+            session=session,
+            template_id=template_id,
+        )
+        return result
+
+    except Exception as e:
+        logger.error(f"Error triggering learning cycle: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/learning/summary")
+async def get_learning_summary(
+    days: int = Query(default=7, le=90, description="Summary period in days"),
+    session: AsyncSession = Depends(get_db)
+):
+    """
+    Get a summary of learning activity over the specified period.
+
+    Shows corrections logged, examples generated, and system utilization.
+    """
+    try:
+        summary = await FeedbackService.get_learning_summary(
+            session=session,
+            days=days,
+        )
+        return summary
+
+    except Exception as e:
+        logger.error(f"Error getting learning summary: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/template/{template_id}/recalibrate-all")
+async def recalibrate_all_templates(
+    session: AsyncSession = Depends(get_db)
+):
+    """
+    Recalibrate confidence thresholds for all active templates.
+
+    Useful after a period of corrections to align model confidence
+    with actual accuracy across the board.
+    """
+    from sqlalchemy import select
+    from app.models.extraction_template import ExtractionTemplate
+
+    try:
+        # Get all active templates
+        result = await session.execute(
+            select(ExtractionTemplate).where(ExtractionTemplate.is_active == True)
+        )
+        templates = result.scalars().all()
+
+        results = []
+        for template in templates:
+            try:
+                calibration = await FeedbackService.recalibrate_confidence_threshold(
+                    session=session,
+                    template_id=str(template.id),
+                )
+                results.append({
+                    "template_id": str(template.id),
+                    "template_name": template.name,
+                    **calibration,
+                })
+            except Exception as e:
+                results.append({
+                    "template_id": str(template.id),
+                    "template_name": template.name,
+                    "status": "error",
+                    "error": str(e),
+                })
+
+        updated_count = len([r for r in results if r.get("status") == "updated"])
+
+        return {
+            "templates_processed": len(results),
+            "templates_updated": updated_count,
+            "results": results,
+        }
+
+    except Exception as e:
+        logger.error(f"Error recalibrating all templates: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

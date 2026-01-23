@@ -25,6 +25,8 @@ from app.core.config import settings
 from app.models.document_metadata import DocumentMetadata
 from app.services.review_service import ReviewService
 from app.services.template_service import TemplateService
+from app.services.batch_service import BatchService
+from app.services.duplicate_service import DuplicateDetectionService
 
 logger = logging.getLogger(__name__)
 
@@ -84,8 +86,19 @@ async def _run_agent_pipeline_async(document_id: str, pipeline_type: str) -> Dic
         
         # Get full text content
         content = doc.extracted_text_snippet or ""
+        job_id = str(doc.job_id) if doc.job_id else None
+
         if not content:
             logger.warning(f"No content for document {document_id}")
+            # Update batch progress for skipped document
+            if job_id:
+                BatchService.update_batch_progress_sync(
+                    session=session,
+                    batch_job_id=job_id,
+                    processed_increment=1,
+                    successful_increment=0,
+                    failed_increment=1
+                )
             return {"status": "skipped", "reason": "no_content"}
         
         # Create agent context
@@ -119,8 +132,14 @@ async def _run_agent_pipeline_async(document_id: str, pipeline_type: str) -> Dic
     # Store results in database
     _store_agent_results(document_id, results)
 
-    # Evaluate for human review
-    await _evaluate_for_review(document_id, results)
+    # Evaluate for human review (sync to avoid event loop issues)
+    _evaluate_for_review_sync(document_id, results)
+
+    # Check for duplicate documents
+    _check_duplicates_sync(document_id)
+
+    # Update batch job progress if document belongs to a batch
+    _update_batch_progress(document_id, context, success=True)
 
     # Format output
     output = {
@@ -220,6 +239,83 @@ def _calculate_overall_confidence(results: Dict) -> float:
     return sum(confidences) / len(confidences) if confidences else 0.0
 
 
+def _update_batch_progress(document_id: str, context, success: bool = True):
+    """Update batch job progress after processing a document."""
+    try:
+        # Check if document belongs to a batch job
+        job_id = context.metadata.get("job_id") if context.metadata else None
+        if not job_id:
+            return
+
+        with get_sync_db() as session:
+            BatchService.update_batch_progress_sync(
+                session=session,
+                batch_job_id=job_id,
+                processed_increment=1,
+                successful_increment=1 if success else 0,
+                failed_increment=0 if success else 1
+            )
+            logger.info(f"Updated batch progress for job {job_id}")
+    except Exception as e:
+        logger.warning(f"Failed to update batch progress: {e}")
+
+
+def _check_duplicates_sync(document_id: str):
+    """Check for duplicate documents after extraction and flag if found."""
+    try:
+        with get_sync_db() as session:
+            # Run duplicate detection
+            result = DuplicateDetectionService.check_all_duplicates_sync(
+                session=session,
+                document_id=document_id,
+                days_back=365
+            )
+
+            if result["is_duplicate"] and result["matches"]:
+                best_match = result["matches"][0]
+                logger.warning(
+                    f"Potential duplicate detected for document {document_id}: "
+                    f"{best_match['match_type']} match with {best_match['document_id']} "
+                    f"(confidence: {best_match['confidence']:.0%})"
+                )
+
+                # Update review queue item with duplicate flag
+                from app.models.review_queue import ReviewQueueItem
+                review_result = session.execute(
+                    select(ReviewQueueItem).where(
+                        ReviewQueueItem.document_id == UUID(document_id)
+                    )
+                )
+                review_item = review_result.scalar_one_or_none()
+
+                if review_item:
+                    # Add duplicate info to issues
+                    issues = review_item.issues_detected or []
+                    issues.insert(0, {
+                        "type": "potential_duplicate",
+                        "description": f"Potential duplicate of document {best_match['filename']}",
+                        "severity": "high" if best_match["confidence"] >= 0.95 else "medium",
+                        "suggestion": f"Review existing document {best_match['document_id'][:8]}... before approving",
+                        "duplicate_info": {
+                            "match_type": best_match["match_type"],
+                            "confidence": best_match["confidence"],
+                            "matched_document_id": best_match["document_id"],
+                            "matched_filename": best_match["filename"],
+                        }
+                    })
+                    review_item.issues_detected = issues
+
+                    # Increase priority for duplicates
+                    if review_item.priority < 3:
+                        review_item.priority = 3
+
+                    session.commit()
+                    logger.info(f"Flagged review item for document {document_id} as potential duplicate")
+
+    except Exception as e:
+        logger.error(f"Duplicate check failed for document {document_id}: {e}")
+
+
 async def _run_template_extraction(document_id: str, context, results: Dict):
     """
     Check for matching templates and run template-based extraction.
@@ -239,9 +335,10 @@ async def _run_template_extraction(document_id: str, context, results: Dict):
 
         logger.info(f"Checking templates for document {document_id} (classification: {classification})")
 
-        # Find matching templates
-        async with AsyncSessionLocal() as session:
-            matches = await TemplateService.match_template(
+        # Use sync session to avoid event loop issues in Celery worker
+        with get_sync_db() as session:
+            # Run sync version of template matching
+            matches = TemplateService.match_template_sync(
                 session=session,
                 document_id=document_id,
                 classification=classification,
@@ -268,8 +365,8 @@ async def _run_template_extraction(document_id: str, context, results: Dict):
                 f"(confidence: {best_match['confidence']:.0%}) for document {document_id}"
             )
 
-            # Get full template data
-            template = await TemplateService.get_template(session, best_match["template_id"])
+            # Get full template data (sync)
+            template = TemplateService.get_template_sync(session, best_match["template_id"])
 
             if not template:
                 logger.warning(f"Template {best_match['template_id']} not found")
@@ -278,28 +375,29 @@ async def _run_template_extraction(document_id: str, context, results: Dict):
             # Convert template to dict for agent
             template_dict = template.to_dict()
 
-            # Create and run template extraction agent
-            template_agent = TemplateExtractionAgent(template=template_dict)
+        # Create and run template extraction agent (outside sync session)
+        template_agent = TemplateExtractionAgent(template=template_dict)
 
-            # Execute template extraction
-            template_result = await template_agent.execute(context)
+        # Execute template extraction (async is fine here - no DB ops)
+        template_result = await template_agent.execute(context)
 
-            # Store result
-            results["template_extraction"] = template_result
+        # Store result
+        results["template_extraction"] = template_result
 
-            # Record template usage for statistics
-            extraction_confidence = template_result.confidence if template_result else None
-            await TemplateService.record_template_usage(
+        # Record template usage for statistics (sync)
+        extraction_confidence = template_result.confidence if template_result else None
+        with get_sync_db() as session:
+            TemplateService.record_template_usage_sync(
                 session=session,
                 template_id=best_match["template_id"],
                 extraction_confidence=extraction_confidence
             )
 
-            logger.info(
-                f"Template extraction completed for document {document_id}: "
-                f"{template_result.output.get('fields_found', 0)}/{template_result.output.get('fields_total', 0)} fields extracted"
-                if template_result and template_result.output else "no output"
-            )
+        logger.info(
+            f"Template extraction completed for document {document_id}: "
+            f"{template_result.output.get('fields_found', 0)}/{template_result.output.get('fields_total', 0)} fields extracted"
+            if template_result and template_result.output else "no output"
+        )
 
     except Exception as e:
         logger.error(f"Template extraction failed for document {document_id}: {e}")
@@ -320,8 +418,8 @@ def _summarize_agent_results(results: Dict) -> Dict[str, Any]:
     return summary
 
 
-async def _evaluate_for_review(document_id: str, results: Dict):
-    """Evaluate agent results and add to review queue if needed."""
+def _evaluate_for_review_sync(document_id: str, results: Dict):
+    """Evaluate agent results and add to review queue if needed (sync version)."""
     try:
         overall_confidence = _calculate_overall_confidence(results)
 
@@ -346,8 +444,8 @@ async def _evaluate_for_review(document_id: str, results: Dict):
             reason = "Flagged by quality reviewer"
 
         if should_review:
-            async with AsyncSessionLocal() as session:
-                await ReviewService.add_to_review_queue(
+            with get_sync_db() as session:
+                ReviewService.add_to_review_queue_sync(
                     session=session,
                     document_id=document_id,
                     reason=reason,
