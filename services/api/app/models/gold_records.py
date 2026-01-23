@@ -30,6 +30,7 @@ class Shipment(BaseModel):
     consignee = relationship("app.models.silver_records.Party", foreign_keys=[consignee_id])
     
     invoices = relationship("CommercialInvoice", back_populates="shipment")
+    compliance_screens = relationship("ComplianceScreen", back_populates="shipment", cascade="all, delete-orphan")
 
 
 class CommercialInvoice(BaseModel):

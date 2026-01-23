@@ -52,6 +52,7 @@ from app.models.feedback_metrics import TemplateFieldMetrics, FewShotExample, Co
 from app.models.batch_job import BatchJob, BulkReviewSession
 from app.models.silver_records import Party, Product, Address, EntityLink
 from app.models.gold_records import Shipment, CommercialInvoice, InvoiceLine, CustomsEntry, DataException
+from app.models.reference_data import OFACSdn, HTSCode, NAICSCode, ComplianceScreen, DrawbackLedger
 
 __all__ = [
     "StorageConfig",
@@ -135,5 +136,9 @@ __all__ = [
     "InvoiceLine",
     "CustomsEntry",
     "DataException",
-
+    "OFACSdn",
+    "HTSCode",
+    "NAICSCode",
+    "ComplianceScreen",
+    "DrawbackLedger",
 ]

@@ -10,7 +10,7 @@ from app.api.routes import (
     batch_schedule, upload, storage_callbacks, metadata, orchestration, silver_records, routing,
     extractions, normalization,    validation, vectorize, scheduler, internal_metadata, ingest_jobs, retry,
     monitoring, alerts, metrics, dlq_management, agents, export, review, templates, feedback, batch, duplicates,
-    data_fabric
+    data_fabric, trade_compliance, reference_data
 )
 from app.api.routes import retry_policy
 from app.api.routes.admin import override, queues, errors, organizations, roles, dashboard, file_type_mapping, retry_dlq
@@ -109,6 +109,8 @@ app.include_router(feedback.router)
 app.include_router(batch.router)
 app.include_router(duplicates.router)
 app.include_router(data_fabric.router)
+app.include_router(trade_compliance.router)
+app.include_router(reference_data.router)
 
 
 @app.get("/health")

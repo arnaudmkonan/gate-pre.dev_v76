@@ -25,10 +25,7 @@ class Party(BaseModel):
 
     # Relationships
     addresses = relationship("Address", back_populates="party", cascade="all, delete-orphan")
-    
-    # Gold layer relationships (forward interactions)
-    # These will be defined in the Gold models using backref or back_populates if needed,
-    # or just referenced via ForeignKeys there.
+    compliance_screens = relationship("ComplianceScreen", back_populates="party", cascade="all, delete-orphan")
 
 
 class Address(BaseModel):
@@ -66,6 +63,9 @@ class Product(BaseModel):
     aliases = Column(ARRAY(String), nullable=True, default=[])
     
     golden_record_id = Column(UUID(as_uuid=True), nullable=True, index=True)
+
+    # Relationships
+    compliance_screens = relationship("ComplianceScreen", back_populates="product", cascade="all, delete-orphan")
 
 
 class EntityLink(BaseModel):

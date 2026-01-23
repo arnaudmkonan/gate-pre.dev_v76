@@ -28,6 +28,8 @@ from . import (
     dlq_management,
     retry_policy,
     data_fabric,
+    trade_compliance,
+    reference_data,
 )
 
 __all__ = [
@@ -59,4 +61,6 @@ __all__ = [
     "dlq_management",
     "retry_policy",
     "data_fabric",
+    "trade_compliance",
+    "reference_data",
 ]
