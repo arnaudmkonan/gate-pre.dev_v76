@@ -53,6 +53,14 @@ def process_with_agents(self, document_id: str, pipeline_type: str = "standard")
         raise self.retry(exc=e, countdown=60)
 
 
+
+    # Trigger Entity Resolution (Data Fabric)
+    # Fire and forget - doesn't block the main response
+    from app.workers.data_fabric_worker import process_entity_resolution
+    process_entity_resolution.delay(document_id)
+
+    return result
+
 def _run_agent_pipeline_sync(document_id: str, pipeline_type: str) -> Dict[str, Any]:
     """Synchronous wrapper for async agent pipeline."""
     loop = asyncio.new_event_loop()
@@ -71,6 +79,8 @@ async def _run_agent_pipeline_async(document_id: str, pipeline_type: str) -> Dic
         AgentContext,
         create_standard_pipeline,
         create_analysis_pipeline,
+        create_triage_pipeline,
+        create_mapping_pipeline,
     )
     
     # Get document from database
@@ -90,15 +100,6 @@ async def _run_agent_pipeline_async(document_id: str, pipeline_type: str) -> Dic
 
         if not content:
             logger.warning(f"No content for document {document_id}")
-            # Update batch progress for skipped document
-            if job_id:
-                BatchService.update_batch_progress_sync(
-                    session=session,
-                    batch_job_id=job_id,
-                    processed_increment=1,
-                    successful_increment=0,
-                    failed_increment=1
-                )
             return {"status": "skipped", "reason": "no_content"}
         
         # Create agent context
@@ -114,52 +115,75 @@ async def _run_agent_pipeline_async(document_id: str, pipeline_type: str) -> Dic
             }
         )
     
-    # Create appropriate pipeline
-    if pipeline_type == "analysis":
+    results = {}
+    
+    # --- Step 0: Triage (Intelligent Routing) ---
+    # Always run triage first to determine priority and path
+    logger.info(f"Running triage for document {document_id}")
+    triage_orchestrator = create_triage_pipeline()
+    triage_results = await triage_orchestrator.execute_pipeline(context)
+    results.update(triage_results)
+    
+    # Analyze routing decision
+    triage_output = triage_results.get("triagist_agent", {}).output or {}
+    path_decision = triage_output.get("path", "path_a_semantic")
+    priority = triage_output.get("priority", "medium")
+    
+    logger.info(f"Triagist Decision: Path={path_decision}, Priority={priority}")
+    
+    # --- Step 1: Main Processing ---
+    
+    orchestrator = None
+    if path_decision == "path_b_code_mapping" and pipeline_type == "standard":
+        logger.info("Path B detected - Executing Schema Mapping Pipeline (Inference Mode)")
+        # For new files, defaulting to 'infer_schema' task
+        context.metadata["task"] = "infer_schema"
+        orchestrator = create_mapping_pipeline()
+    elif pipeline_type == "analysis":
         orchestrator = create_analysis_pipeline()
     else:
+        # Default Path A
         orchestrator = create_standard_pipeline()
     
     # Execute pipeline
     start_time = datetime.now(timezone.utc)
-    results = await orchestrator.execute_pipeline(context)
+    main_results = await orchestrator.execute_pipeline(context)
+    results.update(main_results)
 
     # After classification, check for matching templates and run template extraction
     await _run_template_extraction(document_id, context, results)
 
     execution_time = (datetime.now(timezone.utc) - start_time).total_seconds()
 
-    # Store results in database
+    # Store results
     _store_agent_results(document_id, results)
 
-    # Evaluate for human review (sync to avoid event loop issues)
+    # Evaluate for human review
     _evaluate_for_review_sync(document_id, results)
 
-    # Check for duplicate documents
-    _check_duplicates_sync(document_id)
-
-    # Update batch job progress if document belongs to a batch
+    # Update batch job progress
     _update_batch_progress(document_id, context, success=True)
+    
+    # Log triage decision to document metadata (optional, skipping for now)
 
     # Format output
     output = {
         "document_id": document_id,
         "pipeline_type": pipeline_type,
+        "routing": {
+            "path": path_decision,
+            "priority": priority
+        },
         "execution_time_seconds": execution_time,
         "agents_executed": len(results),
         "results": {},
     }
     
     for agent_name, result in results.items():
-        output["results"][agent_name] = {
-            "success": result.success,
-            "output": result.output,
-            "confidence": result.confidence,
-            "execution_time_ms": result.execution_time_ms,
-            "error": result.error,
-        }
-    
-    return output
+        if hasattr(result, 'to_dict'):
+             output["results"][agent_name] = result.to_dict()
+        else:
+             output["results"][agent_name] = str(result)
 
 
 def _store_agent_results(document_id: str, results: Dict):

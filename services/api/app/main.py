@@ -8,8 +8,9 @@ from app.sentry_init import init_sentry
 from app.api.routes import (
     queue, storage, vector_store, files, audit, queue_jobs, dlq,
     batch_schedule, upload, storage_callbacks, metadata, orchestration, silver_records, routing,
-    extractions, normalization, validation, vectorize, scheduler, internal_metadata, ingest_jobs, retry,
-    monitoring, alerts, metrics, dlq_management, agents, export, review, templates, feedback, batch, duplicates
+    extractions, normalization,    validation, vectorize, scheduler, internal_metadata, ingest_jobs, retry,
+    monitoring, alerts, metrics, dlq_management, agents, export, review, templates, feedback, batch, duplicates,
+    data_fabric
 )
 from app.api.routes import retry_policy
 from app.api.routes.admin import override, queues, errors, organizations, roles, dashboard, file_type_mapping, retry_dlq
@@ -107,6 +108,7 @@ app.include_router(templates.router)
 app.include_router(feedback.router)
 app.include_router(batch.router)
 app.include_router(duplicates.router)
+app.include_router(data_fabric.router)
 
 
 @app.get("/health")

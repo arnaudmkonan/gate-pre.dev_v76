@@ -50,6 +50,9 @@ from app.models.extraction_template import ExtractionTemplate
 from app.models.review_queue import ReviewQueueItem, ReviewAction
 from app.models.feedback_metrics import TemplateFieldMetrics, FewShotExample, CorrectionLog
 from app.models.batch_job import BatchJob, BulkReviewSession
+from app.models.silver_records import Party, Product, Address, EntityLink
+from app.models.gold_records import Shipment, CommercialInvoice, InvoiceLine, CustomsEntry, DataException
+
 __all__ = [
     "StorageConfig",
     "UploadMetadata",
@@ -123,4 +126,14 @@ __all__ = [
     "CorrectionLog",
     "BatchJob",
     "BulkReviewSession",
+    "Party",
+    "Product",
+    "Address",
+    "EntityLink",
+    "Shipment",
+    "CommercialInvoice",
+    "InvoiceLine",
+    "CustomsEntry",
+    "DataException",
+
 ]

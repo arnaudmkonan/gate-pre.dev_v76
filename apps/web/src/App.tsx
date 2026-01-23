@@ -22,6 +22,7 @@ import { TemplateEditorPage } from './pages/TemplateEditorPage'
 import { FeedbackPage } from './pages/FeedbackPage'
 import { BatchUploadPage } from './pages/BatchUploadPage'
 import { CalibrationDashboardPage } from './pages/CalibrationDashboardPage'
+import { DataFabricPage } from './pages/DataFabricPage'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminOrganizations from './pages/AdminOrganizations'
 import AdminRoles from './pages/AdminRoles'
@@ -277,6 +278,14 @@ function App() {
           element={
             <AdminLayout>
               <CalibrationDashboardPage />
+            </AdminLayout>
+          }
+        />
+        <Route
+          path="/data-fabric"
+          element={
+            <AdminLayout>
+              <DataFabricPage />
             </AdminLayout>
           }
         />

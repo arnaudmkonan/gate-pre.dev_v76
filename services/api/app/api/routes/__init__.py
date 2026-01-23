@@ -27,6 +27,7 @@ from . import (
     metrics,
     dlq_management,
     retry_policy,
+    data_fabric,
 )
 
 __all__ = [
@@ -57,4 +58,5 @@ __all__ = [
     "metrics",
     "dlq_management",
     "retry_policy",
+    "data_fabric",
 ]

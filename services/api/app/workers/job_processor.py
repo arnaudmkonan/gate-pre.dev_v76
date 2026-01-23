@@ -39,23 +39,44 @@ def get_extractor_for_file_type(file_type: str):
         PresentationExtractor,
     )
     from app.services.extractors.pdf_extractor import PDFExtractor
+    from app.services.extractors.docling_extractor import DoclingExtractor
+    
+    # Initialize basic extractors
+    text_ext = TextExtractor()
+    markup_ext = MarkupJsonExtractor()
+    xml_ext = XmlExtractor()
+    yaml_ext = YamlExtractor()
+    docx_ext = DocxExtractor()
+    spreadsheet_ext = SpreadsheetExtractor()
+    presentation_ext = PresentationExtractor()
+    pdf_ext = PDFExtractor()
+    
+    # Initialize Docling (Path A Semantic Extractor)
+    docling_ext = DoclingExtractor()
+    
+    # Use Docling if available, otherwise fallback to legacy extractors
+    pdf_handler = docling_ext if docling_ext._docling_available else pdf_ext
+    docx_handler = docling_ext if docling_ext._docling_available else docx_ext
+    ppt_handler = docling_ext if docling_ext._docling_available else presentation_ext
+    html_handler = docling_ext if docling_ext._docling_available else markup_ext
+    md_handler = docling_ext if docling_ext._docling_available else markup_ext
     
     extractors = {
-        "txt": TextExtractor(),
-        "md": MarkupJsonExtractor(),
-        "html": MarkupJsonExtractor(),
-        "json": MarkupJsonExtractor(),
-        "xml": XmlExtractor(),
-        "yml": YamlExtractor(),
-        "yaml": YamlExtractor(),
-        "docx": DocxExtractor(),
-        "doc": DocxExtractor(),
-        "csv": SpreadsheetExtractor(),
-        "xlsx": SpreadsheetExtractor(),
-        "xls": SpreadsheetExtractor(),
-        "pptx": PresentationExtractor(),
-        "ppt": PresentationExtractor(),
-        "pdf": PDFExtractor(),
+        "txt": text_ext,
+        "md": md_handler,
+        "html": html_handler,
+        "json": markup_ext,
+        "xml": xml_ext,
+        "yml": yaml_ext,
+        "yaml": yaml_ext,
+        "docx": docx_handler,
+        "doc": docx_handler,
+        "csv": spreadsheet_ext,
+        "xlsx": spreadsheet_ext,
+        "xls": spreadsheet_ext,
+        "pptx": ppt_handler,
+        "ppt": ppt_handler,
+        "pdf": pdf_handler,
     }
     
     return extractors.get(file_type.lower())

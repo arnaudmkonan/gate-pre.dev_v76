@@ -8,7 +8,10 @@ to intelligently process, analyze, and extract insights from documents.
 
 ### Classification
 - DocumentClassifierAgent: Categorizes documents into predefined types
+### Classification
+- DocumentClassifierAgent: Categorizes documents into predefined types
 - MultiLabelClassifierAgent: Assigns multiple labels to documents
+- TriagistAgent: Routes files to optimal processing path (A/B/C)
 
 ### Entity Extraction
 - EntityExtractionAgent: Extracts structured entities (people, orgs, dates, etc.)
@@ -77,6 +80,8 @@ from app.agents.classifier_agent import (
     MultiLabelClassifierAgent,
     DOCUMENT_CATEGORIES,
 )
+from app.agents.triagist_agent import TriagistAgent
+
 
 # Entity extraction agents
 from app.agents.entity_agent import (
@@ -104,6 +109,11 @@ from app.agents.template_agent import (
     TemplateExtractionAgent,
 )
 
+
+# Schema Mapping Agent
+from app.agents.schema_mapping_agent import SchemaMappingAgent
+
+
 __all__ = [
     # Base
     "BaseAgent",
@@ -114,6 +124,7 @@ __all__ = [
     # Classification
     "DocumentClassifierAgent",
     "MultiLabelClassifierAgent",
+    "TriagistAgent",
     "DOCUMENT_CATEGORIES",
     # Entity Extraction
     "EntityExtractionAgent",
@@ -129,10 +140,15 @@ __all__ = [
     # Template-based extraction
     "TemplateMatchingAgent",
     "TemplateExtractionAgent",
+    # Schema Mapping
+    "SchemaMappingAgent",
     # Preconfigured
     "create_standard_pipeline",
     "create_analysis_pipeline",
+    "create_mapping_pipeline",
+    "create_triage_pipeline",
 ]
+
 
 
 def create_standard_pipeline() -> AgentOrchestrator:
@@ -209,3 +225,36 @@ def create_analysis_pipeline() -> AgentOrchestrator:
     ])
     
     return orchestrator
+
+
+def create_mapping_pipeline() -> AgentOrchestrator:
+    """
+    Create a pipeline for Path B (Schema Mapping).
+    
+    Pipeline:
+    1. Schema Mapping Agent
+    
+    Returns:
+        Configured AgentOrchestrator.
+    """
+    orchestrator = AgentOrchestrator()
+    orchestrator.register_agent(SchemaMappingAgent())
+    orchestrator.set_pipeline(["schema_mapping_agent"])
+    return orchestrator
+
+
+def create_triage_pipeline() -> AgentOrchestrator:
+    """
+    Create a pipeline for document triage.
+    
+    Pipeline:
+    1. Triagist Agent (Path Selection & Priority)
+    
+    Returns:
+        Configured AgentOrchestrator.
+    """
+    orchestrator = AgentOrchestrator()
+    orchestrator.register_agent(TriagistAgent())
+    orchestrator.set_pipeline(["triagist_agent"])
+    return orchestrator
+
