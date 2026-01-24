@@ -23,6 +23,8 @@ import { FeedbackPage } from './pages/FeedbackPage'
 import { BatchUploadPage } from './pages/BatchUploadPage'
 import { CalibrationDashboardPage } from './pages/CalibrationDashboardPage'
 import { DataFabricPage } from './pages/DataFabricPage'
+import { TradeCompliancePage } from './pages/TradeCompliancePage'
+import { DrawbackPage } from './pages/DrawbackPage'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminOrganizations from './pages/AdminOrganizations'
 import AdminRoles from './pages/AdminRoles'
@@ -286,6 +288,22 @@ function App() {
           element={
             <AdminLayout>
               <DataFabricPage />
+            </AdminLayout>
+          }
+        />
+        <Route
+          path="/trade-compliance"
+          element={
+            <AdminLayout>
+              <TradeCompliancePage />
+            </AdminLayout>
+          }
+        />
+        <Route
+          path="/drawback"
+          element={
+            <AdminLayout>
+              <DrawbackPage />
             </AdminLayout>
           }
         />

@@ -1,6 +1,6 @@
 import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { HardDrive, Database, Zap, FileText, Route as RouteIcon, CheckCircle, BarChart3, Users, Lock, AlertCircle, Eye, Repeat, LineChart, Sparkles, ClipboardCheck, FileCode, TrendingUp, FolderArchive, Gauge, Package } from 'lucide-react'
+import { HardDrive, Database, Zap, FileText, Route as RouteIcon, CheckCircle, BarChart3, Users, Lock, AlertCircle, Eye, Repeat, LineChart, Sparkles, ClipboardCheck, FileCode, TrendingUp, FolderArchive, Gauge, Package, Shield, ArrowRightLeft } from 'lucide-react'
 
 interface AdminLayoutProps {
   children: React.ReactNode
@@ -20,6 +20,8 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
     { path: '/admin/organizations', label: 'Organizations', icon: Users },
     { path: '/admin/roles', label: 'Roles & Permissions', icon: Lock },
     { path: '/data-fabric', label: 'Data Fabric', icon: Package },
+    { path: '/trade-compliance', label: 'Trade Compliance', icon: Shield },
+    { path: '/drawback', label: 'Duty Drawback', icon: ArrowRightLeft },
     { path: '/metadata', label: 'Metadata Search', icon: FileText },
     { path: '/admin/routing-dashboard', label: 'Routing Dashboard', icon: RouteIcon },
     { path: '/admin/extraction-status', label: 'Extraction Status', icon: CheckCircle },
