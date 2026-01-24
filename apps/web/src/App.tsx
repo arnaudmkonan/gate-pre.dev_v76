@@ -25,6 +25,7 @@ import { CalibrationDashboardPage } from './pages/CalibrationDashboardPage'
 import { DataFabricPage } from './pages/DataFabricPage'
 import { TradeCompliancePage } from './pages/TradeCompliancePage'
 import { DrawbackPage } from './pages/DrawbackPage'
+import { ACEImportPage } from './pages/ACEImportPage'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminOrganizations from './pages/AdminOrganizations'
 import AdminRoles from './pages/AdminRoles'
@@ -304,6 +305,14 @@ function App() {
           element={
             <AdminLayout>
               <DrawbackPage />
+            </AdminLayout>
+          }
+        />
+        <Route
+          path="/ace-import"
+          element={
+            <AdminLayout>
+              <ACEImportPage />
             </AdminLayout>
           }
         />
