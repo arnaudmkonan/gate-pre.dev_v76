@@ -1,80 +1,78 @@
 """
 Reference data models for trade compliance.
-Includes OFAC SDN, HTS codes, NAICS codes, and compliance screening results.
+These models match the imported SQL data tables with integer IDs and embeddings.
+Note: HTS, NAICS, and OFAC tables were imported from SQL files with specific schemas.
+ComplianceScreen and DrawbackLedger use standard UUID BaseModel.
 """
 from datetime import datetime
 from typing import Optional, List, Dict, Any
-from uuid import UUID, uuid4
 
 from sqlalchemy import (
     Column, String, Text, Integer, Boolean, Numeric, DateTime,
     ForeignKey, Index
 )
-from sqlalchemy.dialects.postgresql import UUID as PGUUID, ARRAY, JSONB
-from sqlalchemy.orm import relationship
+from sqlalchemy.dialects.postgresql import UUID as PGUUID, JSONB, ARRAY
+from sqlalchemy.orm import relationship, declarative_base
 from sqlalchemy.sql import func
+from pgvector.sqlalchemy import Vector
 
-from app.models.base import BaseModel
+from app.models.base import BaseModel, Base
 
 
-class OFACSdn(BaseModel):
-    """OFAC Specially Designated Nationals list entry."""
+# ==================== Imported Reference Tables (Integer IDs) ====================
+# These match the imported SQL file schemas
+
+class OFACSdn(Base):
+    """OFAC Specially Designated Nationals list entry (imported with embeddings)."""
     __tablename__ = "ofac_sdn"
 
+    id = Column(Integer, primary_key=True, autoincrement=True)
     sdn_name = Column(String(500), nullable=False, index=True)
     sdn_type = Column(String(50), nullable=True)  # Individual, Entity, Vessel
-    program = Column(String(200), nullable=True)  # CUBA, SDGT, IRAN, etc.
+    program = Column(String(500), nullable=True)  # CUBA, SDGT, IRAN, etc.
     title = Column(String(200), nullable=True)
-    call_sign = Column(String(50), nullable=True)  # For vessels
-    vessel_type = Column(String(100), nullable=True)
-    tonnage = Column(String(50), nullable=True)
-    grt = Column(String(50), nullable=True)
-    vessel_flag = Column(String(100), nullable=True)
-    vessel_owner = Column(String(500), nullable=True)
-    nationality = Column(String(100), nullable=True)
-    aliases = Column(ARRAY(String), default=[])
+    aliases = Column(JSONB, default=[])
     addresses = Column(JSONB, default=[])
-    id_numbers = Column(JSONB, default=[])  # Passport, Tax ID, etc.
+    nationality = Column(String(100), nullable=True)
+    citizenship = Column(String(100), nullable=True)
     date_of_birth = Column(String(100), nullable=True)
     place_of_birth = Column(String(200), nullable=True)
+    id_numbers = Column(JSONB, default=[])  # Passport, Tax ID, etc.
+    remarks = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True)
-
-    __table_args__ = (
-        Index('ix_ofac_sdn_program', 'program'),
-        Index('ix_ofac_sdn_sdn_type', 'sdn_type'),
-    )
+    embedding = Column(Vector(1536), nullable=True)
+    created_at = Column(DateTime, default=func.now())
 
 
-class HTSCode(BaseModel):
-    """Harmonized Tariff Schedule codes."""
+class HTSCode(Base):
+    """Harmonized Tariff Schedule codes (imported with embeddings)."""
     __tablename__ = "hts_codes"
 
+    id = Column(Integer, primary_key=True, autoincrement=True)
     hts_code = Column(String(20), nullable=False, unique=True, index=True)
     description = Column(Text, nullable=False)
     chapter = Column(Integer, nullable=True)
-    heading = Column(String(10), nullable=True)
-    subheading = Column(String(20), nullable=True)
     duty_rate = Column(String(100), nullable=True)  # e.g. "6.5%", "Free"
     duty_rate_percent = Column(Numeric(10, 4), nullable=True)
-    unit_of_quantity = Column(String(50), nullable=True)
-    special_rates = Column(JSONB, default={})  # FTA rates
-    notes = Column(Text, nullable=True)
-
-    __table_args__ = (
-        Index('ix_hts_codes_chapter', 'chapter'),
-    )
+    embedding = Column(Vector(1536), nullable=True)
+    created_at = Column(DateTime, default=func.now())
 
 
-class NAICSCode(BaseModel):
-    """North American Industry Classification System codes."""
+class NAICSCode(Base):
+    """North American Industry Classification System codes (imported with embeddings)."""
     __tablename__ = "naics_codes"
 
-    naics_code = Column(String(10), nullable=False, unique=True, index=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    # Note: column is 'code' in the database, not 'naics_code'
+    naics_code = Column('code', String(10), nullable=False, unique=True, index=True)
     title = Column(String(500), nullable=False)
     description = Column(Text, nullable=True)
-    sector = Column(String(100), nullable=True)
-    level = Column(Integer, nullable=True)  # 2, 3, 4, 5, or 6 digit
+    sector = Column(String(200), nullable=True)
+    embedding = Column(Vector(1536), nullable=True)
+    created_at = Column(DateTime, default=func.now())
 
+
+# ==================== Application Tables (UUID IDs via BaseModel) ====================
 
 class ComplianceScreen(BaseModel):
     """Results of compliance screening (OFAC, AD/CVD, etc.)."""

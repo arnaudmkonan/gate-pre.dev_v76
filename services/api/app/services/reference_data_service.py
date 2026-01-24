@@ -9,7 +9,7 @@ from uuid import UUID
 from decimal import Decimal
 from difflib import SequenceMatcher
 
-from sqlalchemy import select, func, or_, and_
+from sqlalchemy import select, func, or_, and_, String
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.reference_data import OFACSdn, HTSCode, NAICSCode, ComplianceScreen
@@ -70,7 +70,6 @@ class ReferenceDataService:
                 "chapter": code.chapter,
                 "duty_rate": code.duty_rate,
                 "duty_rate_percent": float(code.duty_rate_percent) if code.duty_rate_percent else None,
-                "special_rates": code.special_rates,
             }
             for code in codes
         ]
@@ -96,8 +95,6 @@ class ReferenceDataService:
             "chapter": code.chapter,
             "duty_rate": code.duty_rate,
             "duty_rate_percent": float(code.duty_rate_percent) if code.duty_rate_percent else None,
-            "special_rates": code.special_rates,
-            "notes": code.notes,
         }
 
     async def get_hts_stats(self) -> Dict[str, Any]:
@@ -168,10 +165,11 @@ class ReferenceDataService:
         name_normalized = name.upper().strip()
         prefix = name_normalized[:3] if len(name_normalized) >= 3 else name_normalized
         
+        # Note: aliases is JSONB array, use cast to text for search
         stmt = select(OFACSdn).where(
             or_(
                 func.upper(OFACSdn.sdn_name).like(f"{prefix}%"),
-                func.upper(func.array_to_string(OFACSdn.aliases, " ")).like(f"%{prefix}%"),
+                OFACSdn.aliases.cast(String).ilike(f"%{prefix}%"),
             )
         )
         
@@ -290,7 +288,6 @@ class ReferenceDataService:
                 "title": code.title,
                 "description": code.description,
                 "sector": code.sector,
-                "level": code.level,
             }
             for code in codes
         ]
@@ -488,7 +485,6 @@ async def seed_reference_data(db: AsyncSession) -> Dict[str, Any]:
             naics_code=code,
             title=title,
             sector=sector,
-            level=len(code),
         )
         db.add(naics)
         results["naics_codes"] += 1
