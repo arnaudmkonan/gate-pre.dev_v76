@@ -11,6 +11,7 @@ from app.workers import (
     vectorize_worker,
     job_processor,
     agent_processor,
+    key_extraction_task,
 )
 
 __all__ = [
@@ -25,4 +26,5 @@ __all__ = [
     "vectorize_worker",
     "job_processor",
     "agent_processor",
+    "key_extraction_task",
 ]

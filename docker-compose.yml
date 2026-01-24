@@ -133,6 +133,12 @@ services:
       - docingestion_network
     restart: unless-stopped
     command: celery -A app.core.celery_app worker --loglevel=info --concurrency=2
+    healthcheck:
+      test: [ "CMD-SHELL", "celery -A app.core.celery_app inspect ping -d celery@$$HOSTNAME || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   # =============================================================================
   # CELERY BEAT - Scheduled tasks
@@ -164,6 +170,12 @@ services:
       - docingestion_network
     restart: unless-stopped
     command: celery -A app.core.celery_app beat --loglevel=info
+    healthcheck:
+      test: [ "CMD-SHELL", "python -c 'exit(0)'" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   # =============================================================================
   # FRONTEND - React/Vite

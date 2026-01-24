@@ -21,7 +21,19 @@ class DoclingExtractor(BaseExtractor):
     
     def __init__(self):
         self.converter = None
+        self._docling_available = False
         self._init_converter()
+
+    async def extract_text(self, file_bytes: bytes) -> str:
+        """Extract text from file bytes using Docling."""
+        # This is handled in the overridden extract() method
+        # But we need to implement to satisfy abstract base
+        return ""
+
+    async def validate_format(self, file_bytes: bytes) -> bool:
+        """Validate the file format."""
+        # Accept all formats since we handle fallbacks in extract()
+        return True
 
     def _init_converter(self):
         """Initialize Docling converter safely."""

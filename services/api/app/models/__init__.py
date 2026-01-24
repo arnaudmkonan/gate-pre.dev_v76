@@ -51,8 +51,13 @@ from app.models.review_queue import ReviewQueueItem, ReviewAction
 from app.models.feedback_metrics import TemplateFieldMetrics, FewShotExample, CorrectionLog
 from app.models.batch_job import BatchJob, BulkReviewSession
 from app.models.silver_records import Party, Product, Address, EntityLink
-from app.models.gold_records import Shipment, CommercialInvoice, InvoiceLine, CustomsEntry, DataException
+from app.models.gold_records import (
+    Shipment, ShipmentDocument, ShipmentStatus, LinkMethod,
+    CommercialInvoice, InvoiceLine, CustomsEntry, DataException
+)
 from app.models.reference_data import OFACSdn, HTSCode, NAICSCode, ComplianceScreen, DrawbackLedger
+from app.models.ace_entry import ACEEntry
+from app.models.document_key import DocumentKey, KeyType, ExtractionMethod, KEY_PRIORITY
 
 __all__ = [
     "StorageConfig",
@@ -132,6 +137,9 @@ __all__ = [
     "Address",
     "EntityLink",
     "Shipment",
+    "ShipmentDocument",
+    "ShipmentStatus",
+    "LinkMethod",
     "CommercialInvoice",
     "InvoiceLine",
     "CustomsEntry",
@@ -141,4 +149,9 @@ __all__ = [
     "NAICSCode",
     "ComplianceScreen",
     "DrawbackLedger",
+    "ACEEntry",
+    "DocumentKey",
+    "KeyType",
+    "ExtractionMethod",
+    "KEY_PRIORITY",
 ]

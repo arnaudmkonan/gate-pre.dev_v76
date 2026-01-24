@@ -145,7 +145,7 @@ async def extract_file(self, file_id: str, mime_type: str = None):
                 f"(status: {status}, extractor: {routing_decision.chosen_agent})"
             )
 
-            return {
+            result = {
                 "status": "success",
                 "file_id": str(file_uuid),
                 "extraction_id": str(raw_extraction.id),
@@ -156,6 +156,24 @@ async def extract_file(self, file_id: str, mime_type: str = None):
                 "table_count": len(extracted.tables),
                 "errors": extracted.errors,
             }
+            
+            # Trigger key extraction for document linking
+            # This runs asynchronously to extract Entry#, BOL#, Container#, etc.
+            try:
+                from app.workers.key_extraction_task import extract_document_keys
+                extract_document_keys.delay(
+                    file_id=str(file_uuid),
+                    extraction_id=str(raw_extraction.id),
+                    use_llm=False,  # Start with regex only for speed
+                    auto_link=True  # Auto-link to shipments
+                )
+                logger.info(f"Triggered key extraction for file {file_id}")
+                result["key_extraction_triggered"] = True
+            except Exception as ke:
+                logger.warning(f"Failed to trigger key extraction for {file_id}: {ke}")
+                result["key_extraction_triggered"] = False
+            
+            return result
 
     except Exception as e:
         logger.error(f"Error extracting file {file_id}: {e}")
