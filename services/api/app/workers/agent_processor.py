@@ -423,10 +423,121 @@ async def _run_template_extraction(document_id: str, context, results: Dict):
             if template_result and template_result.output else "no output"
         )
 
+        # Run post-extraction compliance checks
+        if template_result and template_result.output:
+            await _run_compliance_checks(
+                document_id=document_id,
+                extraction_results=template_result.output,
+                template_name=best_match.get("template_name"),
+                results=results,
+            )
+
     except Exception as e:
         logger.error(f"Template extraction failed for document {document_id}: {e}")
         # Don't fail the whole pipeline if template extraction fails
         results["template_extraction_error"] = str(e)
+
+
+async def _run_compliance_checks(
+    document_id: str,
+    extraction_results: Dict[str, Any],
+    template_name: Optional[str],
+    results: Dict,
+):
+    """
+    Run post-extraction compliance checks on template extraction results.
+
+    This includes:
+    - HTS code validation against reference data
+    - OFAC SDN screening for extracted parties
+    - NAICS code suggestions based on products
+
+    Args:
+        document_id: Document ID
+        extraction_results: Template extraction output
+        template_name: Name of the template used
+        results: Results dict to store compliance check output
+    """
+    from app.services.post_extraction_service import PostExtractionServiceSync
+
+    try:
+        logger.info(f"Running compliance checks for document {document_id}")
+
+        with get_sync_db() as session:
+            service = PostExtractionServiceSync(session)
+
+            compliance_result = service.process_extraction_results(
+                document_id=document_id,
+                extraction_results=extraction_results,
+                template_name=template_name,
+            )
+
+            # Store compliance results
+            results["compliance_checks"] = compliance_result.to_dict()
+
+            # Log summary
+            logger.info(
+                f"Compliance checks completed for document {document_id}: "
+                f"HTS validations={len(compliance_result.hts_validations)}, "
+                f"Party screenings={len(compliance_result.party_screenings)}, "
+                f"Risk level={compliance_result.overall_risk_level.value}, "
+                f"Issues={len(compliance_result.issues_found)}"
+            )
+
+            # If high-risk issues found, flag document for review
+            if compliance_result.overall_risk_level.value in ("high", "critical"):
+                _flag_for_compliance_review(document_id, compliance_result, session)
+
+    except Exception as e:
+        logger.error(f"Compliance checks failed for document {document_id}: {e}")
+        results["compliance_checks_error"] = str(e)
+
+
+def _flag_for_compliance_review(document_id: str, compliance_result, session):
+    """Flag document for compliance review if high-risk issues found."""
+    from app.models.review_queue import ReviewQueueItem
+
+    try:
+        doc_uuid = UUID(document_id)
+
+        # Check if already in review queue
+        existing = session.execute(
+            select(ReviewQueueItem).where(ReviewQueueItem.document_id == doc_uuid)
+        ).scalar_one_or_none()
+
+        if existing:
+            # Update existing review item with compliance issues
+            issues = existing.issues_detected or []
+            for issue in compliance_result.issues_found:
+                issues.append({
+                    "type": issue.get("type"),
+                    "description": issue.get("description"),
+                    "severity": issue.get("severity"),
+                    "field": issue.get("field"),
+                    "value": issue.get("value"),
+                    "source": "compliance_check",
+                })
+            existing.issues_detected = issues
+            existing.priority = max(existing.priority or 0, 4)  # High priority for compliance
+            session.commit()
+            logger.info(f"Updated review queue item for document {document_id} with compliance issues")
+        else:
+            # Create new review item
+            from app.models.review_queue import ReviewQueueItem
+            review_item = ReviewQueueItem(
+                document_id=doc_uuid,
+                reason=f"Compliance check: {compliance_result.overall_risk_level.value} risk",
+                reason_code="compliance_risk",
+                priority=4,
+                confidence_score=0.0,
+                issues_detected=compliance_result.issues_found,
+            )
+            session.add(review_item)
+            session.commit()
+            logger.info(f"Added document {document_id} to review queue for compliance review")
+
+    except Exception as e:
+        logger.error(f"Failed to flag document {document_id} for compliance review: {e}")
 
 
 def _summarize_agent_results(results: Dict) -> Dict[str, Any]:
