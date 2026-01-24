@@ -1,0 +1,196 @@
+{
+  "scenario_1": {
+    "name": "Single Container, Single Consignee (FCL)",
+    "mbl": "MAEU123456789",
+    "containers": [
+      "MSCU1234567"
+    ],
+    "consignees": [
+      {
+        "hbl": "FWDR-2024-001",
+        "company": "XYZ Electronics Corp",
+        "address": "123 Business Park Dr, Los Angeles, CA 90001",
+        "po_numbers": [
+          "PO-2024-1001"
+        ],
+        "invoice_number": "INV-20240115-001",
+        "products": [
+          {
+            "description": "LED Television 55 inch",
+            "hts_code": "8528.72.6400",
+            "country_origin": "CN",
+            "quantity": 100,
+            "unit": "PCS",
+            "unit_price": 250.0,
+            "cartons": 100,
+            "gross_weight_kg": 2500.0,
+            "net_weight_kg": 2000.0,
+            "dimensions_cm": "140x85x20"
+          },
+          {
+            "description": "Bluetooth Speakers Portable",
+            "hts_code": "8518.21.0000",
+            "country_origin": "CN",
+            "quantity": 500,
+            "unit": "PCS",
+            "unit_price": 25.0,
+            "cartons": 50,
+            "gross_weight_kg": 650.0,
+            "net_weight_kg": 500.0,
+            "dimensions_cm": "30x20x15"
+          }
+        ]
+      }
+    ],
+    "vessel": "EVER GIVEN",
+    "voyage": "V123E",
+    "port_loading": "CNSHA",
+    "port_discharge": "USLAX",
+    "etd": "2024-02-15",
+    "eta": "2024-03-10"
+  },
+  "scenario_2": {
+    "name": "Single Container, Multiple Consignees (LCL)",
+    "mbl": "CMDU987654321",
+    "containers": [
+      "TCLU9876543"
+    ],
+    "consignees": [
+      {
+        "hbl": "FWDR-2024-002",
+        "company": "Fashion Imports LLC",
+        "address": "456 Garment Ave, New York, NY 10001",
+        "po_numbers": [
+          "PO-NY-2401"
+        ],
+        "invoice_number": "INV-20240118-002",
+        "products": [
+          {
+            "description": "Women's Cotton T-Shirts",
+            "hts_code": "6109.10.0012",
+            "country_origin": "BD",
+            "quantity": 2000,
+            "unit": "DOZ",
+            "unit_price": 24.0,
+            "cartons": 40,
+            "gross_weight_kg": 850.0,
+            "net_weight_kg": 720.0,
+            "dimensions_cm": "60x40x35"
+          }
+        ]
+      },
+      {
+        "hbl": "FWDR-2024-003",
+        "company": "Midwest Parts Co",
+        "address": "789 Industrial Blvd, Chicago, IL 60601",
+        "po_numbers": [
+          "PO-CHI-5501"
+        ],
+        "invoice_number": "INV-20240119-003",
+        "products": [
+          {
+            "description": "Automotive Brake Pads",
+            "hts_code": "8708.30.5090",
+            "country_origin": "TW",
+            "quantity": 500,
+            "unit": "SET",
+            "unit_price": 35.0,
+            "cartons": 25,
+            "gross_weight_kg": 625.0,
+            "net_weight_kg": 500.0,
+            "dimensions_cm": "50x30x25"
+          }
+        ]
+      },
+      {
+        "hbl": "FWDR-2024-004",
+        "company": "Pacific Hardware Inc",
+        "address": "321 Commerce St, Seattle, WA 98101",
+        "po_numbers": [
+          "PO-2024-0901",
+          "PO-2024-0902"
+        ],
+        "invoice_number": "INV-20240120-004",
+        "products": [
+          {
+            "description": "Hand Tools Set (Wrenches)",
+            "hts_code": "8204.11.0030",
+            "country_origin": "TW",
+            "quantity": 300,
+            "unit": "SET",
+            "unit_price": 45.0,
+            "cartons": 30,
+            "gross_weight_kg": 750.0,
+            "net_weight_kg": 600.0,
+            "dimensions_cm": "40x30x20"
+          }
+        ]
+      }
+    ],
+    "vessel": "CMA CGM MARCO POLO",
+    "voyage": "V456W",
+    "port_loading": "TWKHH",
+    "port_discharge": "USNYC",
+    "etd": "2024-02-18",
+    "eta": "2024-03-15"
+  },
+  "scenario_3": {
+    "name": "Multiple Containers, Single Consignee",
+    "mbl": "OOLU456789123",
+    "containers": [
+      "OOLU7654321",
+      "OOLU7654322"
+    ],
+    "consignees": [
+      {
+        "hbl": "FWDR-2024-005",
+        "company": "Furniture World Distribution",
+        "address": "555 Warehouse Way, Houston, TX 77001",
+        "po_numbers": [
+          "PO-FW-2024-001"
+        ],
+        "invoice_number": "INV-20240122-005",
+        "products": [
+          {
+            "description": "Wooden Dining Tables",
+            "hts_code": "9403.60.8080",
+            "country_origin": "VN",
+            "quantity": 150,
+            "unit": "PCS",
+            "unit_price": 180.0,
+            "cartons": 150,
+            "gross_weight_kg": 4500.0,
+            "net_weight_kg": 3900.0,
+            "dimensions_cm": "150x90x80",
+            "container_split": {
+              "OOLU7654321": 75,
+              "OOLU7654322": 75
+            }
+          },
+          {
+            "description": "Wooden Chairs",
+            "hts_code": "9401.61.4011",
+            "country_origin": "VN",
+            "quantity": 600,
+            "unit": "PCS",
+            "unit_price": 45.0,
+            "cartons": 200,
+            "gross_weight_kg": 3000.0,
+            "net_weight_kg": 2400.0,
+            "dimensions_cm": "50x50x95",
+            "container_split": {
+              "OOLU7654321": 300,
+              "OOLU7654322": 300
+            }
+          }
+        ]
+      }
+    ],
+    "vessel": "OOCL TOKYO",
+    "voyage": "V789N",
+    "port_loading": "VNSGN",
+    "port_discharge": "USHOU",
+    "etd": "2024-02-20",
+    "eta": "2024-03-18"
+  }
+}
