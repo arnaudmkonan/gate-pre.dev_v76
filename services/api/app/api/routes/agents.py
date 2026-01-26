@@ -132,14 +132,24 @@ async def process_document_with_agents(
     Trigger agent processing on a document.
     
     The document must have been previously ingested and have extracted content.
+    The document_id can be either a document_metadata ID or an ingest_jobs ID (job_id).
     """
     try:
         # Verify document exists
         doc_uuid = UUID(request.document_id)
+        
+        # First try to find by document_metadata.id
         result = await session.execute(
             select(DocumentMetadata).where(DocumentMetadata.id == doc_uuid)
         )
         doc = result.scalar_one_or_none()
+        
+        # If not found, try looking up by job_id
+        if not doc:
+            result = await session.execute(
+                select(DocumentMetadata).where(DocumentMetadata.job_id == doc_uuid)
+            )
+            doc = result.scalar_one_or_none()
         
         if not doc:
             raise HTTPException(status_code=404, detail="Document not found")
@@ -150,17 +160,17 @@ async def process_document_with_agents(
                 detail="Document has no extracted content for analysis"
             )
         
-        # Queue the agent processing task
+        # Queue the agent processing task - pass the actual document_metadata.id
         from app.workers.agent_processor import process_with_agents
         
         task = process_with_agents.delay(
-            request.document_id,
+            str(doc.id),  # Use the actual document_metadata.id
             request.pipeline_type
         )
         
         return AgentProcessResponse(
             task_id=task.id,
-            document_id=request.document_id,
+            document_id=str(doc.id),
             pipeline_type=request.pipeline_type,
             status="queued",
             message=f"Agent processing queued for {doc.filename}"
@@ -168,6 +178,8 @@ async def process_document_with_agents(
         
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Invalid document ID: {e}")
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions as-is
     except Exception as e:
         logger.error(f"Failed to queue agent processing: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -178,24 +190,45 @@ async def get_agent_results(
     document_id: str,
     session: AsyncSession = Depends(get_db)
 ):
-    """Get agent processing results for a document."""
+    """Get agent processing results for a document.
+    
+    The document_id can be either a document_metadata ID or an ingest_jobs ID (job_id).
+    """
     
     try:
         doc_uuid = UUID(document_id)
+        
+        # First try to find by document_metadata.id
         result = await session.execute(
             select(DocumentMetadata).where(DocumentMetadata.id == doc_uuid)
         )
         doc = result.scalar_one_or_none()
         
+        # If not found, try looking up by job_id
         if not doc:
-            raise HTTPException(status_code=404, detail="Document not found")
+            result = await session.execute(
+                select(DocumentMetadata).where(DocumentMetadata.job_id == doc_uuid)
+            )
+            doc = result.scalar_one_or_none()
+        
+        if not doc:
+            # Return a valid response with has_results=False instead of 404
+            # This prevents JSON parse errors in the frontend
+            return AgentResultResponse(
+                document_id=document_id,
+                filename="unknown",
+                has_results=False,
+                classification=None,
+                confidence=None,
+                processing_status="not_found"
+            )
         
         # Check if agents have processed this document
         # (We're using detected_language as a marker for classification result)
         has_results = doc.detected_language is not None
         
         return AgentResultResponse(
-            document_id=document_id,
+            document_id=str(doc.id),
             filename=doc.filename,
             has_results=has_results,
             classification=doc.detected_language if has_results else None,
@@ -204,10 +237,26 @@ async def get_agent_results(
         )
         
     except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid document ID")
+        # Invalid UUID format - return a valid response
+        return AgentResultResponse(
+            document_id=document_id,
+            filename="unknown",
+            has_results=False,
+            classification=None,
+            confidence=None,
+            processing_status="invalid_id"
+        )
     except Exception as e:
         logger.error(f"Failed to get agent results: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        # Return a valid JSON response instead of raising an exception
+        return AgentResultResponse(
+            document_id=document_id,
+            filename="unknown",
+            has_results=False,
+            classification=None,
+            confidence=None,
+            processing_status="error"
+        )
 
 
 @router.get("/status/{task_id}")

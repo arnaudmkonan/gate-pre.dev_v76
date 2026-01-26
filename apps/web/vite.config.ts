@@ -22,6 +22,16 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path,
       },
+      '/agents': {
+        target: apiTarget,
+        changeOrigin: true,
+        rewrite: (path) => path,
+      },
+      '/batch': {
+        target: apiTarget,
+        changeOrigin: true,
+        rewrite: (path) => path,
+      },
     },
   },
 })

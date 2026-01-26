@@ -53,14 +53,6 @@ def process_with_agents(self, document_id: str, pipeline_type: str = "standard")
         raise self.retry(exc=e, countdown=60)
 
 
-
-    # Trigger Entity Resolution (Data Fabric)
-    # Fire and forget - doesn't block the main response
-    from app.workers.data_fabric_worker import process_entity_resolution
-    process_entity_resolution.delay(document_id)
-
-    return result
-
 def _run_agent_pipeline_sync(document_id: str, pipeline_type: str) -> Dict[str, Any]:
     """Synchronous wrapper for async agent pipeline."""
     loop = asyncio.new_event_loop()
@@ -185,6 +177,14 @@ async def _run_agent_pipeline_async(document_id: str, pipeline_type: str) -> Dic
         else:
              output["results"][agent_name] = str(result)
 
+    # Trigger Entity Resolution (Data Fabric) after processing
+    try:
+        from app.workers.data_fabric_worker import process_entity_resolution
+        process_entity_resolution.delay(document_id)
+    except Exception as e:
+        logger.warning(f"Failed to trigger entity resolution: {e}")
+
+    return output
 
 def _store_agent_results(document_id: str, results: Dict):
     """Store agent results in the document metadata."""
