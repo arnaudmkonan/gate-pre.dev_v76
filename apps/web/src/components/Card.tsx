@@ -3,10 +3,14 @@ import React from 'react'
 interface CardProps {
   children: React.ReactNode
   className?: string
+  onClick?: () => void
 }
 
-export const Card = ({ children, className = '' }: CardProps) => (
-  <div className={`rounded-lg border border-gray-200 bg-white shadow-sm ${className}`}>
+export const Card = ({ children, className = '', onClick }: CardProps) => (
+  <div
+    className={`rounded-lg border border-gray-200 bg-white shadow-sm ${className} ${onClick ? 'cursor-pointer' : ''}`}
+    onClick={onClick}
+  >
     {children}
   </div>
 )

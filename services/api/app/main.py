@@ -11,7 +11,8 @@ from app.api.routes import (
     extractions, normalization,    validation, vectorize, scheduler, internal_metadata, ingest_jobs, retry,
     monitoring, alerts, metrics, dlq_management, agents, export, review, templates, feedback, batch, duplicates,
     data_fabric, trade_compliance, reference_data, entry_reconciliation, ace_import, compliance_scorecard, shipments,
-    compliance_integration
+    compliance_integration, entries, duty_calculator, clients, ace_settings, isf, broker_management, client_templates,
+    client_preferences
 )
 from app.api.routes import retry_policy
 from app.api.routes.admin import override, queues, errors, organizations, roles, dashboard, file_type_mapping, retry_dlq
@@ -117,6 +118,14 @@ app.include_router(ace_import.router)
 app.include_router(compliance_scorecard.router)
 app.include_router(shipments.router)
 app.include_router(compliance_integration.router)
+app.include_router(entries.router)
+app.include_router(duty_calculator.router)
+app.include_router(clients.router)
+app.include_router(ace_settings.router)
+app.include_router(isf.router)
+app.include_router(broker_management.router)
+app.include_router(client_templates.router)
+app.include_router(client_preferences.router)
 
 
 @app.get("/health")

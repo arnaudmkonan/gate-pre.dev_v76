@@ -35,6 +35,8 @@ from . import (
     compliance_scorecard,
     shipments,
     compliance_integration,
+    entries,
+    duty_calculator,
 )
 
 __all__ = [
@@ -73,4 +75,6 @@ __all__ = [
     "compliance_scorecard",
     "shipments",
     "compliance_integration",
+    "entries",
+    "duty_calculator",
 ]

@@ -58,6 +58,20 @@ from app.models.gold_records import (
 from app.models.reference_data import OFACSdn, HTSCode, NAICSCode, ComplianceScreen, DrawbackLedger
 from app.models.ace_entry import ACEEntry
 from app.models.document_key import DocumentKey, KeyType, ExtractionMethod, KEY_PRIORITY
+from app.models.entry import (
+    Entry, EntryLine, EntryDocument, EntryParty, EntryStatusHistory,
+    EntryStatus, EntryType, PartyRole
+)
+from app.models.ace_settings import (
+    ACESettings, FilerCode,
+    validate_filer_code, validate_port_code, validate_surety_code
+)
+from app.models.isf_filing import ISFFiling, ISFAmendment, ISFStatus
+from app.models.broker_management import (
+    BrokerLicense, BrokerPortPermit, BrokerBond,
+    BondType, BondStatus, LicenseStatus,
+    SURETY_CODES, BOND_ACTIVITY_CODES
+)
 
 __all__ = [
     "StorageConfig",
@@ -154,4 +168,32 @@ __all__ = [
     "KeyType",
     "ExtractionMethod",
     "KEY_PRIORITY",
+    # Entry models (Task 1.1)
+    "Entry",
+    "EntryLine",
+    "EntryDocument",
+    "EntryParty",
+    "EntryStatusHistory",
+    "EntryStatus",
+    "EntryType",
+    "PartyRole",
+    # ACE Settings (Task 3.3)
+    "ACESettings",
+    "FilerCode",
+    "validate_filer_code",
+    "validate_port_code",
+    "validate_surety_code",
+    # ISF Filing (Task 3.6)
+    "ISFFiling",
+    "ISFAmendment",
+    "ISFStatus",
+    # Broker Management (Task 3.7)
+    "BrokerLicense",
+    "BrokerPortPermit",
+    "BrokerBond",
+    "BondType",
+    "BondStatus",
+    "LicenseStatus",
+    "SURETY_CODES",
+    "BOND_ACTIVITY_CODES",
 ]

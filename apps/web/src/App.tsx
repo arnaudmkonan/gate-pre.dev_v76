@@ -35,6 +35,14 @@ import AlertsPage from './pages/AlertsPage'
 import DLQManagementPage from './pages/DLQManagementPage'
 import RetryPolicyPage from './pages/RetryPolicyPage'
 import MetricsPage from './pages/MetricsPage'
+import { EntriesListPage } from './pages/EntriesListPage'
+import { EntryDetailPage } from './pages/EntryDetailPage'
+import { NewEntryPage } from './pages/NewEntryPage'
+import { DutyCalculatorPage } from './pages/DutyCalculatorPage'
+import { ClientsListPage } from './pages/ClientsListPage'
+import { ClientDetailPage } from './pages/ClientDetailPage'
+import { NewClientPage } from './pages/NewClientPage'
+import { ACESettingsPage } from './pages/ACESettingsPage'
 
 
 function App() {
@@ -322,6 +330,86 @@ function App() {
           element={
             <AdminLayout>
               <ComplianceDashboardPage />
+            </AdminLayout>
+          }
+        />
+        <Route
+          path="/entries"
+          element={
+            <AdminLayout>
+              <EntriesListPage />
+            </AdminLayout>
+          }
+        />
+        <Route
+          path="/entries/new"
+          element={
+            <AdminLayout>
+              <NewEntryPage />
+            </AdminLayout>
+          }
+        />
+        <Route
+          path="/entries/:entryId"
+          element={
+            <AdminLayout>
+              <EntryDetailPage />
+            </AdminLayout>
+          }
+        />
+        <Route
+          path="/entries/:entryId/edit"
+          element={
+            <AdminLayout>
+              <EntryDetailPage />
+            </AdminLayout>
+          }
+        />
+        <Route
+          path="/tools/duty-calculator"
+          element={
+            <AdminLayout>
+              <DutyCalculatorPage />
+            </AdminLayout>
+          }
+        />
+        <Route
+          path="/clients"
+          element={
+            <AdminLayout>
+              <ClientsListPage />
+            </AdminLayout>
+          }
+        />
+        <Route
+          path="/clients/new"
+          element={
+            <AdminLayout>
+              <NewClientPage />
+            </AdminLayout>
+          }
+        />
+        <Route
+          path="/clients/:clientId"
+          element={
+            <AdminLayout>
+              <ClientDetailPage />
+            </AdminLayout>
+          }
+        />
+        <Route
+          path="/clients/:clientId/edit"
+          element={
+            <AdminLayout>
+              <ClientDetailPage />
+            </AdminLayout>
+          }
+        />
+        <Route
+          path="/settings/ace"
+          element={
+            <AdminLayout>
+              <ACESettingsPage />
             </AdminLayout>
           }
         />

@@ -1,6 +1,6 @@
 import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { HardDrive, Database, Zap, FileText, Route as RouteIcon, CheckCircle, BarChart3, Users, Lock, AlertCircle, Eye, Repeat, LineChart, Sparkles, ClipboardCheck, FileCode, TrendingUp, FolderArchive, Gauge, Package, Shield, ArrowRightLeft, FileUp, Activity } from 'lucide-react'
+import { HardDrive, Database, Zap, FileText, Route as RouteIcon, CheckCircle, BarChart3, Users, Lock, AlertCircle, Eye, Repeat, LineChart, Sparkles, ClipboardCheck, FileCode, TrendingUp, FolderArchive, Gauge, Package, Shield, ArrowRightLeft, FileUp, Activity, Calculator } from 'lucide-react'
 
 interface AdminLayoutProps {
   children: React.ReactNode
@@ -11,6 +11,8 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 
   const navItems = [
     { path: '/admin/dashboard', label: 'Dashboard', icon: BarChart3 },
+    { path: '/entries', label: 'Customs Entries', icon: FileText },
+    { path: '/tools/duty-calculator', label: 'Duty Calculator', icon: Calculator },
     { path: '/agents', label: 'AI Agents', icon: Sparkles },
     { path: '/review', label: 'Review Queue', icon: ClipboardCheck },
     { path: '/templates', label: 'Templates', icon: FileCode },
@@ -23,6 +25,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
     { path: '/trade-compliance', label: 'Trade Compliance', icon: Shield },
     { path: '/drawback', label: 'Duty Drawback', icon: ArrowRightLeft },
     { path: '/ace-import', label: 'ACE Import', icon: FileUp },
+    { path: '/settings/ace', label: 'ACE Settings', icon: Lock },
     { path: '/compliance-dashboard', label: 'Compliance Dashboard', icon: Activity },
     { path: '/metadata', label: 'Metadata Search', icon: FileText },
     { path: '/admin/routing-dashboard', label: 'Routing Dashboard', icon: RouteIcon },
@@ -76,7 +79,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
-        <div className="max-w-4xl mx-auto p-8">
+        <div className="max-w-7xl mx-auto p-8">
           {children}
         </div>
       </main>
