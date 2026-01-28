@@ -1,0 +1,118 @@
+# GATE Production Docker Compose
+# Usage: docker compose -f docker-compose.prod.yml up -d
+#
+# Prerequisites:
+# 1. Copy .env.example to .env.production and configure
+# 2. Ensure DATABASE_URL and REDIS_URL are set
+# 3. Configure SSL (Caddy handles this automatically)
+
+version: '3.8'
+
+services:
+  # ==================== Reverse Proxy (SSL) ====================
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+      - frontend
+    networks:
+      - gate_network
+
+  # ==================== API Service ====================
+  api:
+    build:
+      context: ./services/api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    environment:
+      - ENVIRONMENT=production
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - SECRET_KEY=${SECRET_KEY}
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+    networks:
+      - gate_network
+
+  # ==================== Celery Worker ====================
+  worker:
+    build:
+      context: ./services/api
+      dockerfile: Dockerfile
+    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=4
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    environment:
+      - ENVIRONMENT=production
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+    depends_on:
+      - api
+    networks:
+      - gate_network
+
+  # ==================== Celery Beat (Scheduler) ====================
+  beat:
+    build:
+      context: ./services/api
+      dockerfile: Dockerfile
+    command: celery -A app.core.celery_app beat --loglevel=info
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    environment:
+      - ENVIRONMENT=production
+      - REDIS_URL=${REDIS_URL}
+    depends_on:
+      - worker
+    networks:
+      - gate_network
+
+  # ==================== Frontend ====================
+  frontend:
+    build:
+      context: ./services/frontend
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=https://${DOMAIN}/api
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+    networks:
+      - gate_network
+
+networks:
+  gate_network:
+    driver: bridge
+
+volumes:
+  caddy_data:
+  caddy_config:

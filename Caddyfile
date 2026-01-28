@@ -1,0 +1,46 @@
+# GATE Application Caddyfile
+# Automatic HTTPS with Let's Encrypt
+
+{$DOMAIN:localhost} {
+    # API Backend
+    handle /api/* {
+        reverse_proxy api:8000
+    }
+    
+    handle /health* {
+        reverse_proxy api:8000
+    }
+    
+    handle /docs* {
+        reverse_proxy api:8000
+    }
+    
+    handle /openapi.json {
+        reverse_proxy api:8000
+    }
+    
+    # Frontend (Next.js)
+    handle {
+        reverse_proxy frontend:3000
+    }
+    
+    # Security Headers
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        -Server
+    }
+    
+    # Logging
+    log {
+        output stdout
+        format json
+        level INFO
+    }
+    
+    # Compression
+    encode gzip zstd
+}
