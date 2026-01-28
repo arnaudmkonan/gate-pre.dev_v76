@@ -12,13 +12,15 @@ from app.api.routes import (
     monitoring, alerts, metrics, dlq_management, agents, export, review, templates, feedback, batch, duplicates,
     data_fabric, trade_compliance, reference_data, entry_reconciliation, ace_import, compliance_scorecard, shipments,
     compliance_integration, entries, duty_calculator, clients, ace_settings, isf, broker_management, client_templates,
-    client_preferences
+    client_preferences, client_reports, client_billing, client_portal, client_dashboard, document_requests,
+    entry_lifecycle, analytics, production_ready
 )
 from app.api.routes import retry_policy
 from app.api.routes.admin import override, queues, errors, organizations, roles, dashboard, file_type_mapping, retry_dlq
 from app.core.config import settings
 from app.core.database import engine
 from app.models.base import Base
+from sqlalchemy import text
 
 logger = logging.getLogger(__name__)
 
@@ -35,10 +37,20 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting application...")
     try:
-        # Create all tables
+        # Only create tables if they don't exist
+        # In production, use Alembic migrations instead
         async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-        logger.info("Database tables initialized")
+            # Check if a core table exists
+            result = await conn.execute(
+                text("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'entries')")
+            )
+            tables_exist = result.scalar()
+            
+            if not tables_exist:
+                await conn.run_sync(Base.metadata.create_all)
+                logger.info("Database tables created")
+            else:
+                logger.info("Database tables already exist, skipping creation")
     except Exception as e:
         logger.error(f"Failed to initialize database: {e}")
         raise
@@ -126,6 +138,14 @@ app.include_router(isf.router)
 app.include_router(broker_management.router)
 app.include_router(client_templates.router)
 app.include_router(client_preferences.router)
+app.include_router(client_reports.router)
+app.include_router(client_billing.router)
+app.include_router(client_portal.router)
+app.include_router(client_dashboard.router)
+app.include_router(document_requests.router)
+app.include_router(entry_lifecycle.router)
+app.include_router(analytics.router)
+app.include_router(production_ready.router)
 
 
 @app.get("/health")

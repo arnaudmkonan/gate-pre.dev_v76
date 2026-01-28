@@ -72,6 +72,36 @@ from app.models.broker_management import (
     BondType, BondStatus, LicenseStatus,
     SURETY_CODES, BOND_ACTIVITY_CODES
 )
+from app.models.client_billing import (
+    ClientFeeConfig, BillableItem, ClientInvoice, InvoicePayment,
+    FeeType, BillableItemType, InvoiceStatus, PaymentMethod
+)
+from app.models.client_portal import (
+    ClientUser, PortalInvitation, ClientUserSession,
+    ClientUserRole, ClientUserStatus, InvitationStatus
+)
+from app.models.document_request import (
+    DocumentRequest, ClientNotification,
+    DocumentRequestStatus, DocumentRequestPriority
+)
+from app.models.entry_lifecycle import (
+    EntryLiquidation, LiquidationStatus,
+    EntryProtest, ProtestStatus,
+    ReconciliationEntry, ReconciliationStatus, ReconFlagType,
+    DrawbackClaim, DrawbackStatus, DrawbackType,
+    PriorDisclosure, DisclosureStatus
+)
+from app.models.scheduled_report import (
+    ScheduledReport, GeneratedReport,
+    ReportFrequency, ReportType, ReportStatus
+)
+from app.models.production_ready import (
+    OnboardingProgress, OnboardingStep,
+    HelpArticle,
+    AuditLogEntry,
+    OrganizationSubscription, SubscriptionTier, SubscriptionStatus,
+    SUBSCRIPTION_TIERS
+)
 
 __all__ = [
     "StorageConfig",
@@ -196,4 +226,53 @@ __all__ = [
     "LicenseStatus",
     "SURETY_CODES",
     "BOND_ACTIVITY_CODES",
+    # Client Billing (Task 4.6)
+    "ClientFeeConfig",
+    "BillableItem",
+    "ClientInvoice",
+    "InvoicePayment",
+    "FeeType",
+    "BillableItemType",
+    "InvoiceStatus",
+    "PaymentMethod",
+    # Client Portal (Task 5.1)
+    "ClientUser",
+    "PortalInvitation",
+    "ClientUserSession",
+    "ClientUserRole",
+    "ClientUserStatus",
+    "InvitationStatus",
+    # Document Requests (Task 5.3)
+    "DocumentRequest",
+    "ClientNotification",
+    "DocumentRequestStatus",
+    "DocumentRequestPriority",
+    # Entry Lifecycle (Phase 6)
+    "EntryLiquidation",
+    "LiquidationStatus",
+    "EntryProtest",
+    "ProtestStatus",
+    "ReconciliationEntry",
+    "ReconciliationStatus",
+    "ReconFlagType",
+    "DrawbackClaim",
+    "DrawbackStatus",
+    "DrawbackType",
+    "PriorDisclosure",
+    "DisclosureStatus",
+    # Scheduled Reports (Phase 7)
+    "ScheduledReport",
+    "GeneratedReport",
+    "ReportFrequency",
+    "ReportType",
+    "ReportStatus",
+    # Production Ready (Phase 8)
+    "OnboardingProgress",
+    "OnboardingStep",
+    "HelpArticle",
+    "AuditLogEntry",
+    "OrganizationSubscription",
+    "SubscriptionTier",
+    "SubscriptionStatus",
+    "SUBSCRIPTION_TIERS",
 ]
