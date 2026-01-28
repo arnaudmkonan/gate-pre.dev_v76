@@ -91,6 +91,7 @@ from app.models.entry_lifecycle import (
     DrawbackClaim, DrawbackStatus, DrawbackType,
     PriorDisclosure, DisclosureStatus
 )
+from app.models.client import Client, ClientContact, ClientBond, ClientSettings
 from app.models.scheduled_report import (
     ScheduledReport, GeneratedReport,
     ReportFrequency, ReportType, ReportStatus
@@ -226,6 +227,11 @@ __all__ = [
     "LicenseStatus",
     "SURETY_CODES",
     "BOND_ACTIVITY_CODES",
+    # Client (Phase 4)
+    "Client",
+    "ClientContact",
+    "ClientBond",
+    "ClientSettings",
     # Client Billing (Task 4.6)
     "ClientFeeConfig",
     "BillableItem",
