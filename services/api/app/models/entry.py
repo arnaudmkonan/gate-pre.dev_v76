@@ -59,6 +59,15 @@ class EntryType(str, Enum):
     IN_TRANSIT = "24"  # In Transit
 
 
+class EntrySource(str, Enum):
+    """How the entry was created."""
+    DOCUMENT_EXTRACTION = "document_extraction"  # Auto-created from extracted documents
+    ACE_IMPORT = "ace_import"  # Imported from ACE/CBP data
+    MANUAL = "manual"  # Manually created by user
+    CARGOWISE = "cargowise"  # Imported from CargoWise
+    API = "api"  # Created via API integration
+
+
 class PartyRole(str, Enum):
     """Party roles in an entry."""
     IMPORTER_OF_RECORD = "importer_of_record"
@@ -186,6 +195,8 @@ class Entry(BaseModel):
     
     # ===== Source Tracking =====
     shipment_id = Column(UUID(as_uuid=True), ForeignKey("shipments.id"), nullable=True)
+    source_type = Column(String(30), default=EntrySource.MANUAL.value, nullable=False)
+    source_reference = Column(String(200), nullable=True)  # Reference ID from source system
     
     # Relationships
     lines = relationship("EntryLine", back_populates="entry", cascade="all, delete-orphan", order_by="EntryLine.line_number")

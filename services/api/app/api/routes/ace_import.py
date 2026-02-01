@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from app.core.database import get_db
 from app.services.ace_importer_service import (
     ACEImporterService,
+    ACEToEntryImporter,
     load_sample_ace_data,
     SAMPLE_ACE_DATA,
 )
@@ -167,12 +168,164 @@ async def get_sample_data():
 async def get_field_mappings():
     """
     Get the field name mappings used for CSV normalization.
-    
+
     Shows which column names are recognized for each standard field.
     """
     from app.services.ace_importer_service import FIELD_MAPPINGS
-    
+
     return {
         "mappings": FIELD_MAPPINGS,
         "description": "Column names are case-insensitive and normalized (spaces/dashes become underscores)"
+    }
+
+
+# ==================== New Entry-Based Import Endpoints ====================
+
+class EntryImportResult(BaseModel):
+    """Result from Entry-based import."""
+    success: bool
+    batch_id: str
+    entries_created: int
+    lines_created: int
+    total_value: float
+    total_duty: float
+    linked_shipments: int
+    errors: list
+    warnings: list
+    entry_ids: list
+
+
+@router.post("/import/to-entry", response_model=EntryImportResult)
+async def import_csv_to_entry(
+    request: ImportCSVRequest,
+    link_to_shipment: bool = True,
+    db=Depends(get_db)
+):
+    """
+    Import ACE entry data into the unified Entry model.
+
+    This is the preferred import method that creates proper Entry records:
+    - Groups line items by entry_number (one Entry per unique number)
+    - Sets source_type="ace_import" for tracking
+    - Creates EntryLine records for each CSV row
+    - Optionally links to existing Shipments
+
+    Use this instead of /import/csv for new imports.
+    """
+    service = ACEToEntryImporter(db)
+    result = await service.import_csv_to_entries(
+        request.csv_content,
+        request.batch_id,
+        link_to_shipment=link_to_shipment
+    )
+    return result
+
+
+@router.post("/import/file-to-entry")
+async def import_file_to_entry(
+    file: UploadFile = File(...),
+    batch_id: Optional[str] = None,
+    link_to_shipment: bool = True,
+    db=Depends(get_db)
+):
+    """
+    Import ACE entry data from uploaded file into Entry model.
+
+    Creates proper Entry and EntryLine records.
+    """
+    if not file.filename.lower().endswith(('.csv', '.tsv', '.txt')):
+        raise HTTPException(400, "Only CSV/TSV files are supported")
+
+    content = await file.read()
+    csv_content = content.decode('utf-8-sig')
+
+    service = ACEToEntryImporter(db)
+    result = await service.import_csv_to_entries(
+        csv_content,
+        batch_id,
+        link_to_shipment=link_to_shipment
+    )
+    result["filename"] = file.filename
+
+    return result
+
+
+@router.get("/entries-unified")
+async def list_unified_entries(
+    source_type: Optional[str] = Query("ace_import", description="Filter by source type"),
+    importer: Optional[str] = Query(None, description="Filter by importer name"),
+    entry_number: Optional[str] = Query(None, description="Filter by entry number"),
+    status: Optional[str] = Query(None, description="Filter by status"),
+    limit: int = Query(100, le=500),
+    offset: int = Query(0, ge=0),
+    db=Depends(get_db)
+):
+    """
+    Query entries from the unified Entry model.
+
+    Returns entries with their line items.
+    """
+    from sqlalchemy import select, func, and_
+    from sqlalchemy.orm import selectinload
+    from app.models.entry import Entry
+
+    query = select(Entry).options(selectinload(Entry.lines))
+
+    filters = []
+    if source_type:
+        filters.append(Entry.source_type == source_type)
+    if importer:
+        filters.append(Entry.importer_of_record_name.ilike(f"%{importer}%"))
+    if entry_number:
+        filters.append(Entry.entry_number.like(f"%{entry_number}%"))
+    if status:
+        filters.append(Entry.status == status)
+
+    if filters:
+        query = query.where(and_(*filters))
+
+    # Get total count
+    count_query = select(func.count()).select_from(Entry)
+    if filters:
+        count_query = count_query.where(and_(*filters))
+    total = await db.scalar(count_query)
+
+    # Apply pagination
+    query = query.order_by(Entry.entry_date.desc().nullslast()).offset(offset).limit(limit)
+
+    result = await db.execute(query)
+    entries = result.scalars().unique().all()
+
+    return {
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "entries": [
+            {
+                "id": str(e.id),
+                "entry_number": e.entry_number,
+                "entry_type": e.entry_type,
+                "entry_date": e.entry_date.isoformat() if e.entry_date else None,
+                "source_type": e.source_type,
+                "status": e.status,
+                "importer_of_record_name": e.importer_of_record_name,
+                "total_entered_value": float(e.total_entered_value) if e.total_entered_value else 0,
+                "total_duty": float(e.total_duty) if e.total_duty else 0,
+                "line_count": e.line_count,
+                "shipment_id": str(e.shipment_id) if e.shipment_id else None,
+                "lines": [
+                    {
+                        "line_number": l.line_number,
+                        "hts_code": l.hts_code,
+                        "description": l.product_description,
+                        "country_of_origin": l.country_of_origin,
+                        "quantity": float(l.quantity_1) if l.quantity_1 else None,
+                        "entered_value": float(l.entered_value) if l.entered_value else None,
+                        "duty_amount": float(l.duty_amount) if l.duty_amount else None,
+                    }
+                    for l in e.lines
+                ]
+            }
+            for e in entries
+        ]
     }

@@ -71,8 +71,12 @@ class AutoLinkerService:
                 shipment, document_id, link_key, LinkMethod.AUTO
             )
             await self._update_shipment_from_keys(shipment, keys)
-            
+
             logger.info(f"Linked document {document_id} to existing shipment {shipment.id} via {link_key.key_type}")
+
+            # Check if shipment is now complete and trigger entry creation
+            await self.check_and_trigger_entry_creation(shipment.id)
+
             return shipment
         
         # No matching shipment, find documents that share keys with this one
@@ -85,12 +89,20 @@ class AutoLinkerService:
                 keys
             )
             logger.info(f"Created new shipment {shipment.id} with {len(related_doc_ids) + 1} documents")
+
+            # Check if shipment is complete and trigger entry creation
+            await self.check_and_trigger_entry_creation(shipment.id)
+
             return shipment
         
         # No related documents - create single-document shipment or leave orphan
         # For now, create a single-document shipment
         shipment = await self._create_shipment_from_documents([document_id], keys)
         logger.info(f"Created new single-document shipment {shipment.id}")
+
+        # Check if shipment is complete and trigger entry creation
+        await self.check_and_trigger_entry_creation(shipment.id)
+
         return shipment
     
     async def run_batch_linking(
@@ -477,6 +489,180 @@ class AutoLinkerService:
             key=lambda k: (KEY_PRIORITY.get(KeyType(k.key_type), 99), -k.confidence)
         )
         return sorted_keys[0]
+
+
+    # ========================================================================
+    # Entry Creation Integration
+    # ========================================================================
+
+    async def check_and_trigger_entry_creation(
+        self,
+        shipment_id: UUID,
+        force: bool = False
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Check if shipment is complete and trigger Entry creation.
+
+        A shipment is considered complete when it has:
+        - At least one commercial invoice
+        - At least one bill of lading (BOL or AWB)
+        - Minimum 2 documents total
+
+        Args:
+            shipment_id: The shipment to check
+            force: Create entry even if shipment is not complete
+
+        Returns:
+            Entry creation result dict, or None if not triggered
+        """
+        shipment = await self.db.get(Shipment, shipment_id)
+        if not shipment:
+            logger.warning(f"Shipment {shipment_id} not found for entry creation check")
+            return None
+
+        # Check if entry already exists
+        from app.models.entry import Entry
+        existing_entry = await self.db.execute(
+            select(Entry).where(Entry.shipment_id == shipment_id)
+        )
+        if existing_entry.scalar_one_or_none():
+            logger.debug(f"Entry already exists for shipment {shipment_id}")
+            return None
+
+        # Check completeness
+        is_complete = await self._check_shipment_completeness(shipment)
+
+        if not is_complete and not force:
+            logger.debug(f"Shipment {shipment_id} not complete, skipping entry creation")
+            return None
+
+        # Update shipment status to COMPLETE
+        if is_complete and shipment.status != ShipmentStatus.COMPLETE.value:
+            shipment.status = ShipmentStatus.COMPLETE.value
+
+        # Trigger entry creation
+        from app.services.entry_creation_service import EntryCreationService
+
+        entry_service = EntryCreationService(self.db)
+        result = await entry_service.create_entry_from_shipment(shipment_id)
+
+        if result.success:
+            logger.info(f"Auto-created Entry {result.entry_id} for shipment {shipment_id}")
+
+            # Trigger compliance checks
+            await self._trigger_compliance_checks(result.entry_id)
+        else:
+            logger.warning(f"Failed to create entry for shipment {shipment_id}: {result.errors}")
+
+        return result.to_dict()
+
+    async def _check_shipment_completeness(self, shipment: Shipment) -> bool:
+        """
+        Check if a shipment has all required documents for entry creation.
+
+        Requirements:
+        - At least 2 documents
+        - Has BOL or AWB number
+        - Has at least one invoice or extracted value
+        """
+        # Check document count
+        if shipment.document_count < 2:
+            return False
+
+        # Check for key identifiers
+        has_transport_doc = bool(
+            shipment.bol_number or
+            shipment.awb_number or
+            shipment.container_numbers
+        )
+        if not has_transport_doc:
+            return False
+
+        # Check for commercial data
+        has_commercial = bool(
+            shipment.total_declared_value or
+            shipment.invoices  # Has linked invoices
+        )
+
+        # Get document types if not already populated
+        if not shipment.document_types:
+            result = await self.db.execute(
+                select(DocumentKey.key_type)
+                .where(DocumentKey.document_id.in_(
+                    select(ShipmentDocument.document_id)
+                    .where(ShipmentDocument.shipment_id == shipment.id)
+                ))
+                .distinct()
+            )
+            key_types = [row[0] for row in result.all()]
+
+            # Check for invoice-related keys
+            has_commercial = has_commercial or KeyType.INVOICE_NUM.value in key_types
+
+        return has_transport_doc and has_commercial
+
+    async def _trigger_compliance_checks(self, entry_id: UUID) -> None:
+        """Trigger compliance checks for a newly created entry."""
+        try:
+            from app.models.entry import Entry
+            from sqlalchemy.orm import selectinload
+
+            # Load entry with lines
+            result = await self.db.execute(
+                select(Entry)
+                .options(selectinload(Entry.lines))
+                .where(Entry.id == entry_id)
+            )
+            entry = result.scalar_one_or_none()
+
+            if not entry or not entry.lines:
+                return
+
+            # Build extraction results format for compliance service
+            extraction_results = {
+                "extractions": []
+            }
+
+            # Add party extractions
+            if entry.importer_of_record_name:
+                extraction_results["extractions"].append({
+                    "field_name": "importer_of_record_name",
+                    "value": entry.importer_of_record_name,
+                    "found": True,
+                    "confidence": 1.0,
+                })
+
+            # Add HTS codes from lines
+            line_items = []
+            for line in entry.lines:
+                if line.hts_code:
+                    line_items.append({
+                        "hs_code": line.hts_code,
+                        "description": line.product_description,
+                        "country_of_origin": line.country_of_origin,
+                    })
+
+            if line_items:
+                extraction_results["extractions"].append({
+                    "field_name": "line_items",
+                    "value": line_items,
+                    "found": True,
+                })
+
+            # Run compliance checks
+            from app.services.post_extraction_service import PostExtractionService
+
+            compliance_service = PostExtractionService(self.db)
+            compliance_result = await compliance_service.process_extraction_results(
+                document_id=str(entry.id),
+                extraction_results=extraction_results,
+                template_name="Entry Auto-Created",
+            )
+
+            logger.info(f"Compliance checks completed for entry {entry_id}: {compliance_result.overall_risk_level.value}")
+
+        except Exception as e:
+            logger.exception(f"Error running compliance checks for entry {entry_id}: {e}")
 
 
 # Factory function

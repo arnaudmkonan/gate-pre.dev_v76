@@ -177,10 +177,12 @@ async def upload_batch(
             storage_service=None,  # TODO: inject storage service
         )
 
-        # Queue documents for agent processing
+        # Queue documents for agent processing and compliance checks
         from app.workers.agent_processor import process_with_agents
+        from app.workers.compliance_worker import run_compliance_checks
         for doc_id in result.get("document_ids", []):
             process_with_agents.delay(doc_id, pipeline_type)
+            run_compliance_checks.delay(doc_id)
 
         return {
             "batch_job_id": str(batch_job.id),
@@ -255,7 +257,8 @@ async def upload_multifile(
                 size=len(content),
                 mime_type=mime_type,
                 job_id=batch_job.id,
-                ingestion_status="pending",
+                ingestion_status="completed" if extracted_text else "pending",
+                compliance_status="pending" if extracted_text else None,
                 extracted_text_snippet=extracted_text[:10000] if extracted_text else None,
             )
 
@@ -276,10 +279,12 @@ async def upload_multifile(
 
     await session.commit()
 
-    # Queue for agent processing
+    # Queue for agent processing and compliance checks
     from app.workers.agent_processor import process_with_agents
+    from app.workers.compliance_worker import run_compliance_checks
     for doc_id in document_ids:
         process_with_agents.delay(str(doc_id), pipeline_type)
+        run_compliance_checks.delay(str(doc_id))
 
     return {
         "batch_job_id": str(batch_job.id),

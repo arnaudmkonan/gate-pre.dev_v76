@@ -426,7 +426,8 @@ class BatchService:
                             size=len(file_content),
                             mime_type=mime_type,
                             job_id=batch_uuid,
-                            ingestion_status="pending",
+                            ingestion_status="completed" if extracted_text else "pending",
+                            compliance_status="pending" if extracted_text else None,
                             extracted_text_snippet=extracted_text[:10000] if extracted_text else None,
                         )
 

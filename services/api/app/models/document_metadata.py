@@ -33,6 +33,16 @@ class DocumentMetadata(BaseModel):
     source = Column(String(255), nullable=True)
     tags = Column(JSON, nullable=True)  # Array of tags
 
+    # Compliance check tracking
+    compliance_status = Column(String(20), default="pending", nullable=True)  # pending, processing, completed, failed
+    compliance_results = Column(JSON, nullable=True)  # HTS, OFAC, NAICS results
+    compliance_checked_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Agent processing tracking (entity extraction, classification, etc.)
+    agent_status = Column(String(20), default="pending", nullable=True)  # pending, processing, completed, failed
+    agent_results = Column(JSON, nullable=True)  # classification, entities, summary, quality
+    agent_processed_at = Column(DateTime(timezone=True), nullable=True)
+
     __table_args__ = (
         Index("idx_document_metadata_job_id", "job_id"),
         Index("idx_document_metadata_vector_store_id", "vector_store_id"),
@@ -41,4 +51,6 @@ class DocumentMetadata(BaseModel):
         Index("idx_document_metadata_file_type", "file_type"),
         Index("idx_document_metadata_created_at", "created_at"),
         Index("idx_document_metadata_customer_status", "customer_id", "ingestion_status"),
+        Index("idx_document_metadata_compliance_status", "compliance_status"),
+        Index("idx_document_metadata_agent_status", "agent_status"),
     )

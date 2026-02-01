@@ -19,7 +19,7 @@ export const TemplatesPage = () => {
     documentType: documentTypeFilter || undefined,
     isActive: showInactive ? undefined : true,
   })
-  const { deleteTemplate, cloneTemplate, loading: actionLoading } = useTemplateActions()
+  const { deleteTemplate, cloneTemplate, loading: _actionLoading } = useTemplateActions()
 
   useEffect(() => {
     refetch()

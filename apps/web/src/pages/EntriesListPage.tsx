@@ -15,16 +15,11 @@ import {
     Filter,
     FileText,
     DollarSign,
-    Package,
     Clock,
     CheckCircle,
     XCircle,
     AlertTriangle,
-    Ship,
-    Truck,
-    Plane,
     ChevronDown,
-    MoreHorizontal,
     Eye,
     Edit,
     Trash2,
@@ -32,13 +27,12 @@ import {
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/Card'
 import { Button } from '../components/Button'
-import { Input } from '../components/Input'
 import {
     useEntries,
     useEntryActions,
     EntryListItem,
     EntryFilters,
-    ENTRY_STATUSES,
+
     getStatusInfo,
     getEntryTypeName,
     formatCurrency,
@@ -54,19 +48,6 @@ const StatusBadge = ({ status }: { status: string }) => {
     )
 }
 
-// Transport mode icon
-const TransportIcon = ({ mode }: { mode?: string | null }) => {
-    switch (mode) {
-        case '10':
-            return <Ship className="w-4 h-4 text-blue-500" />
-        case '30':
-            return <Truck className="w-4 h-4 text-green-500" />
-        case '40':
-            return <Plane className="w-4 h-4 text-purple-500" />
-        default:
-            return <Package className="w-4 h-4 text-gray-400" />
-    }
-}
 
 export const EntriesListPage = () => {
     const navigate = useNavigate()
@@ -76,7 +57,7 @@ export const EntriesListPage = () => {
     const [selectedStatus, setSelectedStatus] = useState<string>('')
 
     const { entries, total, loading, error, refetch } = useEntries(filters)
-    const { deleteEntry, loading: actionLoading } = useEntryActions()
+    const { deleteEntry, loading: _actionLoading } = useEntryActions()
 
     // Debounced search
     useEffect(() => {
@@ -259,8 +240,8 @@ export const EntriesListPage = () => {
                                 key={status.value}
                                 onClick={() => setSelectedStatus(status.value)}
                                 className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${selectedStatus === status.value
-                                        ? 'bg-blue-600 text-white'
-                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                    ? 'bg-blue-600 text-white'
+                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                     }`}
                             >
                                 {status.label}

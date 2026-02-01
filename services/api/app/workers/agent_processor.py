@@ -45,12 +45,38 @@ def process_with_agents(self, document_id: str, pipeline_type: str = "standard")
     """
     try:
         logger.info(f"Starting agent processing for document {document_id}")
+        _update_agent_status(document_id, "processing")
         result = _run_agent_pipeline_sync(document_id, pipeline_type)
         logger.info(f"Agent processing completed for {document_id}")
         return result
     except Exception as e:
         logger.error(f"Agent processing failed for {document_id}: {e}")
+        _update_agent_status(document_id, "failed", error=str(e))
         raise self.retry(exc=e, countdown=60)
+
+
+def _update_agent_status(document_id: str, status: str, error: str = None, results: Dict = None):
+    """Update agent processing status in document_metadata."""
+    from datetime import datetime, timezone as tz
+    try:
+        doc_uuid = UUID(document_id)
+        with get_sync_db() as session:
+            result = session.execute(
+                select(DocumentMetadata).where(DocumentMetadata.id == doc_uuid)
+            )
+            doc = result.scalar_one_or_none()
+            if doc:
+                doc.agent_status = status
+                if status == "completed" or status == "failed":
+                    doc.agent_processed_at = datetime.now(tz.utc)
+                if results:
+                    doc.agent_results = results
+                elif error:
+                    doc.agent_results = {"error": error}
+                session.add(doc)
+                session.commit()
+    except Exception as e:
+        logger.warning(f"Failed to update agent status: {e}")
 
 
 def _run_agent_pipeline_sync(document_id: str, pipeline_type: str) -> Dict[str, Any]:
@@ -189,6 +215,7 @@ async def _run_agent_pipeline_async(document_id: str, pipeline_type: str) -> Dic
 def _store_agent_results(document_id: str, results: Dict):
     """Store agent results in the document metadata."""
     from app.models.extraction_result import ExtractionResult
+    from datetime import datetime, timezone as tz
 
     try:
         with get_sync_db() as session:
@@ -217,6 +244,7 @@ def _store_agent_results(document_id: str, results: Dict):
                         doc.detected_language = classifier["output"].get("category")
 
                 # Store template extraction results as ExtractionResult records
+                template_extractions_count = 0
                 if "template_extraction" in agent_data:
                     template_data = agent_data["template_extraction"]
                     if template_data.get("success") and template_data.get("output"):
@@ -240,12 +268,79 @@ def _store_agent_results(document_id: str, results: Dict):
                                         status="auto",
                                     )
                                     session.add(extraction_record)
+                                    template_extractions_count += 1
                                 except Exception as e:
                                     logger.warning(f"Failed to store extraction for field {extraction.get('field_name')}: {e}")
 
                         logger.info(
-                            f"Stored {len(extractions)} template extractions for document {document_id}"
+                            f"Stored {template_extractions_count} template extractions for document {document_id}"
                         )
+
+                # Store entity_extractor results as ExtractionResult records (bronze/raw layer)
+                # This ensures ALL entity extractions are persisted even when no template matches
+                entity_extractions_count = 0
+                if "entity_extractor" in agent_data:
+                    entity_data = agent_data["entity_extractor"]
+                    if entity_data.get("success") and entity_data.get("output"):
+                        output = entity_data["output"]
+                        default_confidence = entity_data.get("confidence", 0.0)
+                        
+                        # Output format: {entities: [{type, value, confidence, context, normalized_value}, ...]}
+                        entities = output.get("entities", [])
+                        
+                        # Handle list of entity objects (actual format from EntityExtractionAgent)
+                        if isinstance(entities, list):
+                            for entity in entities:
+                                if isinstance(entity, dict) and entity.get("value") is not None:
+                                    try:
+                                        extraction_record = ExtractionResult(
+                                            document_id=doc_uuid,
+                                            extraction_type="entity",
+                                            field_name=entity.get("type", "unknown"),
+                                            field_value=entity.get("value"),
+                                            raw_value=str(entity.get("value")) if entity.get("value") else None,
+                                            normalized_value=entity.get("normalized_value"),
+                                            confidence=entity.get("confidence", default_confidence),
+                                            agent_name="entity_extractor",
+                                            context_snippet=entity.get("context"),
+                                            status="auto",
+                                        )
+                                        session.add(extraction_record)
+                                        entity_extractions_count += 1
+                                    except Exception as e:
+                                        logger.warning(f"Failed to store entity {entity.get('type')}: {e}")
+                        
+                        # Also handle dict format for backward compatibility: {type: [values], ...}
+                        elif isinstance(entities, dict):
+                            for entity_type, entity_values in entities.items():
+                                values_list = entity_values if isinstance(entity_values, list) else [entity_values]
+                                for value in values_list:
+                                    if value is not None:
+                                        try:
+                                            extraction_record = ExtractionResult(
+                                                document_id=doc_uuid,
+                                                extraction_type="entity",
+                                                field_name=entity_type,
+                                                field_value=value,
+                                                raw_value=str(value) if value else None,
+                                                confidence=default_confidence,
+                                                agent_name="entity_extractor",
+                                                status="auto",
+                                            )
+                                            session.add(extraction_record)
+                                            entity_extractions_count += 1
+                                        except Exception as e:
+                                            logger.warning(f"Failed to store entity {entity_type}: {e}")
+                        
+                        if entity_extractions_count > 0:
+                            logger.info(
+                                f"Stored {entity_extractions_count} entity extractions for document {document_id}"
+                            )
+
+                # Store agent processing results and status
+                doc.agent_status = "completed"
+                doc.agent_results = agent_data
+                doc.agent_processed_at = datetime.now(tz.utc)
 
                 session.add(doc)
                 session.commit()

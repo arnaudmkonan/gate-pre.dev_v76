@@ -13,7 +13,7 @@ from app.api.routes import (
     data_fabric, trade_compliance, reference_data, entry_reconciliation, ace_import, compliance_scorecard, shipments,
     compliance_integration, entries, duty_calculator, clients, ace_settings, isf, broker_management, client_templates,
     client_preferences, client_reports, client_billing, client_portal, client_dashboard, document_requests,
-    entry_lifecycle, analytics, production_ready
+    entry_lifecycle, analytics, production_ready, email, cargowise_export
 )
 from app.api.routes import retry_policy
 from app.api.routes.admin import override, queues, errors, organizations, roles, dashboard, file_type_mapping, retry_dlq
@@ -146,6 +146,8 @@ app.include_router(document_requests.router)
 app.include_router(entry_lifecycle.router)
 app.include_router(analytics.router)
 app.include_router(production_ready.router)
+app.include_router(email.router)
+app.include_router(cargowise_export.router)
 
 
 @app.get("/health")

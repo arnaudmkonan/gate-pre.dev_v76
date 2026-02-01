@@ -205,6 +205,7 @@ def _process_job_sync(job_id: str) -> Dict[str, Any]:
         
         # Update document metadata status
         doc_metadata.ingestion_status = "completed"
+        doc_metadata.compliance_status = "pending"  # Queue for compliance checks
         session.add(doc_metadata)
         
         # Update job status to completed
@@ -214,6 +215,22 @@ def _process_job_sync(job_id: str) -> Dict[str, Any]:
         session.add(job)
         
         session.commit()
+        
+        # Trigger compliance checks asynchronously
+        try:
+            from app.workers.compliance_worker import run_compliance_checks
+            run_compliance_checks.delay(str(doc_metadata.id))
+            logger.info(f"Queued compliance checks for document {doc_metadata.id}")
+        except Exception as e:
+            logger.warning(f"Failed to queue compliance checks (non-fatal): {e}")
+        
+        # Trigger agent processing for entity extraction & knowledge graph
+        try:
+            from app.workers.agent_processor import process_with_agents
+            process_with_agents.delay(str(doc_metadata.id), "standard")
+            logger.info(f"Queued agent processing for document {doc_metadata.id}")
+        except Exception as e:
+            logger.warning(f"Failed to queue agent processing (non-fatal): {e}")
         
         result = {
             "job_id": str(job.id),

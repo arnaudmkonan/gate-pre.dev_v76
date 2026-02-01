@@ -1666,6 +1666,91 @@ async def export_abi_message(
     return response
 
 
+@router.post("/{entry_id}/export/abi/download")
+async def download_abi_file(
+    entry_id: str,
+    message_type: str = Query("SE", description="Message type: SE (Summary), AD (Add), RM (Replace)"),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Download ABI file for ACE submission.
+    
+    Returns a downloadable .abi file with proper headers.
+    Use this for manual import into ACE-certified software.
+    """
+    from fastapi.responses import Response
+    from app.services.abi_file_exporter import ABIFileExporter
+    
+    try:
+        entry_uuid = UUID(entry_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid entry ID format")
+    
+    if message_type not in ["SE", "AD", "RM", "DE"]:
+        raise HTTPException(status_code=400, detail="Invalid message type. Use SE, AD, RM, or DE")
+    
+    try:
+        exporter = ABIFileExporter(db)
+        content, filename = await exporter.export_entry(entry_id, message_type)
+        
+        return Response(
+            content=content,
+            media_type="application/octet-stream",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "X-ABI-Message-Type": message_type,
+            }
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"ABI export failed: {str(e)}")
+
+
+class BulkABIExportRequest(BaseModel):
+    """Request for bulk ABI export."""
+    entry_ids: List[str]
+    message_type: str = "SE"
+
+
+@router.post("/export/abi/bulk")
+async def bulk_export_abi(
+    request: BulkABIExportRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Export multiple entries as a ZIP archive of ABI files.
+    
+    Returns a ZIP containing individual .abi files for each entry.
+    Includes a manifest file with export status.
+    """
+    from fastapi.responses import Response
+    from app.services.abi_file_exporter import ABIFileExporter
+    
+    if not request.entry_ids:
+        raise HTTPException(status_code=400, detail="No entry IDs provided")
+    
+    if len(request.entry_ids) > 100:
+        raise HTTPException(status_code=400, detail="Maximum 100 entries per bulk export")
+    
+    try:
+        exporter = ABIFileExporter(db)
+        zip_bytes, filename = await exporter.export_bulk(
+            request.entry_ids,
+            request.message_type
+        )
+        
+        return Response(
+            content=zip_bytes,
+            media_type="application/zip",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+            }
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Bulk export failed: {str(e)}")
+
+
 @router.post("/{entry_id}/file/abi")
 async def file_abi_message(
     entry_id: str,

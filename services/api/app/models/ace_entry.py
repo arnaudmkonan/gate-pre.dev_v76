@@ -1,6 +1,17 @@
 """
 ACE Entry SQLAlchemy model for CBP import entry data.
+
+DEPRECATED: This model is deprecated in favor of the unified Entry model.
+Use app.models.entry.Entry with source_type="ace_import" instead.
+
+Migration guide:
+1. Import ACE data using ACEToEntryImporter instead of ACEImporterService
+2. Query entries from Entry model with Entry.source_type == "ace_import"
+3. This model will be removed in a future release
+
+See CONSOLIDATION_PLAN.md for full migration details.
 """
+import warnings
 from sqlalchemy import Column, String, Text, Integer, Numeric, DateTime, Boolean, Index
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
@@ -8,12 +19,28 @@ from sqlalchemy.sql import func
 from app.models.base import BaseModel
 
 
+def _deprecation_warning():
+    warnings.warn(
+        "ACEEntry is deprecated. Use Entry with source_type='ace_import' instead. "
+        "See CONSOLIDATION_PLAN.md for migration guide.",
+        DeprecationWarning,
+        stacklevel=3
+    )
+
+
 class ACEEntry(BaseModel):
     """
     ACE (Automated Commercial Environment) Entry record.
     Represents a single line item from a CBP entry.
+
+    DEPRECATED: Use Entry model with source_type="ace_import" instead.
+    This model will be removed in a future release.
     """
     __tablename__ = "ace_entries"
+
+    def __init__(self, **kwargs):
+        _deprecation_warning()
+        super().__init__(**kwargs)
 
     # Entry identification
     entry_number = Column(String(50), nullable=False, index=True)

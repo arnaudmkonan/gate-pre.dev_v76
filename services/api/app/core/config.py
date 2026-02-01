@@ -79,6 +79,19 @@ class Settings(BaseSettings):
     smtp_from_email: str = Field(default="noreply@example.com", alias="SMTP_FROM_EMAIL")
     smtp_tls: bool = Field(default=True, alias="SMTP_TLS")
 
+    # Email Ingestion
+    email_imap_host: Optional[str] = Field(default=None, alias="EMAIL_IMAP_HOST")
+    email_imap_port: int = Field(default=993, alias="EMAIL_IMAP_PORT")
+    email_imap_user: Optional[str] = Field(default=None, alias="EMAIL_IMAP_USER")
+    email_imap_password: Optional[str] = Field(default=None, alias="EMAIL_IMAP_PASSWORD")
+    email_folder: str = Field(default="INBOX", alias="EMAIL_FOLDER")
+    email_processed_folder: str = Field(default="Processed", alias="EMAIL_PROCESSED_FOLDER")
+    email_poll_interval_minutes: int = Field(default=5, alias="EMAIL_POLL_INTERVAL_MINUTES")
+    # Email Filters
+    email_lookback_days: int = Field(default=7, alias="EMAIL_LOOKBACK_DAYS")  # Only process last N days
+    email_allowed_senders: Optional[str] = Field(default=None, alias="EMAIL_ALLOWED_SENDERS")  # Comma-separated
+    email_subject_keywords: Optional[str] = Field(default=None, alias="EMAIL_SUBJECT_KEYWORDS")  # Comma-separated
+
     # Backup Configuration
     s3_backup_bucket: Optional[str] = Field(default=None, alias="S3_BACKUP_BUCKET")
     s3_access_key: Optional[str] = Field(default=None, alias="S3_ACCESS_KEY")

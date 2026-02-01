@@ -12,6 +12,8 @@ from app.workers import (
     job_processor,
     agent_processor,
     key_extraction_task,
+    email_monitor_worker,
+    compliance_worker,
 )
 
 __all__ = [
@@ -27,4 +29,7 @@ __all__ = [
     "job_processor",
     "agent_processor",
     "key_extraction_task",
+    "email_monitor_worker",
+    "compliance_worker",
 ]
+

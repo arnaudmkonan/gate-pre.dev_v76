@@ -10,7 +10,6 @@ import {
     Calculator,
     Search,
     DollarSign,
-    Globe,
     Package,
     AlertTriangle,
     CheckCircle,

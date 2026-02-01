@@ -88,7 +88,13 @@ export const useReviewQueue = (options: UseReviewQueueOptions = {}) => {
         throw new Error(err.detail || 'Failed to fetch review queue')
       }
       const data = await response.json()
-      setItems(data.items || data)
+      // Flatten document properties into each item for easier access
+      const flattenedItems = (data.items || data).map((item: Record<string, unknown>) => ({
+        ...item,
+        filename: (item.document as Record<string, unknown>)?.filename || item.filename,
+        file_type: (item.document as Record<string, unknown>)?.file_type || item.file_type
+      }))
+      setItems(flattenedItems)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch review queue')
     } finally {
@@ -115,7 +121,14 @@ export const useReviewItem = (itemId: string | undefined) => {
         throw new Error(err.detail || 'Failed to fetch review item')
       }
       const data = await response.json()
-      setItem(data)
+      // Flatten the API response: merge review_item properties with document/extractions
+      const flattenedItem: ReviewItemDetail = {
+        ...data.review_item,
+        document: data.document,
+        extractions: data.extractions || [],
+        history: data.history || []
+      }
+      setItem(flattenedItem)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch review item')
     } finally {

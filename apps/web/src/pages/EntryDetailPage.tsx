@@ -10,7 +10,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
     ArrowLeft,
     RefreshCw,
-    Save,
+
     Send,
     Calculator,
     CheckCircle,
@@ -23,7 +23,7 @@ import {
     DollarSign,
     Plus,
     Edit,
-    Trash2,
+
     Ship,
     Anchor,
     Globe,
@@ -35,12 +35,10 @@ import { ACEStatusPanel } from '../components/ACEStatusPanel'
 import {
     useEntry,
     useEntryActions,
-    Entry,
     AddLineRequest,
     getStatusInfo,
     getEntryTypeName,
     formatCurrency,
-    ENTRY_STATUSES,
 } from '../hooks/useEntries'
 
 // Status badge component

@@ -404,3 +404,225 @@ async def load_sample_ace_data(db: AsyncSession) -> Dict[str, Any]:
     """Load sample ACE data for demonstration."""
     service = ACEImporterService(db)
     return await service.import_csv(SAMPLE_ACE_DATA, batch_id="sample_data")
+
+
+# ==================== New Entry-Based Import ====================
+
+class ACEToEntryImporter:
+    """
+    Import ACE data to the unified Entry model.
+
+    This replaces ACEEntry with proper Entry records that:
+    - Have source_type="ace_import"
+    - Group line items by entry_number
+    - Support the full Entry workflow
+    """
+
+    def __init__(self, db: AsyncSession):
+        self.db = db
+
+    async def import_csv_to_entries(
+        self,
+        csv_content: str,
+        batch_id: str = None,
+        link_to_shipment: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Import ACE CSV data into Entry model.
+
+        Groups rows by entry_number to create one Entry per unique entry,
+        with EntryLine records for each row.
+
+        Args:
+            csv_content: CSV string content
+            batch_id: Optional batch identifier
+            link_to_shipment: Try to find and link to existing Shipment by BOL
+
+        Returns:
+            Import results with entries created
+        """
+        from app.models.entry import Entry, EntryLine, EntrySource, EntryStatus
+        from app.models.gold_records import Shipment
+
+        if batch_id is None:
+            batch_id = f"ace_import_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
+        results = {
+            "success": True,
+            "batch_id": batch_id,
+            "entries_created": 0,
+            "lines_created": 0,
+            "total_value": 0.0,
+            "total_duty": 0.0,
+            "linked_shipments": 0,
+            "errors": [],
+            "warnings": [],
+            "entry_ids": [],
+        }
+
+        try:
+            reader = csv.DictReader(StringIO(csv_content))
+
+            if not reader.fieldnames:
+                results["success"] = False
+                results["errors"].append("CSV file has no headers")
+                return results
+
+            # Normalize headers
+            field_map = {}
+            for field in reader.fieldnames:
+                normalized = normalize_field_name(field)
+                if normalized:
+                    field_map[field] = normalized
+
+            # Group rows by entry_number
+            entries_data: Dict[str, List[Dict]] = {}
+            for row_num, row in enumerate(reader, start=2):
+                try:
+                    normalized_row = {}
+                    for key, value in row.items():
+                        norm_key = field_map.get(key, key.lower().replace(" ", "_"))
+                        normalized_row[norm_key] = value
+
+                    entry_number = str(normalized_row.get("entry_number", "")).strip()
+                    if not entry_number:
+                        results["warnings"].append(f"Row {row_num}: Missing entry number")
+                        continue
+
+                    if entry_number not in entries_data:
+                        entries_data[entry_number] = []
+                    entries_data[entry_number].append({
+                        "row_num": row_num,
+                        "data": normalized_row
+                    })
+
+                except Exception as e:
+                    results["errors"].append(f"Row {row_num}: {str(e)}")
+
+            # Create Entry records
+            for entry_number, rows in entries_data.items():
+                try:
+                    first_row = rows[0]["data"]
+
+                    # Check if entry already exists
+                    existing = await self.db.execute(
+                        select(Entry).where(Entry.entry_number == entry_number)
+                    )
+                    if existing.scalar_one_or_none():
+                        results["warnings"].append(f"Entry {entry_number} already exists, skipped")
+                        continue
+
+                    # Create Entry header from first row
+                    entry = Entry(
+                        entry_number=entry_number,
+                        entry_type=first_row.get("entry_type", "01"),
+                        entry_date=parse_date(first_row.get("entry_date", "")),
+                        source_type=EntrySource.ACE_IMPORT.value,
+                        source_reference=batch_id,
+                        status=EntryStatus.DRAFT.value,
+                        importer_of_record_name=first_row.get("importer_name"),
+                        importer_of_record_number=first_row.get("importer_number"),
+                        port_of_entry=first_row.get("port_code"),
+                    )
+
+                    # Try to link to existing Shipment
+                    if link_to_shipment:
+                        shipment_id = await self._find_matching_shipment(entry_number)
+                        if shipment_id:
+                            entry.shipment_id = shipment_id
+                            results["linked_shipments"] += 1
+
+                    # Create EntryLine for each row
+                    line_num = 1
+                    total_value = Decimal("0")
+                    total_duty = Decimal("0")
+
+                    for row_data in rows:
+                        data = row_data["data"]
+
+                        entered_value = Decimal(str(parse_number(data.get("entered_value", "0"))))
+                        duty_rate = Decimal(str(parse_number(data.get("duty_rate", "0"))))
+                        duty_amount = Decimal(str(parse_number(data.get("duty_amount", "0"))))
+
+                        # Calculate duty if needed
+                        if duty_amount == 0 and duty_rate > 0 and entered_value > 0:
+                            rate = duty_rate if duty_rate <= 1 else duty_rate / 100
+                            duty_amount = entered_value * rate
+
+                        # Normalize HTS code
+                        hts_raw = data.get("hts_code", "")
+                        hts_code = "".join(c for c in hts_raw if c.isdigit())[:10]
+
+                        line = EntryLine(
+                            entry=entry,
+                            line_number=line_num,
+                            hts_code=hts_code if hts_code else None,
+                            hts_description=data.get("description"),
+                            product_description=data.get("description"),
+                            country_of_origin=data.get("country_of_origin", "")[:2].upper() if data.get("country_of_origin") else None,
+                            quantity_1=Decimal(str(parse_number(data.get("quantity", "0")))),
+                            uom_1=data.get("unit"),
+                            entered_value=entered_value,
+                            dutiable_value=entered_value,
+                            duty_rate=duty_rate if duty_rate > 0 else None,
+                            duty_amount=duty_amount,
+                            total_line_duty=duty_amount,
+                            raw_extraction_data={
+                                "row_number": row_data["row_num"],
+                                "source": "ace_import"
+                            }
+                        )
+
+                        entry.lines.append(line)
+                        line_num += 1
+                        total_value += entered_value
+                        total_duty += duty_amount
+                        results["lines_created"] += 1
+
+                    # Update entry totals
+                    entry.total_entered_value = total_value
+                    entry.total_dutiable_value = total_value
+                    entry.total_duty = total_duty
+                    entry.total_amount_due = total_duty
+                    entry.line_count = line_num - 1
+
+                    self.db.add(entry)
+                    results["entries_created"] += 1
+                    results["total_value"] += float(total_value)
+                    results["total_duty"] += float(total_duty)
+
+                except Exception as e:
+                    results["errors"].append(f"Entry {entry_number}: {str(e)}")
+                    logger.error(f"Error creating entry {entry_number}: {e}")
+
+            await self.db.commit()
+
+            # Get created entry IDs
+            for entry_number in entries_data.keys():
+                result = await self.db.execute(
+                    select(Entry.id).where(Entry.entry_number == entry_number)
+                )
+                entry_id = result.scalar_one_or_none()
+                if entry_id:
+                    results["entry_ids"].append(str(entry_id))
+
+            results["total_value"] = round(results["total_value"], 2)
+            results["total_duty"] = round(results["total_duty"], 2)
+
+        except Exception as e:
+            logger.error(f"ACE to Entry import error: {e}")
+            results["success"] = False
+            results["errors"].append(str(e))
+            await self.db.rollback()
+
+        return results
+
+    async def _find_matching_shipment(self, entry_number: str) -> Optional[uuid4]:
+        """Find a Shipment that matches this entry number."""
+        from app.models.gold_records import Shipment
+
+        result = await self.db.execute(
+            select(Shipment.id).where(Shipment.entry_number == entry_number)
+        )
+        shipment_id = result.scalar_one_or_none()
+        return shipment_id

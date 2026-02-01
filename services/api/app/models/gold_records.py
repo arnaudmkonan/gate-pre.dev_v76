@@ -173,8 +173,20 @@ class CustomsEntry(BaseModel):
     """
     Gold Layer: Customs entry filing.
     PRD 4.4: id, entry_num, entry_type, port_code, entry_date, importer_id, broker_id, duty_amount, status
+
+    DEPRECATED: Use app.models.entry.Entry instead. This model provides minimal fields
+    and will be removed in a future release. The Entry model has full CBP 7501 support.
     """
     __tablename__ = "customs_entries"
+
+    def __init__(self, **kwargs):
+        import warnings
+        warnings.warn(
+            "CustomsEntry is deprecated. Use app.models.entry.Entry instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        super().__init__(**kwargs)
 
     entry_num = Column(String, nullable=False, unique=True, index=True)
     entry_type = Column(String, nullable=True)  # e.g., "01", "11"

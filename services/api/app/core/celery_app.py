@@ -57,6 +57,10 @@ celery_app.conf.update(
             "task": "app.workers.agent_processor.process_pending_documents",
             "schedule": 120.0,  # Every 2 minutes
         },
+        "process-pending-compliance": {
+            "task": "app.workers.compliance_worker.process_pending_compliance",
+            "schedule": 300.0,  # Every 5 minutes
+        },
     },
 )
 
