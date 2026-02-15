@@ -16,7 +16,7 @@ from app.schemas.metrics import (
 )
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/metrics", tags=["metrics"])
+router = APIRouter(prefix="/api/metrics", tags=["metrics"])
 
 
 @router.post("/ingest")

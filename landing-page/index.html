@@ -1,0 +1,1464 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DocuMind | AI-Powered Trade Document Intelligence</title>
+    <meta name="description"
+        content="Transform messy trade documents into structured, searchable data. AI-powered extraction for Commercial Invoices, Bills of Lading, Packing Lists, and more.">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+    <style>
+        :root {
+            --primary-dark: #1e1b4b;
+            --primary: #4f46e5;
+            --primary-light: #818cf8;
+            --accent: #a855f7;
+            --accent-light: #c4b5fd;
+            --bg-light: #f8fafc;
+            --bg-white: #ffffff;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --gradient-purple: linear-gradient(135deg, #1e1b4b 0%, #4f46e5 50%, #7c3aed 100%);
+            --gradient-card: linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-white);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            padding: 1rem 2rem;
+        }
+
+        .nav-container {
+            max-width: 1280px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--primary-dark);
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--gradient-purple);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-icon svg {
+            color: white;
+            width: 24px;
+            height: 24px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--primary);
+        }
+
+        .cta-button {
+            background: var(--gradient-purple);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.95rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(79, 70, 229, 0.3);
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            background: var(--gradient-purple);
+            padding: 8rem 2rem 4rem;
+            display: flex;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            pointer-events: none;
+        }
+
+        .hero-container {
+            max-width: 1280px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-content h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            color: white;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+        }
+
+        .hero-content h1 span {
+            background: linear-gradient(90deg, #c4b5fd 0%, #f0abfc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-content p {
+            font-size: 1.25rem;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 2rem;
+            max-width: 500px;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .btn-primary {
+            background: white;
+            color: var(--primary-dark);
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: background 0.2s;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .hero-visual {
+            position: relative;
+        }
+
+        .hero-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2);
+        }
+
+        .hero-card-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .hero-card-icon {
+            width: 48px;
+            height: 48px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hero-card-icon svg {
+            color: white;
+            width: 28px;
+            height: 28px;
+        }
+
+        .hero-card-title {
+            color: white;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .hero-card-subtitle {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.9rem;
+        }
+
+        .extraction-preview {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 16px;
+            padding: 1.5rem;
+        }
+
+        .extraction-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .extraction-row:last-child {
+            border-bottom: none;
+        }
+
+        .extraction-label {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.9rem;
+        }
+
+        .extraction-value {
+            color: white;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .extraction-badge {
+            background: #22c55e;
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        /* Trust Bar */
+        .trust-bar {
+            background: var(--bg-white);
+            padding: 3rem 2rem;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .trust-container {
+            max-width: 1280px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .trust-title {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-bottom: 2rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .trust-logos {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 4rem;
+            flex-wrap: wrap;
+            opacity: 0.6;
+        }
+
+        .trust-logo {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        /* Features Section */
+        .features {
+            padding: 6rem 2rem;
+            background: var(--bg-light);
+        }
+
+        .features-container {
+            max-width: 1280px;
+            margin: 0 auto;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .section-header h2 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+        }
+
+        .section-header p {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .feature-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+        }
+
+        .feature-card {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s, box-shadow 0.3s;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--primary-light) 0%, var(--accent) 100%);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .feature-icon svg {
+            color: white;
+            width: 32px;
+            height: 32px;
+        }
+
+        .feature-card h3 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+        }
+
+        .feature-card p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.7;
+        }
+
+        /* Document Types Section */
+        .doc-types {
+            padding: 6rem 2rem;
+            background: white;
+        }
+
+        .doc-types-container {
+            max-width: 1280px;
+            margin: 0 auto;
+        }
+
+        .doc-types-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+        }
+
+        .doc-types-content h2 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+        }
+
+        .doc-types-content p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+        }
+
+        .doc-list {
+            list-style: none;
+        }
+
+        .doc-list li {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .doc-list li:last-child {
+            border-bottom: none;
+        }
+
+        .doc-check {
+            width: 28px;
+            height: 28px;
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .doc-check svg {
+            color: white;
+            width: 16px;
+            height: 16px;
+        }
+
+        .doc-info {
+            flex: 1;
+        }
+
+        .doc-name {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .doc-fields {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .doc-types-visual {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+        }
+
+        .doc-type-card {
+            background: var(--bg-light);
+            padding: 2rem;
+            border-radius: 16px;
+            text-align: center;
+            transition: transform 0.3s, box-shadow 0.3s;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .doc-type-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        }
+
+        .doc-type-icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 1rem;
+            background: white;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        }
+
+        .doc-type-icon svg {
+            width: 32px;
+            height: 32px;
+            color: var(--primary);
+        }
+
+        .doc-type-name {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+        }
+
+        /* How It Works */
+        .how-it-works {
+            padding: 6rem 2rem;
+            background: var(--gradient-purple);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .how-it-works::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            pointer-events: none;
+        }
+
+        .how-container {
+            max-width: 1280px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .how-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .how-header h2 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: white;
+            margin-bottom: 1rem;
+        }
+
+        .how-header p {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 1.1rem;
+        }
+
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 2rem;
+        }
+
+        .step {
+            text-align: center;
+            position: relative;
+        }
+
+        .step-number {
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: white;
+        }
+
+        .step h3 {
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+        }
+
+        .step p {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+        }
+
+        .step-arrow {
+            position: absolute;
+            top: 30px;
+            right: -1rem;
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        .step:last-child .step-arrow {
+            display: none;
+        }
+
+        /* Integrations */
+        .integrations {
+            padding: 6rem 2rem;
+            background: white;
+        }
+
+        .integrations-container {
+            max-width: 1280px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .integration-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .integration-item {
+            background: var(--bg-light);
+            padding: 1.5rem;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .integration-item:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        }
+
+        .integration-item svg {
+            width: 40px;
+            height: 40px;
+            color: var(--text-secondary);
+        }
+
+        .integration-name {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+        }
+
+        /* CTA Section */
+        .cta-section {
+            padding: 6rem 2rem;
+            background: var(--bg-light);
+        }
+
+        .cta-container {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+            background: var(--gradient-purple);
+            padding: 4rem;
+            border-radius: 32px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cta-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            pointer-events: none;
+        }
+
+        .cta-container h2 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: white;
+            margin-bottom: 1rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .cta-container p {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Footer */
+        .footer {
+            background: var(--primary-dark);
+            padding: 4rem 2rem 2rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .footer-container {
+            max-width: 1280px;
+            margin: 0 auto;
+        }
+
+        .footer-top {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: 3rem;
+            padding-bottom: 3rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .footer-brand p {
+            margin-top: 1rem;
+            font-size: 0.95rem;
+        }
+
+        .footer-col h4 {
+            color: white;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+        }
+
+        .footer-col a {
+            display: block;
+            color: rgba(255, 255, 255, 0.6);
+            text-decoration: none;
+            font-size: 0.9rem;
+            margin-bottom: 0.75rem;
+            transition: color 0.2s;
+        }
+
+        .footer-col a:hover {
+            color: white;
+        }
+
+        .footer-bottom {
+            padding-top: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .hero-container {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+
+            .hero-content p {
+                margin: 0 auto 2rem;
+            }
+
+            .hero-buttons {
+                justify-content: center;
+            }
+
+            .feature-cards {
+                grid-template-columns: 1fr;
+            }
+
+            .doc-types-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .steps {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .integration-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            .footer-top {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .hero-content h1 {
+                font-size: 2.5rem;
+            }
+
+            .steps {
+                grid-template-columns: 1fr;
+            }
+
+            .step-arrow {
+                display: none;
+            }
+
+            .integration-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .footer-top {
+                grid-template-columns: 1fr;
+            }
+
+            .footer-bottom {
+                flex-direction: column;
+                gap: 1rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav-container">
+            <a href="#" class="logo">
+                <div class="logo-icon">
+                    <i data-lucide="file-scan"></i>
+                </div>
+                DocuMind
+            </a>
+            <div class="nav-links">
+                <a href="#features">Features</a>
+                <a href="#documents">Documents</a>
+                <a href="#how-it-works">How It Works</a>
+                <a href="#integrations">Integrations</a>
+                <a href="#demo" class="cta-button">Request Demo</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-container">
+            <div class="hero-content">
+                <h1>
+                    AI-Powered<br>
+                    <span>Trade Document Intelligence</span>
+                </h1>
+                <p>
+                    Transform messy inboxes of trade documents into clean, structured, searchable data.
+                    Automate extraction from Commercial Invoices, Bills of Lading, Packing Lists, and more.
+                </p>
+                <div class="hero-buttons">
+                    <a href="#" id="watch-demo-btn" class="btn-primary" onclick="openDemoModal(); return false;">
+                        <i data-lucide="play-circle"></i>
+                        Watch Demo
+                    </a>
+                    <a href="#features" class="btn-secondary">
+                        <i data-lucide="sparkles"></i>
+                        See Features
+                    </a>
+                </div>
+            </div>
+            <div class="hero-visual">
+                <div class="hero-card">
+                    <div class="hero-card-header">
+                        <div class="hero-card-icon">
+                            <i data-lucide="file-text"></i>
+                        </div>
+                        <div>
+                            <div class="hero-card-title">Commercial_Invoice_2024.pdf</div>
+                            <div class="hero-card-subtitle">Extracted in 2.3 seconds</div>
+                        </div>
+                    </div>
+                    <div class="extraction-preview">
+                        <div class="extraction-row">
+                            <span class="extraction-label">Invoice Number</span>
+                            <span class="extraction-value">INV-2024-0847</span>
+                        </div>
+                        <div class="extraction-row">
+                            <span class="extraction-label">Vendor</span>
+                            <span class="extraction-value">Shanghai Electronics Co.</span>
+                        </div>
+                        <div class="extraction-row">
+                            <span class="extraction-label">Total Amount</span>
+                            <span class="extraction-value">$48,750.00</span>
+                        </div>
+                        <div class="extraction-row">
+                            <span class="extraction-label">Invoice Date</span>
+                            <span class="extraction-value">Jan 15, 2024</span>
+                        </div>
+                        <div class="extraction-row">
+                            <span class="extraction-label">Confidence</span>
+                            <span class="extraction-badge">98.7%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Key Metrics Bar -->
+    <section class="trust-bar">
+        <div class="trust-container">
+            <div class="trust-title">Built for Modern Trade Operations</div>
+            <div class="trust-logos" style="gap: 3rem;">
+                <div style="text-align: center;">
+                    <div style="font-size: 2rem; font-weight: 800; color: var(--primary);">99%</div>
+                    <div style="font-size: 0.85rem; color: var(--text-secondary);">Extraction Accuracy</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 2rem; font-weight: 800; color: var(--primary);">6</div>
+                    <div style="font-size: 0.85rem; color: var(--text-secondary);">Document Types</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 2rem; font-weight: 800; color: var(--primary);">90%</div>
+                    <div style="font-size: 0.85rem; color: var(--text-secondary);">Time Saved</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 2rem; font-weight: 800; color: var(--primary);">24/7</div>
+                    <div style="font-size: 0.85rem; color: var(--text-secondary);">Processing</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 2rem; font-weight: 800; color: var(--primary);">100+</div>
+                    <div style="font-size: 0.85rem; color: var(--text-secondary);">Fields Extracted</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <div class="features-container">
+            <div class="section-header">
+                <h2>Intelligent Document Processing</h2>
+                <p>Our AI agents automatically classify, extract, and validate trade documents with human-level accuracy
+                </p>
+            </div>
+            <div class="feature-cards">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i data-lucide="brain"></i>
+                    </div>
+                    <h3>AI Document Classification</h3>
+                    <p>Automatically identify document types—Invoice, BOL, Packing List, Entry Summary—with 99%
+                        accuracy. No manual sorting required.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i data-lucide="scan-text"></i>
+                    </div>
+                    <h3>Smart Field Extraction</h3>
+                    <p>Extract 30+ key fields from each document: invoice numbers, amounts, dates, parties, quantities,
+                        and more. Fully automated.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i data-lucide="file-spreadsheet"></i>
+                    </div>
+                    <h3>Structured Export</h3>
+                    <p>Export all extracted data to Excel or CSV with one click. Ready for your ERP, TMS, or customs
+                        filing system.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i data-lucide="search"></i>
+                    </div>
+                    <h3>Searchable Archive</h3>
+                    <p>Vector-powered semantic search across all your documents. Find any invoice, shipment, or entry in
+                        seconds.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i data-lucide="shield-check"></i>
+                    </div>
+                    <h3>Human-in-the-Loop</h3>
+                    <p>Low-confidence extractions go to a review queue. Approve, correct, and train the AI to improve
+                        over time.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i data-lucide="bell"></i>
+                    </div>
+                    <h3>Smart Alerts</h3>
+                    <p>Get notified via email when documents arrive, extractions complete, or issues need attention.
+                        Stay in the loop.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Document Types Section -->
+    <section class="doc-types" id="documents">
+        <div class="doc-types-container">
+            <div class="doc-types-grid">
+                <div class="doc-types-content">
+                    <h2>Supports All Your Trade Documents</h2>
+                    <p>Pre-built templates for the documents you handle every day. Custom templates available for any
+                        format.</p>
+                    <ul class="doc-list">
+                        <li>
+                            <div class="doc-check"><i data-lucide="check"></i></div>
+                            <div class="doc-info">
+                                <div class="doc-name">Commercial Invoice</div>
+                                <div class="doc-fields">19 fields • Invoice #, Amount, Date, Vendor, Terms</div>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="doc-check"><i data-lucide="check"></i></div>
+                            <div class="doc-info">
+                                <div class="doc-name">Bill of Lading / AWB</div>
+                                <div class="doc-fields">16 fields • BOL #, Shipper, Consignee, Port, Vessel</div>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="doc-check"><i data-lucide="check"></i></div>
+                            <div class="doc-info">
+                                <div class="doc-name">Packing List</div>
+                                <div class="doc-fields">17 fields • Pieces, Weight, Dimensions, Contents</div>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="doc-check"><i data-lucide="check"></i></div>
+                            <div class="doc-info">
+                                <div class="doc-name">Arrival Notice</div>
+                                <div class="doc-fields">12 fields • Arrival Date, Vessel, Terminal, Demurrage</div>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="doc-check"><i data-lucide="check"></i></div>
+                            <div class="doc-info">
+                                <div class="doc-name">Entry Summary (CBP 7501)</div>
+                                <div class="doc-fields">24 fields • Entry #, Duty, MPF, HMF, Liquidation</div>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="doc-check"><i data-lucide="check"></i></div>
+                            <div class="doc-info">
+                                <div class="doc-name">CSV / Excel Line Data</div>
+                                <div class="doc-fields">Auto-mapped • Flexible column matching</div>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+                <div class="doc-types-visual">
+                    <div class="doc-type-card">
+                        <div class="doc-type-icon"><i data-lucide="file-text"></i></div>
+                        <div class="doc-type-name">Invoice</div>
+                    </div>
+                    <div class="doc-type-card">
+                        <div class="doc-type-icon"><i data-lucide="ship"></i></div>
+                        <div class="doc-type-name">Bill of Lading</div>
+                    </div>
+                    <div class="doc-type-card">
+                        <div class="doc-type-icon"><i data-lucide="package"></i></div>
+                        <div class="doc-type-name">Packing List</div>
+                    </div>
+                    <div class="doc-type-card">
+                        <div class="doc-type-icon"><i data-lucide="calendar-check"></i></div>
+                        <div class="doc-type-name">Arrival Notice</div>
+                    </div>
+                    <div class="doc-type-card">
+                        <div class="doc-type-icon"><i data-lucide="landmark"></i></div>
+                        <div class="doc-type-name">Entry Summary</div>
+                    </div>
+                    <div class="doc-type-card">
+                        <div class="doc-type-icon"><i data-lucide="table"></i></div>
+                        <div class="doc-type-name">Excel / CSV</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="how-it-works" id="how-it-works">
+        <div class="how-container">
+            <div class="how-header">
+                <h2>How It Works</h2>
+                <p>From messy inbox to structured data in four simple steps</p>
+            </div>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <h3>Upload Documents</h3>
+                    <p>Drag & drop PDFs, images, or Excel files. Connect your email for automatic ingestion.</p>
+                    <span class="step-arrow"><i data-lucide="arrow-right"></i></span>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <h3>AI Classification</h3>
+                    <p>Our AI identifies document types and matches them to extraction templates automatically.</p>
+                    <span class="step-arrow"><i data-lucide="arrow-right"></i></span>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <h3>Smart Extraction</h3>
+                    <p>Key fields are extracted with confidence scores. Low-confidence items go to review.</p>
+                    <span class="step-arrow"><i data-lucide="arrow-right"></i></span>
+                </div>
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <h3>Export & Search</h3>
+                    <p>Download structured Excel/CSV or search your archive instantly. Data ready for any system.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Integrations -->
+    <section class="integrations" id="integrations">
+        <div class="integrations-container">
+            <div class="section-header">
+                <h2>Works With Your Tools</h2>
+                <p>Export to the systems your team already uses</p>
+            </div>
+            <div class="integration-grid">
+                <div class="integration-item">
+                    <div class="integration-name">Excel</div>
+                </div>
+                <div class="integration-item">
+                    <div class="integration-name">CSV</div>
+                </div>
+                <div class="integration-item">
+                    <div class="integration-name">SAP</div>
+                </div>
+                <div class="integration-item">
+                    <div class="integration-name">Oracle</div>
+                </div>
+                <div class="integration-item">
+                    <div class="integration-name">CargoWise</div>
+                </div>
+                <div class="integration-item">
+                    <div class="integration-name">ACE</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section with Demo Request Form -->
+    <section class="cta-section" id="demo">
+        <div class="cta-container" style="max-width: 900px;">
+            <div id="demo-form-container">
+                <h2>Ready to Automate Your Trade Docs?</h2>
+                <p>Schedule a personalized demo or start your free trial today.</p>
+
+                <div
+                    style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem; text-align: left;">
+                    <!-- Demo Request Form -->
+                    <div
+                        style="background: rgba(255,255,255,0.1); padding: 1.5rem; border-radius: 16px; border: 1px solid rgba(255,255,255,0.2);">
+                        <h3
+                            style="color: white; font-size: 1.1rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <i data-lucide="calendar" style="width: 20px; height: 20px;"></i>
+                            Request a Demo
+                        </h3>
+                        <form id="demo-request-form" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                            <input type="text" id="demo-name" placeholder="Your Name" required
+                                style="padding: 0.75rem 1rem; border-radius: 8px; border: none; font-size: 0.95rem; background: rgba(255,255,255,0.9);">
+                            <input type="email" id="demo-email" placeholder="Work Email" required
+                                style="padding: 0.75rem 1rem; border-radius: 8px; border: none; font-size: 0.95rem; background: rgba(255,255,255,0.9);">
+                            <input type="text" id="demo-company" placeholder="Company Name" required
+                                style="padding: 0.75rem 1rem; border-radius: 8px; border: none; font-size: 0.95rem; background: rgba(255,255,255,0.9);">
+                            <button type="submit"
+                                style="padding: 0.75rem 1.5rem; border-radius: 8px; border: none; background: white; color: var(--primary-dark); font-weight: 600; cursor: pointer; transition: transform 0.2s;">
+                                Schedule Demo
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Try Free CTA -->
+                    <div
+                        style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
+                        <div style="margin-bottom: 1.5rem;">
+                            <div style="font-size: 3rem; margin-bottom: 0.5rem;">🚀</div>
+                            <h3 style="color: white; font-size: 1.1rem; margin-bottom: 0.5rem;">Start Free Trial</h3>
+                            <p style="color: rgba(255,255,255,0.7); font-size: 0.9rem;">No credit card
+                                required.<br>Process your first documents in minutes.</p>
+                        </div>
+                        <a href="/register.html" class="btn-primary" style="width: 100%; justify-content: center;">
+                            <i data-lucide="rocket"></i>
+                            Try Free Now
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Demo Request Success -->
+            <div id="demo-success" style="display: none; text-align: center; padding: 2rem 0;">
+                <div style="font-size: 4rem; margin-bottom: 1rem;">✅</div>
+                <h2 style="color: white; margin-bottom: 0.5rem;">Demo Request Received!</h2>
+                <p style="color: rgba(255,255,255,0.8); margin-bottom: 1.5rem;">We'll contact you within 24 hours to
+                    schedule your personalized demo.</p>
+                <a href="/register.html" class="btn-primary">
+                    <i data-lucide="rocket"></i>
+                    Start Free Trial Now
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        document.getElementById('demo-request-form').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const name = document.getElementById('demo-name').value;
+            const email = document.getElementById('demo-email').value;
+            const company = document.getElementById('demo-company').value;
+
+            // Parse name into first/last
+            const nameParts = name.trim().split(' ');
+            const firstName = nameParts[0] || '';
+            const lastName = nameParts.slice(1).join(' ') || '';
+
+            try {
+                // Create lead via API
+                await fetch('http://localhost:8000/api/leads', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        first_name: firstName,
+                        last_name: lastName || 'N/A',
+                        email: email,
+                        company: company,
+                        source: 'demo_request',
+                        notes: 'Requested a demo via landing page'
+                    })
+                });
+
+                // Track analytics
+                if (window.dmAnalytics) {
+                    window.dmAnalytics.track('form_submit', 'demo_request', { email: email });
+                }
+
+                // Show success
+                document.getElementById('demo-form-container').style.display = 'none';
+                document.getElementById('demo-success').style.display = 'block';
+
+            } catch (err) {
+                console.error('Demo request failed:', err);
+                // Still show success (optimistic)
+                document.getElementById('demo-form-container').style.display = 'none';
+                document.getElementById('demo-success').style.display = 'block';
+            }
+        });
+    </script>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-top">
+                <div class="footer-brand">
+                    <a href="#" class="logo" style="color: white;">
+                        <div class="logo-icon">
+                            <i data-lucide="file-scan"></i>
+                        </div>
+                        DocuMind
+                    </a>
+                    <p>AI-powered document intelligence for trade professionals. Transform your document workflow today.
+                    </p>
+                </div>
+                <div class="footer-col">
+                    <h4>Platform</h4>
+                    <a href="#features">Features</a>
+                    <a href="#documents">Documents</a>
+                    <a href="#integrations">Integrations</a>
+                    <a href="#">Pricing</a>
+                </div>
+                <div class="footer-col">
+                    <h4>Resources</h4>
+                    <a href="#">Documentation</a>
+                    <a href="#">API Reference</a>
+                    <a href="#">Blog</a>
+                    <a href="#">Support</a>
+                </div>
+                <div class="footer-col">
+                    <h4>Company</h4>
+                    <a href="#">About</a>
+                    <a href="#">Careers</a>
+                    <a href="#">Contact</a>
+                    <a href="#">Privacy</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <span>© 2024 DocuMind. All rights reserved.</span>
+                <span>Built with ❤️ for trade professionals</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Demo Video Modal -->
+    <div id="demo-modal"
+        style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 10000; justify-content: center; align-items: center;">
+        <div style="position: relative; max-width: 90%; max-height: 90%;">
+            <button onclick="closeDemoModal()"
+                style="position: absolute; top: -40px; right: 0; background: none; border: none; color: white; font-size: 2rem; cursor: pointer; padding: 0.5rem;">&times;</button>
+            <div
+                style="background: #1e1b4b; border-radius: 16px; padding: 1rem; box-shadow: 0 25px 50px rgba(0,0,0,0.5);">
+                <h3 style="color: white; margin-bottom: 1rem; text-align: center;">DocuMind Platform Demo</h3>
+                <img id="demo-video" src="/demo.webp" alt="DocuMind Demo"
+                    style="max-width: 100%; max-height: 70vh; border-radius: 8px; display: block;">
+                <div style="text-align: center; margin-top: 1rem;">
+                    <a href="/register.html"
+                        style="display: inline-block; background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: white; padding: 0.75rem 2rem; border-radius: 8px; text-decoration: none; font-weight: 600;">
+                        Start Free Trial
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openDemoModal() {
+            const modal = document.getElementById('demo-modal');
+            modal.style.display = 'flex';
+            // Track analytics
+            if (window.dmAnalytics) {
+                window.dmAnalytics.track('click', 'watch_demo_btn');
+            }
+        }
+        function closeDemoModal() {
+            document.getElementById('demo-modal').style.display = 'none';
+        }
+        // Close on escape key
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') closeDemoModal();
+        });
+        // Close on backdrop click
+        document.getElementById('demo-modal').addEventListener('click', function (e) {
+            if (e.target === this) closeDemoModal();
+        });
+    </script>
+
+    <!-- Initialize Lucide Icons -->
+    <script>
+        lucide.createIcons();
+    </script>
+
+    <!-- Analytics Tracking -->
+    <script>
+        (function () {
+            // Generate or retrieve session ID
+            let sessionId = sessionStorage.getItem('dm_session_id');
+            if (!sessionId) {
+                sessionId = 'dm_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                sessionStorage.setItem('dm_session_id', sessionId);
+            }
+
+            // Get UTM parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const utm = {
+                source: urlParams.get('utm_source') || null,
+                medium: urlParams.get('utm_medium') || null,
+                campaign: urlParams.get('utm_campaign') || null
+            };
+
+            // Track function
+            async function track(eventType, elementId = null, metadata = null) {
+                try {
+                    const payload = {
+                        session_id: sessionId,
+                        event_type: eventType,
+                        page_path: window.location.pathname,
+                        element_id: elementId,
+                        referrer: document.referrer || null,
+                        utm_source: utm.source,
+                        utm_medium: utm.medium,
+                        utm_campaign: utm.campaign,
+                        event_data: metadata ? JSON.stringify(metadata) : null
+                    };
+
+                    await fetch('http://localhost:8000/api/analytics/landing/track', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                } catch (e) {
+                    // Silent fail for analytics
+                    console.debug('Analytics:', eventType, elementId);
+                }
+            }
+
+            // Track page view
+            track('page_view');
+
+            // Track scroll depth
+            let scrollDepths = [25, 50, 75, 100];
+            let trackedDepths = new Set();
+
+            window.addEventListener('scroll', function () {
+                const scrollPercent = Math.round(
+                    (window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100
+                );
+
+                scrollDepths.forEach(depth => {
+                    if (scrollPercent >= depth && !trackedDepths.has(depth)) {
+                        trackedDepths.add(depth);
+                        track('scroll', null, { depth: depth });
+                    }
+                });
+            });
+
+            // Track CTA clicks
+            document.querySelectorAll('.btn-primary, .btn-secondary, .cta-button').forEach(btn => {
+                btn.addEventListener('click', function (e) {
+                    const id = this.id || this.className;
+                    const href = this.getAttribute('href');
+                    track('click', id, { href: href, text: this.textContent.trim().substring(0, 50) });
+                });
+            });
+
+            // Track navigation clicks
+            document.querySelectorAll('.nav-links a').forEach(link => {
+                link.addEventListener('click', function () {
+                    track('click', 'nav_link', { href: this.getAttribute('href') });
+                });
+            });
+
+            // Expose for registration page
+            window.dmAnalytics = { track, sessionId };
+        })();
+    </script>
+</body>
+
+</html>

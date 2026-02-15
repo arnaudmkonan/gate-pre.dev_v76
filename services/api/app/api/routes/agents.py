@@ -21,7 +21,7 @@ from app.models.document_metadata import DocumentMetadata
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/agents", tags=["Agents"])
+router = APIRouter(prefix="/api/agents", tags=["Agents"])
 
 
 class AgentProcessRequest(BaseModel):

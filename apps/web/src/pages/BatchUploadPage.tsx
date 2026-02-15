@@ -8,7 +8,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8000';
+// API URL - empty string uses relative path (works with nginx proxy)
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 interface BatchJob {
   id: string;
@@ -235,22 +236,20 @@ export function BatchUploadPage() {
             <button
               type="button"
               onClick={() => setUploadMode('zip')}
-              className={`px-4 py-2 rounded-lg ${
-                uploadMode === 'zip'
+              className={`px-4 py-2 rounded-lg ${uploadMode === 'zip'
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+                }`}
             >
               ZIP File
             </button>
             <button
               type="button"
               onClick={() => setUploadMode('multi')}
-              className={`px-4 py-2 rounded-lg ${
-                uploadMode === 'multi'
+              className={`px-4 py-2 rounded-lg ${uploadMode === 'multi'
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+                }`}
             >
               Multiple Files
             </button>
@@ -434,9 +433,8 @@ export function BatchUploadPage() {
                 {/* Progress Bar */}
                 <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
                   <div
-                    className={`h-2 rounded-full transition-all ${
-                      job.status === 'completed' ? 'bg-green-500' : 'bg-blue-500'
-                    }`}
+                    className={`h-2 rounded-full transition-all ${job.status === 'completed' ? 'bg-green-500' : 'bg-blue-500'
+                      }`}
                     style={{ width: `${job.progress_percent}%` }}
                   />
                 </div>

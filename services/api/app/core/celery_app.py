@@ -61,6 +61,14 @@ celery_app.conf.update(
             "task": "app.workers.compliance_worker.process_pending_compliance",
             "schedule": 300.0,  # Every 5 minutes
         },
+        "run-scheduled-reports": {
+            "task": "app.workers.report_worker.run_due_reports",
+            "schedule": 300.0,  # Every 5 minutes — checks for due reports
+        },
+        "cleanup-audit-logs": {
+            "task": "app.workers.audit_worker.cleanup_old_audit_logs",
+            "schedule": 86400.0,  # Once per day
+        },
     },
 )
 

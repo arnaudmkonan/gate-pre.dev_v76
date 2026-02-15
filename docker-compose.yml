@@ -132,7 +132,7 @@ services:
     networks:
       - docingestion_network
     restart: unless-stopped
-    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=2
+    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=4
     healthcheck:
       test: [ "CMD-SHELL", "celery -A app.core.celery_app inspect ping -d celery@$$HOSTNAME || exit 1" ]
       interval: 30s
@@ -236,6 +236,25 @@ services:
     networks:
       - docingestion_network
     restart: unless-stopped
+
+  # =============================================================================
+  # LANDING PAGE - DocuMind Commercial Site
+  # =============================================================================
+  landing:
+    build:
+      context: ./landing-page
+      dockerfile: Dockerfile
+    container_name: docingestion_landing
+    ports:
+      - "8080:80"
+    networks:
+      - docingestion_network
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--spider", "http://localhost/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 # =============================================================================
 # VOLUMES

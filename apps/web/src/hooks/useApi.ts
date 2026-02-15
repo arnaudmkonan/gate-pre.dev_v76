@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react'
 import axios, { AxiosError } from 'axios'
-
-const API_URL = 'http://localhost:8000'
+import { API_URL } from '../config/api'
 
 export interface ApiError {
   message: string

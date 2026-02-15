@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { RefreshCw, AlertCircle, CheckCircle, Clock, Loader } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from './Card'
 import { Button } from './Button'
+import { API_URL } from '../config/api'
 
 interface RoutingStats {
   total_files: number
@@ -39,7 +40,7 @@ export const RoutingDashboard = () => {
     setError(null)
 
     try {
-      const response = await fetch('http://localhost:8000/api/routing/stats')
+      const response = await fetch(`${API_URL}/api/routing/stats`)
       if (!response.ok) {
         throw new Error('Failed to fetch routing stats')
       }
@@ -68,7 +69,7 @@ export const RoutingDashboard = () => {
     }))
 
     try {
-      const response = await fetch(`http://localhost:8000${endpoint}`, {
+      const response = await fetch(`${API_URL}${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -347,13 +348,12 @@ export const RoutingDashboard = () => {
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div
-                        className={`h-2 rounded-full transition-all ${
-                          key === 'pending'
+                        className={`h-2 rounded-full transition-all ${key === 'pending'
                             ? 'bg-yellow-500'
                             : key === 'completed'
                               ? 'bg-green-500'
                               : 'bg-red-500'
-                        }`}
+                          }`}
                         style={{ width: `${percentage}%` }}
                       />
                     </div>

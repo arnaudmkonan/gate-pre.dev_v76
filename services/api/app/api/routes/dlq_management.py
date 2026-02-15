@@ -21,7 +21,7 @@ from app.schemas.dlq import (
 )
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/dlq", tags=["dlq"])
+router = APIRouter(prefix="/api/dlq", tags=["dlq"])
 
 
 @router.get("/entries", response_model=DLQListResponse)

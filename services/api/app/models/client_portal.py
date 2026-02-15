@@ -96,7 +96,7 @@ class ClientUser(BaseModel):
     __table_args__ = (
         Index("ix_client_users_client", "client_id"),
         Index("ix_client_users_status", "status"),
-        Index("ix_client_users_email", "email"),
+        # Note: email already has index=True on column
     )
     
     @property
@@ -201,8 +201,7 @@ class PortalInvitation(BaseModel):
     user = relationship("ClientUser", foreign_keys=[user_id])
     
     __table_args__ = (
-        Index("ix_portal_invitations_token", "token"),
-        Index("ix_portal_invitations_email", "email"),
+        # token and email already have index=True on columns
         Index("ix_portal_invitations_client", "client_id"),
         Index("ix_portal_invitations_status", "status"),
     )
@@ -262,7 +261,7 @@ class ClientUserSession(BaseModel):
     user = relationship("ClientUser", foreign_keys=[user_id])
     
     __table_args__ = (
-        Index("ix_client_user_sessions_token", "token"),
+        # token already has index=True on column
         Index("ix_client_user_sessions_user", "user_id"),
         Index("ix_client_user_sessions_active", "is_active"),
     )

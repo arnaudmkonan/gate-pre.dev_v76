@@ -1,0 +1,35 @@
+version: '3.8'
+
+# Shared Reference Database for HTS, NAICS, SDN data
+# This database is accessible by all tenant instances via PostgreSQL FDW
+
+services:
+  reference_db:
+    image: pgvector/pgvector:pg16
+    container_name: gate_reference_db
+    environment:
+      - POSTGRES_USER=reference_admin
+      - POSTGRES_PASSWORD=reference_admin_password
+      - POSTGRES_DB=gate_reference
+    volumes:
+      - reference_data:/var/lib/postgresql/data
+      - ./init_reference_db.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+    ports:
+      - "5433:5432" # Different port to avoid conflicts
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U reference_admin -d gate_reference" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - gate_network
+
+volumes:
+  reference_data:
+    driver: local
+
+networks:
+  gate_network:
+    driver: bridge
+    name: gate_shared_network

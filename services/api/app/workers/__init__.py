@@ -2,6 +2,7 @@
 from app.workers import (
     dispatch,
     ingest_worker,
+    ingest_tasks,
     retry_worker,
     batch_runner,
     metadata_enqueue,
@@ -14,11 +15,16 @@ from app.workers import (
     key_extraction_task,
     email_monitor_worker,
     compliance_worker,
+    data_fabric_worker,
+    embedding_tasks,
+    trade_extraction_worker,
+    shipment_assembly_worker,
 )
 
 __all__ = [
     "dispatch",
     "ingest_worker",
+    "ingest_tasks",
     "retry_worker",
     "batch_runner",
     "metadata_enqueue",
@@ -31,5 +37,9 @@ __all__ = [
     "key_extraction_task",
     "email_monitor_worker",
     "compliance_worker",
+    "data_fabric_worker",
+    "embedding_tasks",
+    "trade_extraction_worker",
+    "shipment_assembly_worker",
 ]
 

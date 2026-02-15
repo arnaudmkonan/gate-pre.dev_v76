@@ -1,6 +1,5 @@
 import logging
 from app.core.celery_app import celery_app
-from app.core.database import get_sync_db
 from app.services.entity_resolution_service import EntityResolutionService
 import asyncio
 
@@ -33,16 +32,20 @@ def process_entity_resolution(self, document_id: str):
 
 async def _run_resolution_service(document_id: str):
     """Async execution of entity resolution."""
+    from app.core.database import AsyncSessionLocal
     from app.services.gold_layer_service import GoldLayerService
     
-    with get_sync_db() as session:
+    async with AsyncSessionLocal() as session:
         # 1. Resolve Bronze -> Silver
         resolution_result = await EntityResolutionService.resolve_document_entities(session, document_id)
         
         # 2. Populate Gold Layer
         gold_result = await GoldLayerService.create_gold_records(session, document_id)
         
+        await session.commit()
+        
         return {
             "entity_resolution": resolution_result,
             "gold_layer": gold_result
         }
+

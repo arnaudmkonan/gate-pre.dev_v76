@@ -82,3 +82,4 @@ langchain-openai>=0.0.5
 # Advanced Document Processing (Path A)
 docling>=1.0.0
 reportlab>=4.0.0
+paramiko>=3.0.0

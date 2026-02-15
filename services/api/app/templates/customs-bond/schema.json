@@ -1,0 +1,252 @@
+{
+    "template_name": "Customs Bond",
+    "template_type": "field_list",
+    "document_type": "customs_bond",
+    "description": "Extracts key fields from U.S. Customs bonds (CBP Form 301). Captures bond type, principal, surety, and coverage information.",
+    "version": "1.0.0",
+    "confidence_threshold": 0.80,
+    "classification_categories": [
+        "bond",
+        "surety",
+        "customs",
+        "financial"
+    ],
+    "matching_keywords": [
+        "customs bond",
+        "CBP 301",
+        "surety bond",
+        "continuous bond",
+        "single transaction bond",
+        "principal",
+        "surety",
+        "bond amount",
+        "activity code"
+    ],
+    "field_definitions": [
+        {
+            "field_name": "bond_number",
+            "display_name": "Bond Number",
+            "field_type": "string",
+            "description": "Unique bond identification number",
+            "required": true,
+            "extraction_hints": [
+                "Bond No",
+                "Bond Number",
+                "Bond ID"
+            ],
+            "entity_type": "document_id"
+        },
+        {
+            "field_name": "bond_type",
+            "display_name": "Bond Type",
+            "field_type": "string",
+            "description": "Type of bond (Continuous, Single Transaction)",
+            "required": true,
+            "extraction_hints": [
+                "Type",
+                "Continuous",
+                "Single Transaction",
+                "STB"
+            ],
+            "default_value": "Continuous"
+        },
+        {
+            "field_name": "activity_code",
+            "display_name": "Activity Code",
+            "field_type": "string",
+            "description": "CBP activity code (1=Importer, 2=Custodian/Carrier, etc.)",
+            "required": true,
+            "extraction_hints": [
+                "Activity",
+                "Activity Code",
+                "Code 1",
+                "Code 2"
+            ],
+            "validation_regex": "^[0-9]{1,2}[A-Z]?$"
+        },
+        {
+            "field_name": "effective_date",
+            "display_name": "Effective Date",
+            "field_type": "date",
+            "description": "Date the bond becomes effective",
+            "required": true,
+            "extraction_hints": [
+                "Effective",
+                "Effective Date",
+                "From"
+            ],
+            "entity_type": "date"
+        },
+        {
+            "field_name": "expiration_date",
+            "display_name": "Expiration Date",
+            "field_type": "date",
+            "description": "Date the bond expires",
+            "required": false,
+            "extraction_hints": [
+                "Expiration",
+                "Expires",
+                "To"
+            ],
+            "entity_type": "date"
+        },
+        {
+            "field_name": "bond_amount",
+            "display_name": "Bond Amount",
+            "field_type": "decimal",
+            "description": "Total bond coverage amount in USD",
+            "required": true,
+            "extraction_hints": [
+                "Amount",
+                "Bond Amount",
+                "Limit",
+                "Coverage"
+            ],
+            "entity_type": "money"
+        },
+        {
+            "field_name": "principal_name",
+            "display_name": "Principal Name",
+            "field_type": "string",
+            "description": "Name of the principal (importer/obligor)",
+            "required": true,
+            "extraction_hints": [
+                "Principal",
+                "Importer",
+                "Obligor"
+            ],
+            "entity_type": "organization"
+        },
+        {
+            "field_name": "principal_address",
+            "display_name": "Principal Address",
+            "field_type": "address",
+            "description": "Complete address of the principal",
+            "required": true,
+            "entity_type": "location"
+        },
+        {
+            "field_name": "principal_ein",
+            "display_name": "Principal EIN/Tax ID",
+            "field_type": "string",
+            "description": "Employer Identification Number of principal",
+            "required": true,
+            "extraction_hints": [
+                "EIN",
+                "Tax ID",
+                "IRS Number"
+            ],
+            "validation_regex": "^[0-9]{2}-[0-9]{7}$",
+            "entity_type": "document_id"
+        },
+        {
+            "field_name": "principal_ior_number",
+            "display_name": "Importer of Record Number",
+            "field_type": "string",
+            "description": "CBP-assigned IOR number",
+            "required": false,
+            "extraction_hints": [
+                "IOR",
+                "Importer Number"
+            ],
+            "entity_type": "document_id"
+        },
+        {
+            "field_name": "surety_name",
+            "display_name": "Surety Company Name",
+            "field_type": "string",
+            "description": "Name of the surety company providing the bond",
+            "required": true,
+            "extraction_hints": [
+                "Surety",
+                "Surety Company",
+                "Insurance Company"
+            ],
+            "entity_type": "organization"
+        },
+        {
+            "field_name": "surety_code",
+            "display_name": "Surety Code",
+            "field_type": "string",
+            "description": "3-digit CBP Treasury surety code",
+            "required": true,
+            "extraction_hints": [
+                "Surety Code",
+                "Treasury Code"
+            ],
+            "validation_regex": "^[0-9]{3}$"
+        },
+        {
+            "field_name": "surety_address",
+            "display_name": "Surety Address",
+            "field_type": "address",
+            "description": "Address of the surety company",
+            "required": false,
+            "entity_type": "location"
+        },
+        {
+            "field_name": "port_code",
+            "display_name": "Port of Entry Code",
+            "field_type": "string",
+            "description": "4-digit port code (for single transaction bonds)",
+            "required": false,
+            "extraction_hints": [
+                "Port",
+                "Port Code",
+                "POE"
+            ],
+            "validation_regex": "^[0-9]{4}$"
+        },
+        {
+            "field_name": "entry_number",
+            "display_name": "Entry Number",
+            "field_type": "string",
+            "description": "Entry number (for single transaction bonds)",
+            "required": false,
+            "extraction_hints": [
+                "Entry",
+                "Entry Number"
+            ],
+            "entity_type": "document_id"
+        },
+        {
+            "field_name": "rider_attached",
+            "display_name": "Rider Attached",
+            "field_type": "boolean",
+            "description": "Whether a rider is attached to the bond",
+            "required": false,
+            "extraction_hints": [
+                "rider",
+                "amendment",
+                "endorsement"
+            ],
+            "default_value": false
+        },
+        {
+            "field_name": "agent_name",
+            "display_name": "Agent/Attorney-in-Fact Name",
+            "field_type": "string",
+            "description": "Name of agent executing bond on behalf of surety",
+            "required": false,
+            "extraction_hints": [
+                "Agent",
+                "Attorney-in-Fact",
+                "Authorized Representative"
+            ],
+            "entity_type": "person"
+        },
+        {
+            "field_name": "execution_date",
+            "display_name": "Execution Date",
+            "field_type": "date",
+            "description": "Date the bond was executed",
+            "required": true,
+            "extraction_hints": [
+                "Executed",
+                "Date Signed",
+                "Execution Date"
+            ],
+            "entity_type": "date"
+        }
+    ]
+}

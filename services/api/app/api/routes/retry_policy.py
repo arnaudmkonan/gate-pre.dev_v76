@@ -16,7 +16,7 @@ from app.schemas.retry_policy import (
 )
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/retry-policy", tags=["retry-policy"])
+router = APIRouter(prefix="/api/retry-policy", tags=["retry-policy"])
 
 
 @router.post("", response_model=RetryPolicyResponse)

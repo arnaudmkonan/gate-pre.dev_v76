@@ -10,6 +10,7 @@ import {
 import { Card } from './Card'
 import { Input } from './Input'
 import { Button } from './Button'
+import { API_URL } from '../config/api'
 
 interface ExtractionResult {
   id: string
@@ -65,7 +66,7 @@ export const ExtractionStatusViewer = () => {
       params.append('page_size', pageSize.toString())
 
       const response = await fetch(
-        `http://localhost:8000/api/extractions?${params.toString()}`
+        `${API_URL}/api/extractions?${params.toString()}`
       )
 
       if (response.status === 204) {
@@ -201,9 +202,8 @@ export const ExtractionStatusViewer = () => {
                       </div>
 
                       <span
-                        className={`px-3 py-1 rounded-full text-xs font-medium flex-shrink-0 ${
-                          STATUS_COLORS[item.status] || 'bg-gray-100 text-gray-800'
-                        }`}
+                        className={`px-3 py-1 rounded-full text-xs font-medium flex-shrink-0 ${STATUS_COLORS[item.status] || 'bg-gray-100 text-gray-800'
+                          }`}
                       >
                         {item.status}
                       </span>

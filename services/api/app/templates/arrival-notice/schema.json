@@ -1,0 +1,355 @@
+{
+    "template_name": "Arrival Notice",
+    "template_type": "field_list",
+    "document_type": "arrival_notice",
+    "description": "Extracts key fields from carrier or forwarder Arrival Notices. Captures shipment details, arrival information, charges, and pickup instructions.",
+    "version": "1.0.0",
+    "confidence_threshold": 0.75,
+    "classification_categories": [
+        "arrival",
+        "shipping",
+        "notification",
+        "freight"
+    ],
+    "matching_keywords": [
+        "arrival notice",
+        "freight release",
+        "pickup notice",
+        "cargo arrival",
+        "delivery order",
+        "vessel arrival",
+        "ETA",
+        "demurrage",
+        "detention"
+    ],
+    "field_definitions": [
+        {
+            "field_name": "arrival_notice_number",
+            "display_name": "Arrival Notice Number",
+            "field_type": "string",
+            "description": "Reference number for this arrival notice",
+            "required": false,
+            "extraction_hints": [
+                "Notice No",
+                "Reference",
+                "AN No"
+            ],
+            "entity_type": "document_id"
+        },
+        {
+            "field_name": "notice_date",
+            "display_name": "Notice Date",
+            "field_type": "date",
+            "description": "Date the arrival notice was issued",
+            "required": true,
+            "extraction_hints": [
+                "Date",
+                "Notice Date",
+                "Issued"
+            ],
+            "entity_type": "date"
+        },
+        {
+            "field_name": "bl_number",
+            "display_name": "Bill of Lading Number",
+            "field_type": "string",
+            "description": "Reference bill of lading number",
+            "required": true,
+            "extraction_hints": [
+                "B/L",
+                "BOL",
+                "Bill of Lading",
+                "AWB"
+            ],
+            "entity_type": "document_id"
+        },
+        {
+            "field_name": "booking_number",
+            "display_name": "Booking Number",
+            "field_type": "string",
+            "description": "Carrier booking reference",
+            "required": false,
+            "extraction_hints": [
+                "Booking",
+                "Booking No"
+            ],
+            "entity_type": "document_id"
+        },
+        {
+            "field_name": "carrier_name",
+            "display_name": "Carrier/Shipping Line",
+            "field_type": "string",
+            "description": "Name of the carrier or shipping line",
+            "required": true,
+            "extraction_hints": [
+                "Carrier",
+                "Line",
+                "Shipping Line",
+                "Steamship Line"
+            ],
+            "entity_type": "organization"
+        },
+        {
+            "field_name": "vessel_name",
+            "display_name": "Vessel Name",
+            "field_type": "string",
+            "description": "Name of the vessel",
+            "required": false,
+            "extraction_hints": [
+                "Vessel",
+                "Ship",
+                "M/V"
+            ],
+            "entity_type": "string"
+        },
+        {
+            "field_name": "voyage_number",
+            "display_name": "Voyage Number",
+            "field_type": "string",
+            "description": "Voyage or flight number",
+            "required": false,
+            "extraction_hints": [
+                "Voyage",
+                "Voy",
+                "Flight"
+            ],
+            "entity_type": "string"
+        },
+        {
+            "field_name": "port_of_loading",
+            "display_name": "Port of Loading",
+            "field_type": "string",
+            "description": "Origin port where cargo was loaded",
+            "required": false,
+            "extraction_hints": [
+                "POL",
+                "Port of Loading",
+                "Origin"
+            ],
+            "entity_type": "location"
+        },
+        {
+            "field_name": "port_of_discharge",
+            "display_name": "Port of Discharge",
+            "field_type": "string",
+            "description": "Destination port for cargo unloading",
+            "required": true,
+            "extraction_hints": [
+                "POD",
+                "Port of Discharge",
+                "Destination"
+            ],
+            "entity_type": "location"
+        },
+        {
+            "field_name": "eta",
+            "display_name": "Estimated Time of Arrival",
+            "field_type": "date",
+            "description": "Expected arrival date/time at destination port",
+            "required": true,
+            "extraction_hints": [
+                "ETA",
+                "Arrival Date",
+                "Est. Arrival"
+            ],
+            "entity_type": "date"
+        },
+        {
+            "field_name": "actual_arrival_date",
+            "display_name": "Actual Arrival Date",
+            "field_type": "date",
+            "description": "Actual vessel arrival date",
+            "required": false,
+            "extraction_hints": [
+                "Arrived",
+                "Actual Arrival",
+                "ATA"
+            ],
+            "entity_type": "date"
+        },
+        {
+            "field_name": "last_free_day",
+            "display_name": "Last Free Day",
+            "field_type": "date",
+            "description": "Last day before storage/demurrage charges begin",
+            "required": false,
+            "extraction_hints": [
+                "Last Free Day",
+                "LFD",
+                "Free Time Expires"
+            ],
+            "entity_type": "date"
+        },
+        {
+            "field_name": "consignee_name",
+            "display_name": "Consignee Name",
+            "field_type": "string",
+            "description": "Name of the consignee",
+            "required": true,
+            "extraction_hints": [
+                "Consignee",
+                "Receiver",
+                "Notify Party"
+            ],
+            "entity_type": "organization"
+        },
+        {
+            "field_name": "consignee_address",
+            "display_name": "Consignee Address",
+            "field_type": "address",
+            "description": "Address of the consignee",
+            "required": false,
+            "entity_type": "location"
+        },
+        {
+            "field_name": "shipper_name",
+            "display_name": "Shipper Name",
+            "field_type": "string",
+            "description": "Name of the shipper",
+            "required": false,
+            "extraction_hints": [
+                "Shipper",
+                "Exporter"
+            ],
+            "entity_type": "organization"
+        },
+        {
+            "field_name": "container_numbers",
+            "display_name": "Container Numbers",
+            "field_type": "array",
+            "description": "List of containers in the shipment",
+            "required": false,
+            "extraction_hints": [
+                "Container",
+                "Equipment"
+            ],
+            "nested_fields": [
+                {
+                    "field_name": "container_number",
+                    "display_name": "Container Number",
+                    "field_type": "string",
+                    "validation_regex": "^[A-Z]{4}[0-9]{7}$"
+                },
+                {
+                    "field_name": "container_type",
+                    "display_name": "Container Type",
+                    "field_type": "string"
+                },
+                {
+                    "field_name": "seal_number",
+                    "display_name": "Seal Number",
+                    "field_type": "string"
+                }
+            ]
+        },
+        {
+            "field_name": "cargo_description",
+            "display_name": "Cargo Description",
+            "field_type": "string",
+            "description": "Description of the cargo",
+            "required": false,
+            "extraction_hints": [
+                "Description",
+                "Cargo",
+                "Goods"
+            ],
+            "entity_type": "string"
+        },
+        {
+            "field_name": "total_packages",
+            "display_name": "Total Packages",
+            "field_type": "integer",
+            "description": "Number of packages",
+            "required": false,
+            "extraction_hints": [
+                "Packages",
+                "Pieces",
+                "Units"
+            ],
+            "entity_type": "quantity"
+        },
+        {
+            "field_name": "gross_weight",
+            "display_name": "Gross Weight",
+            "field_type": "decimal",
+            "description": "Total gross weight",
+            "required": false,
+            "extraction_hints": [
+                "Weight",
+                "Gross Weight",
+                "KGS"
+            ],
+            "entity_type": "quantity"
+        },
+        {
+            "field_name": "ocean_freight",
+            "display_name": "Ocean Freight Charges",
+            "field_type": "decimal",
+            "description": "Ocean freight amount",
+            "required": false,
+            "extraction_hints": [
+                "Ocean Freight",
+                "Freight"
+            ],
+            "entity_type": "money"
+        },
+        {
+            "field_name": "freight_status",
+            "display_name": "Freight Status",
+            "field_type": "string",
+            "description": "Prepaid or Collect",
+            "required": false,
+            "extraction_hints": [
+                "Prepaid",
+                "Collect",
+                "Freight Terms"
+            ]
+        },
+        {
+            "field_name": "terminal_name",
+            "display_name": "Terminal/CFS Name",
+            "field_type": "string",
+            "description": "Name of the terminal or CFS for pickup",
+            "required": false,
+            "extraction_hints": [
+                "Terminal",
+                "CFS",
+                "Warehouse"
+            ],
+            "entity_type": "organization"
+        },
+        {
+            "field_name": "terminal_address",
+            "display_name": "Terminal Address",
+            "field_type": "address",
+            "description": "Address for cargo pickup",
+            "required": false,
+            "entity_type": "location"
+        },
+        {
+            "field_name": "pickup_instructions",
+            "display_name": "Pickup Instructions",
+            "field_type": "string",
+            "description": "Special instructions for cargo pickup",
+            "required": false,
+            "extraction_hints": [
+                "Instructions",
+                "Pickup",
+                "Release"
+            ]
+        },
+        {
+            "field_name": "total_charges",
+            "display_name": "Total Charges Due",
+            "field_type": "decimal",
+            "description": "Total amount due before release",
+            "required": false,
+            "extraction_hints": [
+                "Total",
+                "Amount Due",
+                "Charges"
+            ],
+            "entity_type": "money"
+        }
+    ]
+}

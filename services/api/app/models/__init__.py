@@ -103,6 +103,10 @@ from app.models.production_ready import (
     OrganizationSubscription, SubscriptionTier, SubscriptionStatus,
     SUBSCRIPTION_TIERS
 )
+# Platform Hardening (Feb 2026)
+from app.models.api_key import ApiKey
+from app.models.notification import Notification
+from app.models.webhook import WebhookEndpoint, WebhookDelivery
 
 __all__ = [
     "StorageConfig",
@@ -281,4 +285,9 @@ __all__ = [
     "SubscriptionTier",
     "SubscriptionStatus",
     "SUBSCRIPTION_TIERS",
+    # Platform Hardening (Feb 2026)
+    "ApiKey",
+    "Notification",
+    "WebhookEndpoint",
+    "WebhookDelivery",
 ]

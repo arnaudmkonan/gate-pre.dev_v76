@@ -1,0 +1,330 @@
+{
+    "template_name": "Delivery Order",
+    "template_type": "field_list",
+    "document_type": "delivery_order",
+    "description": "Extracts key fields from Delivery Order documents. Used to authorize release of cargo from terminals, warehouses, or carriers.",
+    "version": "1.0.0",
+    "confidence_threshold": 0.75,
+    "classification_categories": [
+        "delivery",
+        "release",
+        "shipping",
+        "freight"
+    ],
+    "matching_keywords": [
+        "delivery order",
+        "release order",
+        "pickup authorization",
+        "freight release",
+        "cargo release",
+        "D/O",
+        "delivery instructions"
+    ],
+    "field_definitions": [
+        {
+            "field_name": "delivery_order_number",
+            "display_name": "Delivery Order Number",
+            "field_type": "string",
+            "description": "Unique delivery order reference number",
+            "required": false,
+            "extraction_hints": [
+                "D/O No",
+                "DO Number",
+                "Reference"
+            ],
+            "entity_type": "document_id"
+        },
+        {
+            "field_name": "issue_date",
+            "display_name": "Issue Date",
+            "field_type": "date",
+            "description": "Date the delivery order was issued",
+            "required": true,
+            "extraction_hints": [
+                "Date",
+                "Issue Date",
+                "Issued"
+            ],
+            "entity_type": "date"
+        },
+        {
+            "field_name": "expiry_date",
+            "display_name": "Expiry Date",
+            "field_type": "date",
+            "description": "Date the delivery order expires",
+            "required": false,
+            "extraction_hints": [
+                "Expiry",
+                "Valid Until",
+                "Expires"
+            ],
+            "entity_type": "date"
+        },
+        {
+            "field_name": "bl_number",
+            "display_name": "Bill of Lading Number",
+            "field_type": "string",
+            "description": "Reference bill of lading",
+            "required": true,
+            "extraction_hints": [
+                "B/L",
+                "BOL",
+                "Bill of Lading"
+            ],
+            "entity_type": "document_id"
+        },
+        {
+            "field_name": "entry_number",
+            "display_name": "Entry Number",
+            "field_type": "string",
+            "description": "Customs entry number",
+            "required": false,
+            "extraction_hints": [
+                "Entry",
+                "Entry No"
+            ],
+            "entity_type": "document_id"
+        },
+        {
+            "field_name": "carrier_name",
+            "display_name": "Carrier/Shipping Line",
+            "field_type": "string",
+            "description": "Name of the carrier or shipping line",
+            "required": false,
+            "extraction_hints": [
+                "Carrier",
+                "Shipping Line",
+                "Line"
+            ],
+            "entity_type": "organization"
+        },
+        {
+            "field_name": "issuing_party_name",
+            "display_name": "Issuing Party Name",
+            "field_type": "string",
+            "description": "Company issuing the delivery order",
+            "required": true,
+            "extraction_hints": [
+                "Issued By",
+                "From",
+                "Forwarder"
+            ],
+            "entity_type": "organization"
+        },
+        {
+            "field_name": "consignee_name",
+            "display_name": "Consignee Name",
+            "field_type": "string",
+            "description": "Name of the consignee",
+            "required": true,
+            "extraction_hints": [
+                "Consignee",
+                "Deliver To",
+                "Receiver"
+            ],
+            "entity_type": "organization"
+        },
+        {
+            "field_name": "consignee_address",
+            "display_name": "Consignee Address",
+            "field_type": "address",
+            "description": "Address of the consignee",
+            "required": false,
+            "entity_type": "location"
+        },
+        {
+            "field_name": "notify_party",
+            "display_name": "Notify Party",
+            "field_type": "string",
+            "description": "Party to be notified",
+            "required": false,
+            "extraction_hints": [
+                "Notify",
+                "Notify Party"
+            ],
+            "entity_type": "organization"
+        },
+        {
+            "field_name": "pickup_location_name",
+            "display_name": "Pickup Location Name",
+            "field_type": "string",
+            "description": "Name of terminal, warehouse, or CFS",
+            "required": true,
+            "extraction_hints": [
+                "Terminal",
+                "Warehouse",
+                "CFS",
+                "Pickup At"
+            ],
+            "entity_type": "organization"
+        },
+        {
+            "field_name": "pickup_location_address",
+            "display_name": "Pickup Location Address",
+            "field_type": "address",
+            "description": "Address for cargo pickup",
+            "required": true,
+            "entity_type": "location"
+        },
+        {
+            "field_name": "delivery_address",
+            "display_name": "Delivery Address",
+            "field_type": "address",
+            "description": "Final delivery destination",
+            "required": false,
+            "extraction_hints": [
+                "Deliver To",
+                "Delivery Address",
+                "Destination"
+            ],
+            "entity_type": "location"
+        },
+        {
+            "field_name": "container_numbers",
+            "display_name": "Container Numbers",
+            "field_type": "array",
+            "description": "Container numbers to be released",
+            "required": false,
+            "extraction_hints": [
+                "Container",
+                "Equipment"
+            ],
+            "nested_fields": [
+                {
+                    "field_name": "container_number",
+                    "display_name": "Container Number",
+                    "field_type": "string",
+                    "validation_regex": "^[A-Z]{4}[0-9]{7}$"
+                },
+                {
+                    "field_name": "seal_number",
+                    "display_name": "Seal Number",
+                    "field_type": "string"
+                }
+            ]
+        },
+        {
+            "field_name": "cargo_description",
+            "display_name": "Cargo Description",
+            "field_type": "string",
+            "description": "Description of the cargo",
+            "required": false,
+            "extraction_hints": [
+                "Description",
+                "Goods",
+                "Cargo"
+            ]
+        },
+        {
+            "field_name": "total_packages",
+            "display_name": "Total Packages",
+            "field_type": "integer",
+            "description": "Number of packages/pieces",
+            "required": false,
+            "extraction_hints": [
+                "Packages",
+                "Pieces",
+                "Quantity"
+            ],
+            "entity_type": "quantity"
+        },
+        {
+            "field_name": "gross_weight",
+            "display_name": "Gross Weight",
+            "field_type": "decimal",
+            "description": "Total gross weight",
+            "required": false,
+            "extraction_hints": [
+                "Weight",
+                "Gross Weight"
+            ],
+            "entity_type": "quantity"
+        },
+        {
+            "field_name": "trucking_company",
+            "display_name": "Trucking Company Name",
+            "field_type": "string",
+            "description": "Authorized trucking company for pickup",
+            "required": false,
+            "extraction_hints": [
+                "Trucker",
+                "Trucking",
+                "Drayage"
+            ],
+            "entity_type": "organization"
+        },
+        {
+            "field_name": "driver_name",
+            "display_name": "Driver Name",
+            "field_type": "string",
+            "description": "Name of authorized driver",
+            "required": false,
+            "extraction_hints": [
+                "Driver",
+                "Pickup By"
+            ],
+            "entity_type": "person"
+        },
+        {
+            "field_name": "driver_license",
+            "display_name": "Driver License Number",
+            "field_type": "string",
+            "description": "Driver's license number",
+            "required": false,
+            "extraction_hints": [
+                "License",
+                "DL"
+            ],
+            "entity_type": "document_id"
+        },
+        {
+            "field_name": "truck_number",
+            "display_name": "Truck/Trailer Number",
+            "field_type": "string",
+            "description": "Vehicle or trailer number",
+            "required": false,
+            "extraction_hints": [
+                "Truck",
+                "Trailer",
+                "Vehicle"
+            ]
+        },
+        {
+            "field_name": "special_instructions",
+            "display_name": "Special Instructions",
+            "field_type": "string",
+            "description": "Special handling or delivery instructions",
+            "required": false,
+            "extraction_hints": [
+                "Instructions",
+                "Notes",
+                "Remarks"
+            ]
+        },
+        {
+            "field_name": "customs_released",
+            "display_name": "Customs Released",
+            "field_type": "boolean",
+            "description": "Whether goods have been released by customs",
+            "required": false,
+            "extraction_hints": [
+                "Customs Clear",
+                "Released",
+                "CBP Released"
+            ],
+            "default_value": false
+        },
+        {
+            "field_name": "freight_released",
+            "display_name": "Freight Released",
+            "field_type": "boolean",
+            "description": "Whether freight charges have been paid/released",
+            "required": false,
+            "extraction_hints": [
+                "Freight Released",
+                "Freight Paid"
+            ],
+            "default_value": false
+        }
+    ]
+}

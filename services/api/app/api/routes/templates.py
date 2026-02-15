@@ -352,12 +352,29 @@ async def seed_templates(
     """
     Seed predefined document type templates into the database.
     
-    This loads the 5 core document templates for Customs & Trade:
+    Loads the complete set of Customs Brokerage workflow templates:
+    
+    **Setup Phase:**
+    - Power of Attorney (POA)
+    - Customs Bond
+    
+    **Pre-Loading Phase:**
     - Commercial Invoice
+    - ISF Filing (10+2)
+    - Purchase Order
+    
+    **In Transit Phase:**
+    - Arrival Notice
     - Bill of Lading
     - Packing List
+    
+    **Arrival/Clearance Phase:**
+    - Entry Manifest (CBP 3461)
     - Customs Entry (CBP 7501)
-    - Purchase Order
+    
+    **Final Delivery Phase:**
+    - Delivery Order
+    - Broker Invoice (Billing of Services)
     
     Use force_update=true to update existing templates with latest definitions.
     """

@@ -1,0 +1,318 @@
+{
+    "template_name": "Entry Manifest (CBP 3461)",
+    "template_type": "field_list",
+    "document_type": "entry_manifest",
+    "description": "Extracts key fields from CBP Form 3461 Entry/Immediate Delivery documents. Used to secure release of goods before full entry summary filing.",
+    "version": "1.0.0",
+    "confidence_threshold": 0.80,
+    "classification_categories": [
+        "customs",
+        "entry",
+        "cbp",
+        "manifest"
+    ],
+    "matching_keywords": [
+        "CBP 3461",
+        "entry manifest",
+        "immediate delivery",
+        "entry/immediate delivery",
+        "release",
+        "entry number",
+        "port of entry"
+    ],
+    "field_definitions": [
+        {
+            "field_name": "entry_number",
+            "display_name": "Entry Number",
+            "field_type": "string",
+            "description": "11-digit customs entry number",
+            "required": true,
+            "validation_regex": "^[A-Z0-9]{3}[0-9]{8}$",
+            "extraction_hints": [
+                "Entry Number",
+                "Entry No",
+                "Entry #"
+            ],
+            "entity_type": "document_id"
+        },
+        {
+            "field_name": "entry_type",
+            "display_name": "Entry Type",
+            "field_type": "string",
+            "description": "Type of entry (01, 06, 11, etc.)",
+            "required": true,
+            "extraction_hints": [
+                "Entry Type",
+                "Type"
+            ],
+            "validation_regex": "^[0-9]{2}$"
+        },
+        {
+            "field_name": "entry_date",
+            "display_name": "Entry Date",
+            "field_type": "date",
+            "description": "Date of entry filing",
+            "required": true,
+            "extraction_hints": [
+                "Entry Date",
+                "Date"
+            ],
+            "entity_type": "date"
+        },
+        {
+            "field_name": "port_code",
+            "display_name": "Port of Entry Code",
+            "field_type": "string",
+            "description": "4-digit port code",
+            "required": true,
+            "validation_regex": "^[0-9]{4}$",
+            "extraction_hints": [
+                "Port",
+                "Port Code",
+                "POE"
+            ]
+        },
+        {
+            "field_name": "arrival_date",
+            "display_name": "Arrival Date",
+            "field_type": "date",
+            "description": "Date of arrival at port",
+            "required": true,
+            "extraction_hints": [
+                "Arrival Date",
+                "Date of Arrival"
+            ],
+            "entity_type": "date"
+        },
+        {
+            "field_name": "importer_of_record_name",
+            "display_name": "Importer of Record Name",
+            "field_type": "string",
+            "description": "Name of the importer of record",
+            "required": true,
+            "extraction_hints": [
+                "Importer",
+                "IOR",
+                "Importer of Record"
+            ],
+            "entity_type": "organization"
+        },
+        {
+            "field_name": "importer_of_record_number",
+            "display_name": "Importer of Record Number",
+            "field_type": "string",
+            "description": "EIN/IRS number of importer",
+            "required": true,
+            "extraction_hints": [
+                "IOR No",
+                "EIN",
+                "Importer Number"
+            ],
+            "entity_type": "document_id"
+        },
+        {
+            "field_name": "importer_address",
+            "display_name": "Importer Address",
+            "field_type": "address",
+            "description": "Address of the importer of record",
+            "required": false,
+            "entity_type": "location"
+        },
+        {
+            "field_name": "consignee_name",
+            "display_name": "Consignee Name",
+            "field_type": "string",
+            "description": "Name of the ultimate consignee",
+            "required": false,
+            "extraction_hints": [
+                "Consignee",
+                "Ultimate Consignee"
+            ],
+            "entity_type": "organization"
+        },
+        {
+            "field_name": "carrier_code",
+            "display_name": "Carrier Code",
+            "field_type": "string",
+            "description": "SCAC code of the carrier",
+            "required": true,
+            "extraction_hints": [
+                "Carrier",
+                "SCAC",
+                "Carrier Code"
+            ]
+        },
+        {
+            "field_name": "mode_of_transport",
+            "display_name": "Mode of Transport",
+            "field_type": "string",
+            "description": "Mode code (10=Vessel, 40=Air, 11=Truck)",
+            "required": true,
+            "extraction_hints": [
+                "Mode",
+                "MOT",
+                "Transport Mode"
+            ]
+        },
+        {
+            "field_name": "bl_number",
+            "display_name": "Bill of Lading Number",
+            "field_type": "string",
+            "description": "Master B/L or AWB number",
+            "required": true,
+            "extraction_hints": [
+                "B/L",
+                "BOL",
+                "AWB",
+                "IT/BL"
+            ],
+            "entity_type": "document_id"
+        },
+        {
+            "field_name": "vessel_name",
+            "display_name": "Vessel/Carrier Name",
+            "field_type": "string",
+            "description": "Name of the vessel or conveyance",
+            "required": false,
+            "extraction_hints": [
+                "Vessel",
+                "Carrier Name",
+                "Conveyance"
+            ]
+        },
+        {
+            "field_name": "country_of_origin",
+            "display_name": "Country of Origin",
+            "field_type": "string",
+            "description": "Country where goods were manufactured",
+            "required": true,
+            "extraction_hints": [
+                "Origin",
+                "Country of Origin"
+            ],
+            "entity_type": "location"
+        },
+        {
+            "field_name": "exporting_country",
+            "display_name": "Exporting Country",
+            "field_type": "string",
+            "description": "Country from which goods were exported",
+            "required": false,
+            "extraction_hints": [
+                "Exporting Country",
+                "Export Country"
+            ],
+            "entity_type": "location"
+        },
+        {
+            "field_name": "manifest_quantity",
+            "display_name": "Manifest Quantity",
+            "field_type": "integer",
+            "description": "Number of packages/pieces",
+            "required": false,
+            "extraction_hints": [
+                "Quantity",
+                "Packages",
+                "Pieces"
+            ],
+            "entity_type": "quantity"
+        },
+        {
+            "field_name": "description_of_merchandise",
+            "display_name": "Description of Merchandise",
+            "field_type": "string",
+            "description": "Brief description of the goods",
+            "required": true,
+            "extraction_hints": [
+                "Description",
+                "Merchandise",
+                "Goods"
+            ]
+        },
+        {
+            "field_name": "gross_weight",
+            "display_name": "Gross Weight",
+            "field_type": "decimal",
+            "description": "Total gross weight",
+            "required": false,
+            "extraction_hints": [
+                "Weight",
+                "Gross Weight"
+            ],
+            "entity_type": "quantity"
+        },
+        {
+            "field_name": "broker_name",
+            "display_name": "Customs Broker Name",
+            "field_type": "string",
+            "description": "Name of the filing broker",
+            "required": false,
+            "extraction_hints": [
+                "Broker",
+                "Filer",
+                "Customs Broker"
+            ],
+            "entity_type": "organization"
+        },
+        {
+            "field_name": "broker_filer_code",
+            "display_name": "Filer Code",
+            "field_type": "string",
+            "description": "3-character broker filer code",
+            "required": false,
+            "extraction_hints": [
+                "Filer Code",
+                "Filer ID"
+            ],
+            "validation_regex": "^[A-Z]{3}$"
+        },
+        {
+            "field_name": "bond_type",
+            "display_name": "Bond Type",
+            "field_type": "string",
+            "description": "Type of bond (Continuous, Single Transaction)",
+            "required": false,
+            "extraction_hints": [
+                "Bond",
+                "Bond Type"
+            ]
+        },
+        {
+            "field_name": "surety_code",
+            "display_name": "Surety Code",
+            "field_type": "string",
+            "description": "3-digit surety code",
+            "required": false,
+            "extraction_hints": [
+                "Surety",
+                "Surety Code"
+            ],
+            "validation_regex": "^[0-9]{3}$"
+        },
+        {
+            "field_name": "location_of_goods",
+            "display_name": "Location of Goods",
+            "field_type": "string",
+            "description": "FIRMS code or location where goods are held",
+            "required": false,
+            "extraction_hints": [
+                "Location",
+                "FIRMS Code",
+                "Warehouse"
+            ]
+        },
+        {
+            "field_name": "release_certification",
+            "display_name": "Release Certification",
+            "field_type": "boolean",
+            "description": "Whether goods are certified for immediate release",
+            "required": false,
+            "extraction_hints": [
+                "Certified",
+                "Release",
+                "Immediate Delivery"
+            ],
+            "default_value": false
+        }
+    ]
+}

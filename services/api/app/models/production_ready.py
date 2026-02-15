@@ -154,7 +154,6 @@ class HelpArticle(BaseModel):
     not_helpful_count = Column(Integer, default=0, nullable=False)
     
     __table_args__ = (
-        Index("ix_help_articles_category", "category"),
         Index("ix_help_articles_published", "is_published"),
     )
     

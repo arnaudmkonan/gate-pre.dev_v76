@@ -25,6 +25,8 @@ import {
     Lock,
     Globe,
     Info,
+    Ship,
+    Package,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/Card'
 import { Button } from '../components/Button'
@@ -40,6 +42,7 @@ import {
     isValidPortCode,
     isValidSuretyCode,
 } from '../hooks/useACESettings'
+import { API_BASE } from '../config/api'
 
 // Hardcoded org ID for demo - in production this would come from auth context
 const DEFAULT_ORG_ID = 'c2a0e8c4-d6b0-4f5e-a8c2-e4f6b0d8c2a4'
@@ -269,6 +272,48 @@ export const ACESettingsPage = () => {
     const [isEditing, setIsEditing] = useState(false)
     const [showAddFilerCode, setShowAddFilerCode] = useState(false)
     const [formData, setFormData] = useState<Partial<ACESettings>>({})
+
+    // Shipment Assembly Settings
+    const [assemblyMode, setAssemblyMode] = useState<'auto' | 'manual' | 'assisted'>('manual')
+    const [autoAcceptThreshold, setAutoAcceptThreshold] = useState(0.9)
+    const [assemblyLoading, setAssemblyLoading] = useState(false)
+
+    // Fetch assembly mode on mount
+    useEffect(() => {
+        const fetchAssemblyMode = async () => {
+            try {
+                const response = await fetch(`${API_BASE}/api/shipments/assembly-mode`)
+                if (response.ok) {
+                    const data = await response.json()
+                    setAssemblyMode(data.assembly_mode || 'manual')
+                    setAutoAcceptThreshold(data.auto_accept_threshold || 0.9)
+                }
+            } catch {
+                // Default to manual if fetch fails
+            }
+        }
+        fetchAssemblyMode()
+    }, [])
+
+    const handleSaveAssemblyMode = async () => {
+        setAssemblyLoading(true)
+        try {
+            const response = await fetch(`${API_BASE}/api/shipments/assembly-mode`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    assembly_mode: assemblyMode,
+                    auto_accept_threshold: autoAcceptThreshold
+                })
+            })
+            if (!response.ok) throw new Error('Failed to update')
+            // Show success (could add toast notification here)
+        } catch (err) {
+            console.error('Failed to save assembly mode:', err)
+        } finally {
+            setAssemblyLoading(false)
+        }
+    }
 
     // Initialize form data when settings load
     useEffect(() => {
@@ -633,6 +678,88 @@ export const ACESettingsPage = () => {
                                     {settings?.require_dual_approval ? 'Required' : 'Not Required'}
                                 </span>
                             )}
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Shipment Assembly Settings */}
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Ship className="w-5 h-5" />
+                        Shipment Assembly
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Assembly Mode
+                            </label>
+                            <div className="grid grid-cols-3 gap-3">
+                                {[
+                                    { value: 'auto', label: 'Automatic', desc: 'Auto-accept high confidence matches' },
+                                    { value: 'assisted', label: 'Assisted', desc: 'Suggest groupings for review' },
+                                    { value: 'manual', label: 'Manual', desc: 'Create shipments manually' },
+                                ].map(({ value, label, desc }) => (
+                                    <button
+                                        key={value}
+                                        type="button"
+                                        onClick={() => setAssemblyMode(value as 'auto' | 'assisted' | 'manual')}
+                                        className={`p-4 border rounded-lg text-left transition-colors ${assemblyMode === value
+                                            ? 'border-blue-500 bg-blue-50'
+                                            : 'border-gray-200 hover:border-gray-300'
+                                            }`}
+                                    >
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <div className={`w-3 h-3 rounded-full ${assemblyMode === value ? 'bg-blue-500' : 'bg-gray-300'
+                                                }`} />
+                                            <span className="font-medium">{label}</span>
+                                        </div>
+                                        <p className="text-xs text-gray-500">{desc}</p>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {assemblyMode === 'auto' && (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Auto-Accept Threshold: {Math.round(autoAcceptThreshold * 100)}%
+                                </label>
+                                <input
+                                    type="range"
+                                    min="0.5"
+                                    max="1"
+                                    step="0.05"
+                                    value={autoAcceptThreshold}
+                                    onChange={(e) => setAutoAcceptThreshold(parseFloat(e.target.value))}
+                                    className="w-full"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">
+                                    Suggestions with confidence above this threshold will be auto-accepted
+                                </p>
+                            </div>
+                        )}
+
+                        <div className="flex items-center justify-between pt-4 border-t">
+                            <div className="flex items-center gap-2 text-sm text-gray-500">
+                                <Package className="w-4 h-4" />
+                                <span>Currently: <strong className="capitalize">{assemblyMode}</strong> mode</span>
+                            </div>
+                            <Button
+                                onClick={handleSaveAssemblyMode}
+                                disabled={assemblyLoading}
+                                size="sm"
+                            >
+                                {assemblyLoading ? (
+                                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                                ) : (
+                                    <Save className="w-4 h-4 mr-2" />
+                                )}
+                                Save Assembly Settings
+                            </Button>
                         </div>
                     </div>
                 </CardContent>

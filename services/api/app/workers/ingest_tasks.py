@@ -6,7 +6,6 @@ from uuid import UUID
 from sqlalchemy import select
 
 from app.core.celery_app import celery_app
-from app.core.database import get_async_session
 from app.models.raw_file import RawFile, RawFileStatus
 
 logger = logging.getLogger(__name__)

@@ -20,7 +20,7 @@ import {
   useSyncExamples,
 } from '../hooks/useFeedback';
 
-const API_URL = 'http://localhost:8000';
+import { API_URL } from '../config/api';
 
 interface Template {
   id: string;

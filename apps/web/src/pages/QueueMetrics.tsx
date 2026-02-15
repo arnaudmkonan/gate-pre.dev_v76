@@ -4,7 +4,7 @@ import { Button } from '../components/Button'
 import axios from 'axios'
 import { RefreshCw } from 'lucide-react'
 
-const API_URL = 'http://localhost:8000'
+import { API_URL } from '../config/api'
 
 interface QueueStatus {
   pending: number

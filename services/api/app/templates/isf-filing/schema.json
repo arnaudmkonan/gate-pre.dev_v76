@@ -1,0 +1,343 @@
+{
+    "template_name": "ISF Filing (10+2)",
+    "template_type": "field_list",
+    "document_type": "isf_filing",
+    "description": "Extracts key fields from Importer Security Filing (ISF) 10+2 documents. Captures the 10 importer data elements and 2 carrier elements required for ocean freight.",
+    "version": "1.0.0",
+    "confidence_threshold": 0.80,
+    "classification_categories": [
+        "isf",
+        "security",
+        "customs",
+        "ocean"
+    ],
+    "matching_keywords": [
+        "ISF",
+        "Importer Security Filing",
+        "10+2",
+        "security filing",
+        "AMS",
+        "CBP",
+        "ship to party",
+        "manufacturer",
+        "container stuffing"
+    ],
+    "field_definitions": [
+        {
+            "field_name": "isf_transaction_number",
+            "display_name": "ISF Transaction Number",
+            "field_type": "string",
+            "description": "CBP-assigned ISF transaction number",
+            "required": false,
+            "extraction_hints": [
+                "ISF No",
+                "Transaction Number",
+                "ISF ID"
+            ],
+            "entity_type": "document_id"
+        },
+        {
+            "field_name": "filing_type",
+            "display_name": "Filing Type",
+            "field_type": "string",
+            "description": "Type of ISF (ISF-10, ISF-5)",
+            "required": true,
+            "extraction_hints": [
+                "Type",
+                "ISF-10",
+                "ISF-5"
+            ],
+            "default_value": "ISF-10"
+        },
+        {
+            "field_name": "filing_date",
+            "display_name": "Filing Date",
+            "field_type": "date",
+            "description": "Date the ISF was filed",
+            "required": true,
+            "extraction_hints": [
+                "Filing Date",
+                "Submitted",
+                "Date"
+            ],
+            "entity_type": "date"
+        },
+        {
+            "field_name": "estimated_arrival_date",
+            "display_name": "Estimated Arrival Date",
+            "field_type": "date",
+            "description": "Expected arrival date at first US port",
+            "required": true,
+            "extraction_hints": [
+                "ETA",
+                "Arrival Date",
+                "Estimated Arrival"
+            ],
+            "entity_type": "date"
+        },
+        {
+            "field_name": "bl_number",
+            "display_name": "Bill of Lading Number",
+            "field_type": "string",
+            "description": "Master or house bill of lading number",
+            "required": true,
+            "extraction_hints": [
+                "B/L",
+                "BOL",
+                "Bill of Lading"
+            ],
+            "entity_type": "document_id"
+        },
+        {
+            "field_name": "seller_name",
+            "display_name": "Seller Name",
+            "field_type": "string",
+            "description": "Name and address of the seller/supplier",
+            "required": true,
+            "extraction_hints": [
+                "Seller",
+                "Vendor",
+                "Supplier"
+            ],
+            "entity_type": "organization"
+        },
+        {
+            "field_name": "seller_address",
+            "display_name": "Seller Address",
+            "field_type": "address",
+            "description": "Complete address of the seller",
+            "required": true,
+            "entity_type": "location"
+        },
+        {
+            "field_name": "buyer_name",
+            "display_name": "Buyer Name",
+            "field_type": "string",
+            "description": "Name and address of the buyer",
+            "required": true,
+            "extraction_hints": [
+                "Buyer",
+                "Purchaser",
+                "Customer"
+            ],
+            "entity_type": "organization"
+        },
+        {
+            "field_name": "buyer_address",
+            "display_name": "Buyer Address",
+            "field_type": "address",
+            "description": "Complete address of the buyer",
+            "required": true,
+            "entity_type": "location"
+        },
+        {
+            "field_name": "importer_of_record_name",
+            "display_name": "Importer of Record Name",
+            "field_type": "string",
+            "description": "Name of the importer of record",
+            "required": true,
+            "extraction_hints": [
+                "Importer",
+                "IOR",
+                "Importer of Record"
+            ],
+            "entity_type": "organization"
+        },
+        {
+            "field_name": "importer_of_record_number",
+            "display_name": "Importer of Record Number",
+            "field_type": "string",
+            "description": "IRS/EIN of the importer of record",
+            "required": true,
+            "extraction_hints": [
+                "EIN",
+                "IOR Number",
+                "Importer Number"
+            ],
+            "entity_type": "document_id"
+        },
+        {
+            "field_name": "consignee_name",
+            "display_name": "Consignee Name",
+            "field_type": "string",
+            "description": "Name of the consignee",
+            "required": true,
+            "extraction_hints": [
+                "Consignee",
+                "Receiver"
+            ],
+            "entity_type": "organization"
+        },
+        {
+            "field_name": "consignee_number",
+            "display_name": "Consignee Number",
+            "field_type": "string",
+            "description": "ID number of the consignee",
+            "required": false,
+            "entity_type": "document_id"
+        },
+        {
+            "field_name": "ship_to_party_name",
+            "display_name": "Ship To Party Name",
+            "field_type": "string",
+            "description": "Name of the ship to party",
+            "required": true,
+            "extraction_hints": [
+                "Ship To",
+                "Delivery Address",
+                "Destination"
+            ],
+            "entity_type": "organization"
+        },
+        {
+            "field_name": "ship_to_party_address",
+            "display_name": "Ship To Party Address",
+            "field_type": "address",
+            "description": "Complete delivery address",
+            "required": true,
+            "entity_type": "location"
+        },
+        {
+            "field_name": "manufacturer_name",
+            "display_name": "Manufacturer Name",
+            "field_type": "string",
+            "description": "Name of the manufacturer",
+            "required": true,
+            "extraction_hints": [
+                "Manufacturer",
+                "Factory",
+                "Producer"
+            ],
+            "entity_type": "organization"
+        },
+        {
+            "field_name": "manufacturer_address",
+            "display_name": "Manufacturer Address",
+            "field_type": "address",
+            "description": "Complete manufacturer address",
+            "required": true,
+            "entity_type": "location"
+        },
+        {
+            "field_name": "manufacturer_id",
+            "display_name": "Manufacturer ID (MID)",
+            "field_type": "string",
+            "description": "CBP Manufacturer ID code",
+            "required": false,
+            "extraction_hints": [
+                "MID",
+                "Manufacturer ID"
+            ],
+            "entity_type": "document_id"
+        },
+        {
+            "field_name": "country_of_origin",
+            "display_name": "Country of Origin",
+            "field_type": "string",
+            "description": "Country where goods were manufactured",
+            "required": true,
+            "extraction_hints": [
+                "Origin",
+                "Country of Origin",
+                "COO"
+            ],
+            "entity_type": "location"
+        },
+        {
+            "field_name": "hts_numbers",
+            "display_name": "HTS Numbers",
+            "field_type": "array",
+            "description": "6-digit HTS classification numbers",
+            "required": true,
+            "extraction_hints": [
+                "HTS",
+                "Tariff",
+                "HS Code"
+            ],
+            "nested_fields": [
+                {
+                    "field_name": "hts_number",
+                    "display_name": "HTS Number",
+                    "field_type": "string",
+                    "validation_regex": "^[0-9]{6}$"
+                }
+            ]
+        },
+        {
+            "field_name": "container_stuffing_location_name",
+            "display_name": "Container Stuffing Location Name",
+            "field_type": "string",
+            "description": "Where the container was stuffed/loaded",
+            "required": true,
+            "extraction_hints": [
+                "Stuffing Location",
+                "Loading Location"
+            ],
+            "entity_type": "organization"
+        },
+        {
+            "field_name": "container_stuffing_location_address",
+            "display_name": "Container Stuffing Location Address",
+            "field_type": "address",
+            "description": "Address where container was stuffed",
+            "required": true,
+            "entity_type": "location"
+        },
+        {
+            "field_name": "consolidator_name",
+            "display_name": "Consolidator Name",
+            "field_type": "string",
+            "description": "Name of the consolidator (if applicable)",
+            "required": false,
+            "extraction_hints": [
+                "Consolidator",
+                "Forwarder"
+            ],
+            "entity_type": "organization"
+        },
+        {
+            "field_name": "vessel_name",
+            "display_name": "Vessel Name",
+            "field_type": "string",
+            "description": "Name of the ocean vessel (Carrier element)",
+            "required": false,
+            "extraction_hints": [
+                "Vessel",
+                "Ship"
+            ],
+            "entity_type": "string"
+        },
+        {
+            "field_name": "vessel_country",
+            "display_name": "Vessel Country of Registration",
+            "field_type": "string",
+            "description": "Country where vessel is registered",
+            "required": false,
+            "extraction_hints": [
+                "Flag",
+                "Vessel Country",
+                "Registration"
+            ],
+            "entity_type": "location"
+        },
+        {
+            "field_name": "container_numbers",
+            "display_name": "Container Numbers",
+            "field_type": "array",
+            "description": "Container numbers in the shipment",
+            "required": false,
+            "extraction_hints": [
+                "Container",
+                "Equipment"
+            ],
+            "nested_fields": [
+                {
+                    "field_name": "container_number",
+                    "display_name": "Container Number",
+                    "field_type": "string",
+                    "validation_regex": "^[A-Z]{4}[0-9]{7}$"
+                }
+            ]
+        }
+    ]
+}

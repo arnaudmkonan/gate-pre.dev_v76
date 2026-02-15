@@ -210,7 +210,35 @@ async def _run_agent_pipeline_async(document_id: str, pipeline_type: str) -> Dic
     except Exception as e:
         logger.warning(f"Failed to trigger entity resolution: {e}")
 
+    # Trigger Trade Document Extraction for trade-related documents
+    try:
+        filename = context.filename.lower() if context.filename else ""
+        trade_keywords = ['invoice', 'bl', 'bol', 'bill', 'lading', 'packing', 
+                         'arrival', 'customs', 'entry', 'certificate', 'origin', 
+                         'manifest', 'commercial', 'shipment', 'cargo']
+        is_trade_doc = any(kw in filename for kw in trade_keywords)
+        
+        if is_trade_doc:
+            from app.workers.trade_extraction_worker import extract_trade_document
+            # Chain: trade extraction -> shipment assembly
+            extract_trade_document.apply_async(
+                args=[document_id],
+                link=_get_shipment_assembly_task(document_id)
+            )
+            logger.info(f"Triggered trade extraction pipeline for {context.filename}")
+        else:
+            logger.debug(f"Skipping trade extraction for non-trade doc: {context.filename}")
+    except Exception as e:
+        logger.warning(f"Failed to trigger trade extraction: {e}")
+
     return output
+
+
+def _get_shipment_assembly_task(document_id: str):
+    """Get the shipment assembly task signature for chaining."""
+    from app.workers.shipment_assembly_worker import process_shipment_assembly
+    return process_shipment_assembly.s(document_id)
+
 
 def _store_agent_results(document_id: str, results: Dict):
     """Store agent results in the document metadata."""

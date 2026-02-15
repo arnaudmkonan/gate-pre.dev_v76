@@ -17,7 +17,7 @@ from app.schemas.monitoring import (
 )
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/monitoring", tags=["monitoring"])
+router = APIRouter(prefix="/api/monitoring", tags=["monitoring"])
 
 
 @router.get("/status", response_model=MonitoringStatusResponse)

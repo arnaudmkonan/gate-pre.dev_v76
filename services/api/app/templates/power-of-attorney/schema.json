@@ -1,0 +1,286 @@
+{
+    "template_name": "Power of Attorney",
+    "template_type": "field_list",
+    "document_type": "power_of_attorney",
+    "description": "Extracts key fields from Customs Power of Attorney forms. Captures grantor/grantee information, scope of authority, and effective dates.",
+    "version": "1.0.0",
+    "confidence_threshold": 0.80,
+    "classification_categories": [
+        "poa",
+        "legal",
+        "authorization",
+        "customs"
+    ],
+    "matching_keywords": [
+        "power of attorney",
+        "POA",
+        "customs power of attorney",
+        "CBP 5291",
+        "grantor",
+        "grantee",
+        "authorized agent",
+        "customs broker",
+        "attorney in fact"
+    ],
+    "field_definitions": [
+        {
+            "field_name": "poa_number",
+            "display_name": "POA Number/Reference",
+            "field_type": "string",
+            "description": "Reference number for the power of attorney",
+            "required": false,
+            "extraction_hints": [
+                "POA No",
+                "Reference",
+                "Document Number"
+            ],
+            "entity_type": "document_id"
+        },
+        {
+            "field_name": "effective_date",
+            "display_name": "Effective Date",
+            "field_type": "date",
+            "description": "Date when the POA becomes effective",
+            "required": true,
+            "extraction_hints": [
+                "Effective Date",
+                "Date",
+                "Dated"
+            ],
+            "entity_type": "date"
+        },
+        {
+            "field_name": "expiration_date",
+            "display_name": "Expiration Date",
+            "field_type": "date",
+            "description": "Date when the POA expires (if applicable)",
+            "required": false,
+            "extraction_hints": [
+                "Expiration Date",
+                "Expires",
+                "Valid Until"
+            ],
+            "entity_type": "date"
+        },
+        {
+            "field_name": "is_unlimited",
+            "display_name": "Unlimited Duration",
+            "field_type": "boolean",
+            "description": "Whether the POA has no expiration",
+            "required": false,
+            "extraction_hints": [
+                "unlimited",
+                "indefinite",
+                "until revoked"
+            ],
+            "default_value": true
+        },
+        {
+            "field_name": "grantor_name",
+            "display_name": "Grantor/Principal Name",
+            "field_type": "string",
+            "description": "Name of the company granting power of attorney",
+            "required": true,
+            "extraction_hints": [
+                "Grantor",
+                "Principal",
+                "Company Name",
+                "Importer"
+            ],
+            "entity_type": "organization"
+        },
+        {
+            "field_name": "grantor_address",
+            "display_name": "Grantor Address",
+            "field_type": "address",
+            "description": "Complete address of the grantor",
+            "required": true,
+            "entity_type": "location"
+        },
+        {
+            "field_name": "grantor_ein",
+            "display_name": "Grantor EIN/Tax ID",
+            "field_type": "string",
+            "description": "Employer Identification Number of the grantor",
+            "required": true,
+            "extraction_hints": [
+                "EIN",
+                "Tax ID",
+                "IRS Number",
+                "Federal ID"
+            ],
+            "validation_regex": "^[0-9]{2}-[0-9]{7}$",
+            "entity_type": "document_id"
+        },
+        {
+            "field_name": "grantor_ior_number",
+            "display_name": "Importer of Record Number",
+            "field_type": "string",
+            "description": "CBP-assigned importer of record number",
+            "required": false,
+            "extraction_hints": [
+                "IOR",
+                "Importer Number",
+                "CBP Number"
+            ],
+            "entity_type": "document_id"
+        },
+        {
+            "field_name": "grantee_name",
+            "display_name": "Grantee/Agent Name",
+            "field_type": "string",
+            "description": "Name of the customs broker receiving authority",
+            "required": true,
+            "extraction_hints": [
+                "Grantee",
+                "Agent",
+                "Customs Broker",
+                "Attorney in Fact"
+            ],
+            "entity_type": "organization"
+        },
+        {
+            "field_name": "grantee_address",
+            "display_name": "Grantee Address",
+            "field_type": "address",
+            "description": "Complete address of the grantee/broker",
+            "required": false,
+            "entity_type": "location"
+        },
+        {
+            "field_name": "grantee_license_number",
+            "display_name": "Broker License Number",
+            "field_type": "string",
+            "description": "Customs broker license number",
+            "required": false,
+            "extraction_hints": [
+                "License",
+                "License No",
+                "Broker License"
+            ],
+            "entity_type": "document_id"
+        },
+        {
+            "field_name": "grantee_filer_code",
+            "display_name": "Filer Code",
+            "field_type": "string",
+            "description": "3-character filer code",
+            "required": false,
+            "extraction_hints": [
+                "Filer Code",
+                "Filer ID"
+            ],
+            "validation_regex": "^[A-Z]{3}$"
+        },
+        {
+            "field_name": "scope_customs_business",
+            "display_name": "Customs Business Authority",
+            "field_type": "boolean",
+            "description": "Authority to transact customs business",
+            "required": false,
+            "extraction_hints": [
+                "customs business",
+                "make entry",
+                "file entries"
+            ],
+            "default_value": true
+        },
+        {
+            "field_name": "scope_claim_drawback",
+            "display_name": "Drawback Authority",
+            "field_type": "boolean",
+            "description": "Authority to claim drawback",
+            "required": false,
+            "extraction_hints": [
+                "drawback",
+                "claim drawback"
+            ],
+            "default_value": false
+        },
+        {
+            "field_name": "scope_pay_duties",
+            "display_name": "Duty Payment Authority",
+            "field_type": "boolean",
+            "description": "Authority to pay duties, taxes, and fees",
+            "required": false,
+            "extraction_hints": [
+                "pay duties",
+                "remit",
+                "payment"
+            ],
+            "default_value": true
+        },
+        {
+            "field_name": "scope_sign_documents",
+            "display_name": "Document Signing Authority",
+            "field_type": "boolean",
+            "description": "Authority to sign documents on behalf of grantor",
+            "required": false,
+            "extraction_hints": [
+                "sign",
+                "execute",
+                "endorse"
+            ],
+            "default_value": true
+        },
+        {
+            "field_name": "authorized_signatory_name",
+            "display_name": "Authorized Signatory Name",
+            "field_type": "string",
+            "description": "Name of person signing on behalf of the grantor",
+            "required": true,
+            "extraction_hints": [
+                "Signed By",
+                "Authorized Representative",
+                "Officer"
+            ],
+            "entity_type": "person"
+        },
+        {
+            "field_name": "authorized_signatory_title",
+            "display_name": "Authorized Signatory Title",
+            "field_type": "string",
+            "description": "Title of the authorized signatory",
+            "required": false,
+            "extraction_hints": [
+                "Title",
+                "Position",
+                "Officer"
+            ],
+            "entity_type": "string"
+        },
+        {
+            "field_name": "signature_date",
+            "display_name": "Signature Date",
+            "field_type": "date",
+            "description": "Date the POA was signed",
+            "required": true,
+            "extraction_hints": [
+                "Date Signed",
+                "Executed On"
+            ],
+            "entity_type": "date"
+        },
+        {
+            "field_name": "notarized",
+            "display_name": "Notarized",
+            "field_type": "boolean",
+            "description": "Whether the document is notarized",
+            "required": false,
+            "extraction_hints": [
+                "notary",
+                "notarized",
+                "notary public"
+            ],
+            "default_value": false
+        },
+        {
+            "field_name": "notary_date",
+            "display_name": "Notary Date",
+            "field_type": "date",
+            "description": "Date of notarization",
+            "required": false,
+            "entity_type": "date"
+        }
+    ]
+}

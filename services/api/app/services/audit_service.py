@@ -179,3 +179,69 @@ class AuditService:
             "cutoff_date": cutoff_date.isoformat(),
             "retention_days": AUDIT_LOG_RETENTION_DAYS,
         }
+
+
+# ============================================================================
+# Convenience functions for use in route handlers
+# ============================================================================
+
+async def audit(
+    db: "AsyncSession",
+    action: str,
+    resource_type: str,
+    resource_id: str,
+    actor_id: Optional[str] = None,
+    before: Optional[Dict] = None,
+    after: Optional[Dict] = None,
+    ip_address: Optional[str] = None,
+):
+    """
+    Quick audit log helper — call from any route handler.
+
+    Usage:
+        from app.services.audit_service import audit
+
+        @router.post("/{entry_id}")
+        async def update_entry(entry_id: str, ..., db = Depends(get_db)):
+            old_data = entry.to_dict()
+            entry.status = new_status
+            await audit(db, "update", "entry", entry_id,
+                        actor_id=user["id"], before=old_data, after=entry.to_dict())
+    """
+    changes = None
+    if before is not None and after is not None:
+        changes = track_changes(before, after)
+    elif after is not None:
+        changes = {"after": after}
+    elif before is not None:
+        changes = {"before": before}
+
+    return await AuditService.log_action(
+        session=db,
+        resource_type=resource_type,
+        resource_id=resource_id,
+        action=action,
+        actor_id=actor_id,
+        changes=changes,
+        ip_address=ip_address,
+    )
+
+
+def track_changes(before: Dict, after: Dict) -> Dict:
+    """
+    Compare before/after dicts and return only changed fields.
+
+    Returns: {"field_name": {"old": old_val, "new": new_val}, ...}
+    """
+    changes = {}
+    all_keys = set(list(before.keys()) + list(after.keys()))
+
+    for key in all_keys:
+        old_val = before.get(key)
+        new_val = after.get(key)
+        if str(old_val) != str(new_val):
+            changes[key] = {"old": str(old_val) if old_val is not None else None,
+                           "new": str(new_val) if new_val is not None else None}
+
+    return changes
+

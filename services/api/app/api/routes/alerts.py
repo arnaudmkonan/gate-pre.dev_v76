@@ -19,7 +19,7 @@ from app.schemas.alerts import (
 )
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/alerts", tags=["alerts"])
+router = APIRouter(prefix="/api/alerts", tags=["alerts"])
 
 
 @router.post("/rules", response_model=AlertRuleResponse)

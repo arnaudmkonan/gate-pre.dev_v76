@@ -15,7 +15,7 @@ from app.services.metadata.raw_metadata_service import RawMetadataService
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/internal/metadata", tags=["internal-metadata"])
+router = APIRouter(prefix="/api/internal/metadata", tags=["internal-metadata"])
 
 
 @router.post(

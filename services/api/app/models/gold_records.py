@@ -89,7 +89,7 @@ class Shipment(BaseModel):
     __table_args__ = (
         Index("ix_shipments_primary_key", "primary_key_type", "primary_key_value"),
         Index("ix_shipments_status", "status"),
-        Index("ix_shipments_importer_name", "importer_name"),
+        # Note: importer_name already has index=True on the column definition
     )
 
 

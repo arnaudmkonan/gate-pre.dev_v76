@@ -1,0 +1,374 @@
+{
+    "template_name": "Broker Invoice (Billing of Services)",
+    "template_type": "field_list",
+    "document_type": "broker_invoice",
+    "description": "Extracts key fields from Customs Broker invoices/billing statements. Captures brokerage fees, disbursements, duties, and service charges.",
+    "version": "1.0.0",
+    "confidence_threshold": 0.75,
+    "classification_categories": [
+        "invoice",
+        "billing",
+        "broker",
+        "services"
+    ],
+    "matching_keywords": [
+        "broker invoice",
+        "billing statement",
+        "invoice",
+        "brokerage fee",
+        "disbursement",
+        "customs charges",
+        "duty paid",
+        "service charges"
+    ],
+    "field_definitions": [
+        {
+            "field_name": "invoice_number",
+            "display_name": "Invoice Number",
+            "field_type": "string",
+            "description": "Unique invoice number",
+            "required": true,
+            "extraction_hints": [
+                "Invoice No",
+                "Invoice #",
+                "Bill No"
+            ],
+            "entity_type": "document_id"
+        },
+        {
+            "field_name": "invoice_date",
+            "display_name": "Invoice Date",
+            "field_type": "date",
+            "description": "Date the invoice was issued",
+            "required": true,
+            "extraction_hints": [
+                "Date",
+                "Invoice Date"
+            ],
+            "entity_type": "date"
+        },
+        {
+            "field_name": "due_date",
+            "display_name": "Due Date",
+            "field_type": "date",
+            "description": "Payment due date",
+            "required": false,
+            "extraction_hints": [
+                "Due Date",
+                "Payment Due",
+                "Due"
+            ],
+            "entity_type": "date"
+        },
+        {
+            "field_name": "payment_terms",
+            "display_name": "Payment Terms",
+            "field_type": "string",
+            "description": "Payment terms (Net 30, etc.)",
+            "required": false,
+            "extraction_hints": [
+                "Terms",
+                "Payment Terms",
+                "Net"
+            ]
+        },
+        {
+            "field_name": "broker_name",
+            "display_name": "Broker Name",
+            "field_type": "string",
+            "description": "Name of the customs broker",
+            "required": true,
+            "extraction_hints": [
+                "Broker",
+                "From",
+                "Billed By"
+            ],
+            "entity_type": "organization"
+        },
+        {
+            "field_name": "broker_address",
+            "display_name": "Broker Address",
+            "field_type": "address",
+            "description": "Address of the broker",
+            "required": false,
+            "entity_type": "location"
+        },
+        {
+            "field_name": "broker_license",
+            "display_name": "Broker License Number",
+            "field_type": "string",
+            "description": "Customs broker license number",
+            "required": false,
+            "extraction_hints": [
+                "License",
+                "License No"
+            ],
+            "entity_type": "document_id"
+        },
+        {
+            "field_name": "client_name",
+            "display_name": "Client/Bill To Name",
+            "field_type": "string",
+            "description": "Name of the client being billed",
+            "required": true,
+            "extraction_hints": [
+                "Bill To",
+                "Client",
+                "Customer",
+                "Importer"
+            ],
+            "entity_type": "organization"
+        },
+        {
+            "field_name": "client_address",
+            "display_name": "Client Address",
+            "field_type": "address",
+            "description": "Address of the client",
+            "required": false,
+            "entity_type": "location"
+        },
+        {
+            "field_name": "client_account_number",
+            "display_name": "Client Account Number",
+            "field_type": "string",
+            "description": "Client account reference",
+            "required": false,
+            "extraction_hints": [
+                "Account",
+                "Account No",
+                "Customer No"
+            ],
+            "entity_type": "document_id"
+        },
+        {
+            "field_name": "entry_number",
+            "display_name": "Entry Number",
+            "field_type": "string",
+            "description": "Customs entry number for this billing",
+            "required": false,
+            "extraction_hints": [
+                "Entry",
+                "Entry No",
+                "Entry Number"
+            ],
+            "entity_type": "document_id"
+        },
+        {
+            "field_name": "bl_number",
+            "display_name": "Bill of Lading Number",
+            "field_type": "string",
+            "description": "Reference B/L number",
+            "required": false,
+            "extraction_hints": [
+                "B/L",
+                "BOL"
+            ],
+            "entity_type": "document_id"
+        },
+        {
+            "field_name": "reference_number",
+            "display_name": "Reference Number",
+            "field_type": "string",
+            "description": "Client or shipment reference",
+            "required": false,
+            "extraction_hints": [
+                "Reference",
+                "Ref",
+                "PO"
+            ],
+            "entity_type": "document_id"
+        },
+        {
+            "field_name": "port_of_entry",
+            "display_name": "Port of Entry",
+            "field_type": "string",
+            "description": "Port where entry was filed",
+            "required": false,
+            "extraction_hints": [
+                "Port",
+                "Port of Entry"
+            ],
+            "entity_type": "location"
+        },
+        {
+            "field_name": "entry_date",
+            "display_name": "Entry Date",
+            "field_type": "date",
+            "description": "Date of customs entry",
+            "required": false,
+            "extraction_hints": [
+                "Entry Date"
+            ],
+            "entity_type": "date"
+        },
+        {
+            "field_name": "brokerage_fee",
+            "display_name": "Brokerage Fee",
+            "field_type": "decimal",
+            "description": "Base customs brokerage service fee",
+            "required": false,
+            "extraction_hints": [
+                "Brokerage",
+                "Brokerage Fee",
+                "Service Fee"
+            ],
+            "entity_type": "money"
+        },
+        {
+            "field_name": "duty_amount",
+            "display_name": "Duty Amount",
+            "field_type": "decimal",
+            "description": "Customs duties paid on behalf of client",
+            "required": false,
+            "extraction_hints": [
+                "Duty",
+                "Customs Duty",
+                "Duties"
+            ],
+            "entity_type": "money"
+        },
+        {
+            "field_name": "merchandise_processing_fee",
+            "display_name": "Merchandise Processing Fee (MPF)",
+            "field_type": "decimal",
+            "description": "MPF paid to CBP",
+            "required": false,
+            "extraction_hints": [
+                "MPF",
+                "Merchandise Processing"
+            ],
+            "entity_type": "money"
+        },
+        {
+            "field_name": "harbor_maintenance_fee",
+            "display_name": "Harbor Maintenance Fee (HMF)",
+            "field_type": "decimal",
+            "description": "HMF paid to CBP",
+            "required": false,
+            "extraction_hints": [
+                "HMF",
+                "Harbor Maintenance"
+            ],
+            "entity_type": "money"
+        },
+        {
+            "field_name": "isf_filing_fee",
+            "display_name": "ISF Filing Fee",
+            "field_type": "decimal",
+            "description": "Fee for ISF 10+2 filing",
+            "required": false,
+            "extraction_hints": [
+                "ISF",
+                "ISF Filing",
+                "Security Filing"
+            ],
+            "entity_type": "money"
+        },
+        {
+            "field_name": "line_items",
+            "display_name": "Service Line Items",
+            "field_type": "array",
+            "description": "Itemized charges and services",
+            "required": false,
+            "extraction_hints": [
+                "Charges",
+                "Services",
+                "Details"
+            ],
+            "nested_fields": [
+                {
+                    "field_name": "description",
+                    "display_name": "Description",
+                    "field_type": "string",
+                    "required": true
+                },
+                {
+                    "field_name": "charge_code",
+                    "display_name": "Charge Code",
+                    "field_type": "string"
+                },
+                {
+                    "field_name": "amount",
+                    "display_name": "Amount",
+                    "field_type": "decimal",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "field_name": "subtotal_services",
+            "display_name": "Subtotal - Services",
+            "field_type": "decimal",
+            "description": "Subtotal of brokerage service charges",
+            "required": false,
+            "extraction_hints": [
+                "Subtotal",
+                "Services Total"
+            ],
+            "entity_type": "money"
+        },
+        {
+            "field_name": "subtotal_disbursements",
+            "display_name": "Subtotal - Disbursements",
+            "field_type": "decimal",
+            "description": "Subtotal of duties/taxes/fees paid on behalf",
+            "required": false,
+            "extraction_hints": [
+                "Disbursements",
+                "Government Fees"
+            ],
+            "entity_type": "money"
+        },
+        {
+            "field_name": "tax_amount",
+            "display_name": "Tax Amount",
+            "field_type": "decimal",
+            "description": "Sales tax or other taxes on services",
+            "required": false,
+            "extraction_hints": [
+                "Tax",
+                "Sales Tax"
+            ],
+            "entity_type": "money"
+        },
+        {
+            "field_name": "total_amount",
+            "display_name": "Total Amount Due",
+            "field_type": "decimal",
+            "description": "Total invoice amount",
+            "required": true,
+            "extraction_hints": [
+                "Total",
+                "Total Due",
+                "Amount Due",
+                "Balance Due"
+            ],
+            "entity_type": "money"
+        },
+        {
+            "field_name": "currency",
+            "display_name": "Currency",
+            "field_type": "string",
+            "description": "Currency of the invoice",
+            "required": false,
+            "extraction_hints": [
+                "Currency",
+                "USD"
+            ],
+            "default_value": "USD"
+        },
+        {
+            "field_name": "remit_to_address",
+            "display_name": "Remit To Address",
+            "field_type": "address",
+            "description": "Address for sending payment",
+            "required": false,
+            "extraction_hints": [
+                "Remit To",
+                "Pay To",
+                "Send Payment"
+            ],
+            "entity_type": "location"
+        }
+    ]
+}

@@ -21,13 +21,25 @@ logger = logging.getLogger(__name__)
 # Base path for template definitions
 TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
 
-# Document types to load
+# Document types to load - Complete Customs Brokerage Workflow
+# Phase: Setup
 DOCUMENT_TYPES = [
-    "commercial-invoice",
-    "bill-of-lading",
-    "packing-list",
-    "customs-entry",
-    "purchase-order",
+    "power-of-attorney",     # POA - Importer authorizes broker
+    "customs-bond",          # Bond - Required for importing
+    # Phase: Pre-Loading
+    "commercial-invoice",    # Commercial Invoice from seller
+    "isf-filing",           # ISF 10+2 for ocean freight
+    "purchase-order",        # Purchase Order reference
+    # Phase: In Transit
+    "arrival-notice",        # Arrival Notice from carrier
+    "bill-of-lading",        # BOL - Transport document
+    "packing-list",          # Packing List
+    # Phase: Arrival/Clearance
+    "entry-manifest",        # CBP 3461 - Immediate Delivery
+    "customs-entry",         # CBP 7501 - Entry Summary
+    # Phase: Final Delivery
+    "delivery-order",        # Delivery Order - Cargo release
+    "broker-invoice",        # Broker Invoice - Billing of Services
 ]
 
 

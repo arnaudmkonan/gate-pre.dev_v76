@@ -17,7 +17,7 @@ from app.core.database import get_db
 from app.services.export_service import ExportService
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/export", tags=["Export"])
+router = APIRouter(prefix="/api/export", tags=["Export"])
 
 
 # Request/Response Models

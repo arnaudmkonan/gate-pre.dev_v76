@@ -102,6 +102,47 @@ class Settings(BaseSettings):
     # Environment
     environment: str = Field(default="development", alias="ENVIRONMENT")
 
+    # CORS Configuration
+    cors_origins: str = Field(
+        default="http://localhost:3000,http://localhost:3001,http://localhost:8080",
+        alias="CORS_ORIGINS",
+    )  # Comma-separated list of allowed origins
+
+    # Rate Limiting
+    rate_limit_enabled: bool = Field(default=True, alias="RATE_LIMIT_ENABLED")
+    rate_limit_default: str = Field(default="100/minute", alias="RATE_LIMIT_DEFAULT")
+    rate_limit_burst: str = Field(default="200/minute", alias="RATE_LIMIT_BURST")
+    rate_limit_storage_url: str = Field(default="memory://", alias="RATE_LIMIT_STORAGE")
+
+    # Customer Tier Rate Limits (requests per minute)
+    tier_starter_limit: int = Field(default=60, alias="TIER_STARTER_LIMIT")
+    tier_professional_limit: int = Field(default=200, alias="TIER_PROFESSIONAL_LIMIT")
+    tier_enterprise_limit: int = Field(default=1000, alias="TIER_ENTERPRISE_LIMIT")
+
+    # ACE Transmission (CBP SFTP)
+    ace_sftp_enabled: bool = Field(default=False, alias="ACE_SFTP_ENABLED")
+    ace_sftp_host: str = Field(default="", alias="ACE_SFTP_HOST")
+    ace_sftp_port: int = Field(default=22, alias="ACE_SFTP_PORT")
+    ace_sftp_user: str = Field(default="", alias="ACE_SFTP_USER")
+    ace_sftp_key_path: str = Field(default="", alias="ACE_SFTP_KEY_PATH")
+    ace_upload_path: str = Field(default="/incoming", alias="ACE_UPLOAD_PATH")
+    ace_response_path: str = Field(default="/outgoing", alias="ACE_RESPONSE_PATH")
+
+    # SMTP / Email
+    smtp_host: str = Field(default="", alias="SMTP_HOST")
+    smtp_port: int = Field(default=587, alias="SMTP_PORT")
+    smtp_username: str = Field(default="", alias="SMTP_USERNAME")
+    smtp_password: str = Field(default="", alias="SMTP_PASSWORD")
+    smtp_from_email: str = Field(default="noreply@gate-platform.com", alias="SMTP_FROM_EMAIL")
+    smtp_tls: bool = Field(default=True, alias="SMTP_TLS")
+
+    @property
+    def cors_origins_list(self) -> list:
+        """Parse CORS origins into a list."""
+        if self.environment == "development":
+            return ["*"]  # Allow all in development
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
     class Config:
         env_file = ".env"
         case_sensitive = False

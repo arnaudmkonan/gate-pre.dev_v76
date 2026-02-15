@@ -5,7 +5,7 @@ import { Input } from '../components/Input'
 import { useToast } from '../components/Toast'
 import axios from 'axios'
 
-const API_URL = 'http://localhost:8000'
+import { API_URL } from '../config/api'
 
 export const QueueConfig = () => {
   const { toasts, addToast } = useToast()
