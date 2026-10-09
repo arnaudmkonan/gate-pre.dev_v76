@@ -5,7 +5,7 @@
  * Task 3.3 from ROADMAP_FULL_WORKFLOW.md
  */
 import { useState, useCallback, useEffect } from 'react'
-import axios from 'axios'
+import { apiClient } from '../lib/apiClient'
 import { API_URL } from '../config/api'
 
 // ==================== Types ====================
@@ -110,7 +110,7 @@ export function useACESettings(organizationId: string) {
         setError(null)
 
         try {
-            const response = await axios.get<ACESettings>(
+            const response = await apiClient.get<ACESettings>(
                 `${API_URL}/api/settings/ace`,
                 { params: { organization_id: organizationId } }
             )
@@ -144,7 +144,7 @@ export function useACESettingsActions() {
         setError(null)
 
         try {
-            const response = await axios.post<ACESettings>(
+            const response = await apiClient.post<ACESettings>(
                 `${API_URL}/api/settings/ace`,
                 data
             )
@@ -166,7 +166,7 @@ export function useACESettingsActions() {
         setError(null)
 
         try {
-            const response = await axios.put<ACESettings>(
+            const response = await apiClient.put<ACESettings>(
                 `${API_URL}/api/settings/ace`,
                 data,
                 { params: { organization_id: organizationId } }
@@ -189,7 +189,7 @@ export function useACESettingsActions() {
         setError(null)
 
         try {
-            const response = await axios.post<FilerCode>(
+            const response = await apiClient.post<FilerCode>(
                 `${API_URL}/api/settings/ace/filer-codes`,
                 data,
                 { params: { organization_id: organizationId } }
@@ -212,7 +212,7 @@ export function useACESettingsActions() {
         setError(null)
 
         try {
-            const response = await axios.put<FilerCode>(
+            const response = await apiClient.put<FilerCode>(
                 `${API_URL}/api/settings/ace/filer-codes/${filerCodeId}`,
                 data
             )
@@ -231,7 +231,7 @@ export function useACESettingsActions() {
         setError(null)
 
         try {
-            await axios.delete(`${API_URL}/api/settings/ace/filer-codes/${filerCodeId}`)
+            await apiClient.delete(`${API_URL}/api/settings/ace/filer-codes/${filerCodeId}`)
             return true
         } catch (err: any) {
             console.error('Error deleting filer code:', err)
@@ -245,7 +245,7 @@ export function useACESettingsActions() {
     // Validation helpers
     const validateFilerCode = useCallback(async (code: string): Promise<ValidationResult | null> => {
         try {
-            const response = await axios.post<ValidationResult>(
+            const response = await apiClient.post<ValidationResult>(
                 `${API_URL}/api/settings/ace/validate/filer-code`,
                 null,
                 { params: { code } }
@@ -258,7 +258,7 @@ export function useACESettingsActions() {
 
     const validatePortCode = useCallback(async (code: string): Promise<ValidationResult | null> => {
         try {
-            const response = await axios.post<ValidationResult>(
+            const response = await apiClient.post<ValidationResult>(
                 `${API_URL}/api/settings/ace/validate/port-code`,
                 null,
                 { params: { code } }

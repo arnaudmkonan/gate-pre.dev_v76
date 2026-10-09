@@ -76,6 +76,33 @@ export function LoginPage() {
                             </div>
                         )}
 
+                        {/* Demo Accounts */}
+                        <div className="bg-blue-900/40 border border-blue-500/30 rounded-lg p-3 mb-2">
+                            <p className="text-xs text-blue-200 mb-2 font-medium uppercase tracking-wider">Demo Accounts</p>
+                            <div className="flex gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setEmail('admin@example.com');
+                                        setPassword('adminpassword');
+                                    }}
+                                    className="text-xs px-3 py-1.5 bg-blue-500/20 hover:bg-blue-500/40 text-blue-100 rounded transition-colors"
+                                >
+                                    Admin User
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setEmail('demo@example.com');
+                                        setPassword('demopassword');
+                                    }}
+                                    className="text-xs px-3 py-1.5 bg-blue-500/20 hover:bg-blue-500/40 text-blue-100 rounded transition-colors"
+                                >
+                                    Standard User
+                                </button>
+                            </div>
+                        </div>
+
                         {/* Email field */}
                         <div>
                             <label htmlFor="email" className="block text-sm font-medium text-gray-200">

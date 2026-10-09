@@ -3,6 +3,7 @@ import { Upload, AlertCircle, CheckCircle } from 'lucide-react'
 import { Card } from './Card'
 import { Button } from './Button'
 import { Input } from './Input'
+import { authFetch } from '../lib/authFetch'
 
 const ALLOWED_TYPES = ['.txt', '.docx', '.xlsx', '.pptx', '.html', '.md', '.json', '.csv', '.yml', '.xml', '.pdf']
 const MAX_FILE_SIZE_MB = 50
@@ -85,7 +86,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({ onUploadSuccess }) => {
       // Generate idempotency key for this upload
       const idempotencyKey = `${customerId || 'default'}-${selectedFile.name}-${selectedFile.size}-${Date.now()}`
 
-      const response = await fetch('/api/upload', {
+      const response = await authFetch('/api/upload', {
         method: 'POST',
         body: formData,
         headers: {

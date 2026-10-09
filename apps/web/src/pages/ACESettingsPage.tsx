@@ -1,3 +1,4 @@
+import { authFetch } from '../lib/authFetch';
 /**
  * ACE Settings Page
  * 
@@ -282,7 +283,7 @@ export const ACESettingsPage = () => {
     useEffect(() => {
         const fetchAssemblyMode = async () => {
             try {
-                const response = await fetch(`${API_BASE}/api/shipments/assembly-mode`)
+                const response = await authFetch(`${API_BASE}/api/shipments/assembly-mode`)
                 if (response.ok) {
                     const data = await response.json()
                     setAssemblyMode(data.assembly_mode || 'manual')
@@ -298,7 +299,7 @@ export const ACESettingsPage = () => {
     const handleSaveAssemblyMode = async () => {
         setAssemblyLoading(true)
         try {
-            const response = await fetch(`${API_BASE}/api/shipments/assembly-mode`, {
+            const response = await authFetch(`${API_BASE}/api/shipments/assembly-mode`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

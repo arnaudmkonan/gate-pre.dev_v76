@@ -10,10 +10,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.schemas.audit import AuditLogResponse, AuditExportRequest, AuditExportResponse
 from app.services.audit_service import AuditService
+from app.core.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/audit", tags=["audit"])
+router = APIRouter(prefix="/api/audit", tags=["audit"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("", response_model=AuditExportResponse)

@@ -24,10 +24,11 @@ from app.schemas.vector_store import (
 from app.services.vector_store_service import VectorStoreService
 from app.services.vector.raw_vector_service import RawVectorService
 from app.services.search.search_service import SearchService
+from app.core.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/vector-store", tags=["vector-store"])
+router = APIRouter(prefix="/api/vector-store", tags=["vector-store"], dependencies=[Depends(get_current_user)])
 
 
 @router.post("/config", response_model=VectorStoreConfigResponse, status_code=status.HTTP_201_CREATED)

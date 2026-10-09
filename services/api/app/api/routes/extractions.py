@@ -11,10 +11,11 @@ from pydantic import BaseModel
 
 from app.core.database import get_db
 from app.models import RawExtraction
+from app.core.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/extractions", tags=["extractions"])
+router = APIRouter(prefix="/api/extractions", tags=["extractions"], dependencies=[Depends(get_current_user)])
 
 
 class ExtractionResponse(BaseModel):

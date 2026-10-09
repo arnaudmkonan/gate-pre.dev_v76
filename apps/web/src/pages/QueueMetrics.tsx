@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '../components/Card'
 import { Button } from '../components/Button'
-import axios from 'axios'
+import { apiClient } from '../lib/apiClient'
 import { RefreshCw } from 'lucide-react'
 
 import { API_URL } from '../config/api'
@@ -19,7 +19,7 @@ export const QueueMetrics = () => {
   const fetchStatus = async () => {
     setIsLoading(true)
     try {
-      const response = await axios.get(`${API_URL}/api/queue/status`)
+      const response = await apiClient.get(`${API_URL}/api/queue/status`)
       setStatus(response.data)
     } catch (error) {
       console.error('Failed to fetch queue status:', error)

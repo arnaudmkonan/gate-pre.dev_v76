@@ -17,9 +17,10 @@ import json
 import io
 
 from app.core.database import get_db
+from app.core.auth import get_current_user
 
 
-router = APIRouter(prefix="/api/clients", tags=["Client Reports"])
+router = APIRouter(prefix="/api/clients", tags=["Client Reports"], dependencies=[Depends(get_current_user)])
 
 
 # ==================== Request Models ====================

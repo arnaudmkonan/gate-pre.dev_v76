@@ -169,9 +169,12 @@ services:
     networks:
       - docingestion_network
     restart: unless-stopped
-    command: celery -A app.core.celery_app beat --loglevel=info
+    command: celery -A app.core.celery_app beat --loglevel=info --pidfile=/tmp/celerybeat.pid
     healthcheck:
-      test: [ "CMD-SHELL", "python -c 'exit(0)'" ]
+      # Verify the beat process is alive by checking its PID file.
+      # beat writes /tmp/celerybeat.pid on startup; if it crashes the file
+      # is left stale but the process no longer exists — kill -0 catches that.
+      test: [ "CMD-SHELL", "test -f /tmp/celerybeat.pid && kill -0 $(cat /tmp/celerybeat.pid) 2>/dev/null || exit 1" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -216,6 +219,12 @@ services:
     networks:
       - docingestion_network
     restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://127.0.0.1:8081/ >/dev/null 2>&1 || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   # =============================================================================
   # FLOWER - Celery monitoring dashboard
@@ -229,7 +238,7 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/0
       FLOWER_PORT: 5555
       FLOWER_BASIC_AUTH: admin:admin
-    command: celery --broker=redis://redis:6379/0 flower --port=5555
+    command: celery --broker=redis://redis:6379/0 flower --port=5555 --basic-auth=admin:admin
     depends_on:
       redis:
         condition: service_healthy
@@ -247,11 +256,14 @@ services:
     container_name: docingestion_landing
     ports:
       - "8080:80"
+    depends_on:
+      api:
+        condition: service_healthy
     networks:
       - docingestion_network
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "wget", "-q", "--spider", "http://localhost/health" ]
+      test: [ "CMD-SHELL", "curl -sf http://localhost/health || exit 1" ]
       interval: 30s
       timeout: 10s
       retries: 3

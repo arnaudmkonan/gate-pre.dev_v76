@@ -26,10 +26,11 @@ from app.schemas.orchestration import (
     RetryQueueRetryRequest,
 )
 from app.services.ingest import Dispatcher, Scheduler
+from app.core.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/ingest", tags=["orchestration"])
+router = APIRouter(prefix="/api/ingest", tags=["orchestration"], dependencies=[Depends(get_current_user)])
 
 
 @router.post(

@@ -10,8 +10,9 @@ from pydantic import BaseModel
 
 from app.core.database import get_db
 from app.services.reference_data_service import ReferenceDataService, seed_reference_data
+from app.core.auth import get_current_user
 
-router = APIRouter(prefix="/api/reference-data", tags=["Reference Data"])
+router = APIRouter(prefix="/api/reference-data", tags=["Reference Data"], dependencies=[Depends(get_current_user)])
 
 
 # ==================== Request/Response Models ====================

@@ -14,9 +14,10 @@ from app.schemas.metrics import (
     MetricsQueryRequest,
     MetricsQueryResponse,
 )
+from app.core.auth import get_current_user
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/metrics", tags=["metrics"])
+router = APIRouter(prefix="/api/metrics", tags=["metrics"], dependencies=[Depends(get_current_user)])
 
 
 @router.post("/ingest")

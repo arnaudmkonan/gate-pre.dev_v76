@@ -16,8 +16,9 @@ from app.services.shipment_assembly_service import (
     AssemblyMode
 )
 from app.models.shipment_suggestions import SuggestionStatus
+from app.core.auth import get_current_user
 
-router = APIRouter(prefix="/api/shipments", tags=["shipment-assembly"])
+router = APIRouter(prefix="/api/shipments", tags=["shipment-assembly"], dependencies=[Depends(get_current_user)])
 
 
 # Request/Response Models

@@ -24,6 +24,9 @@ from app.api.routes import (
 )
 
 from app.api.routes import retry_policy
+from app.api.routes.poa import router as poa_router
+from app.api.routes.cbp5106 import router as cbp5106_router
+from app.api.routes.pga import router as pga_router
 from app.api.routes.admin import override, queues, errors, organizations, roles, dashboard, file_type_mapping, retry_dlq
 from app.core.config import settings
 from app.core.database import engine
@@ -226,6 +229,10 @@ app.include_router(shipment_assembly.router)
 app.include_router(webhooks.router)
 app.include_router(api_keys.router)
 app.include_router(notifications.router)
+# Gap-closure routes (2026-02-23)
+app.include_router(poa_router)
+app.include_router(cbp5106_router)
+app.include_router(pga_router)
 
 
 @app.get("/health")

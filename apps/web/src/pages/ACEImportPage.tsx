@@ -1,3 +1,4 @@
+import { authFetch } from '../lib/authFetch';
 import { useState, useEffect } from 'react';
 import { Upload, FileText, Search, BarChart3, RefreshCw, Download, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { Card } from '../components/Card';
@@ -62,7 +63,7 @@ export const ACEImportPage = () => {
     const loadSampleData = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/ace/import/sample', { method: 'POST' });
+            const res = await authFetch('/api/ace/import/sample', { method: 'POST' });
             const data = await res.json();
             setImportResult(data);
             // Refresh entries and stats
@@ -79,7 +80,7 @@ export const ACEImportPage = () => {
         if (!csvContent.trim()) return;
         setLoading(true);
         try {
-            const res = await fetch('/api/ace/import/csv', {
+            const res = await authFetch('/api/ace/import/csv', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ csv_content: csvContent })
@@ -105,7 +106,7 @@ export const ACEImportPage = () => {
             if (searchHts) params.set('hts_code', searchHts);
             params.set('limit', '50');
 
-            const res = await fetch(`/api/ace/entries?${params}`);
+            const res = await authFetch(`/api/ace/entries?${params}`);
             const data = await res.json();
             setEntries(data.entries || []);
             setTotal(data.total || 0);
@@ -118,7 +119,7 @@ export const ACEImportPage = () => {
 
     const fetchStatistics = async () => {
         try {
-            const res = await fetch('/api/ace/statistics');
+            const res = await authFetch('/api/ace/statistics');
             const data = await res.json();
             setStats(data);
         } catch (e) {

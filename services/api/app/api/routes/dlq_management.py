@@ -19,9 +19,10 @@ from app.schemas.dlq import (
     DLQArchiveRequest,
     DLQArchiveResponse,
 )
+from app.core.auth import get_current_user
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/dlq", tags=["dlq"])
+router = APIRouter(prefix="/api/dlq", tags=["dlq"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("/entries", response_model=DLQListResponse)

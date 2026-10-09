@@ -11,10 +11,11 @@ from app.schemas.metadata import MetadataResponse, MetadataListResponse
 from app.schemas.normalized_metadata import NormalizedMetadataResponse, MetadataReprocessRequest
 from app.services.metadata_query_service import MetadataQueryService
 from app.workers.process_metadata import process_metadata as process_metadata_task
+from app.core.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/metadata", tags=["metadata"])
+router = APIRouter(prefix="/api/metadata", tags=["metadata"], dependencies=[Depends(get_current_user)])
 
 
 @router.get(

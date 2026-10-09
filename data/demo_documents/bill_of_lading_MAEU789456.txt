@@ -1,0 +1,65 @@
+BILL OF LADING
+Ocean Bill of Lading - Original
+
+B/L NUMBER: MAEU-2024-789456
+BOOKING NUMBER: BK-2024-CN-456789
+
+SHIPPER:
+TechParts Global Ltd.
+456 Manufacturing Way
+Shenzhen, Guangdong 518000, China
+Tel: +86-755-8888-9999
+
+CONSIGNEE:
+American Electronics Corp.
+1234 Commerce Drive
+Los Angeles, CA 90001, United States
+Tel: +1-310-555-0123
+
+NOTIFY PARTY:
+Same as Consignee
+
+VESSEL: COSCO SHIPPING UNIVERSE
+VOYAGE NO: 2024W-12E
+PORT OF LOADING: Yantian, China
+PORT OF DISCHARGE: Los Angeles, USA
+PLACE OF DELIVERY: Long Beach, CA
+
+CONTAINER DETAILS:
+==================
+Container No: TCNU8765432
+Seal No: CN-SEAL-789456
+Type: 40' High Cube
+Tare Weight: 3,800 kg
+
+PARTICULARS FURNISHED BY SHIPPER:
+=================================
+Description of Goods: Computer Equipment and Accessories
+Marks & Numbers: AECORP/LA/2024
+No. of Packages: 157 Cartons
+Gross Weight: 4,250 KGS
+Measurement: 52.5 CBM
+
+FREIGHT DETAILS:
+================
+Freight: Prepaid
+Ocean Freight: $8,500.00
+THC Origin: $450.00
+Documentation Fee: $150.00
+Total Freight: $9,100.00
+
+SHIPPED ON BOARD DATE: December 10, 2024
+ETA DESTINATION: December 28, 2024
+
+TERMS: CIF Los Angeles
+INCOTERMS 2020
+
+This is to certify that the above-mentioned goods have been shipped on board
+the vessel in apparent good order and condition.
+
+Carrier: Maersk Line
+Agent: Chen Logistics Co., Ltd.
+Signature: ________________
+Date: December 10, 2024
+
+ORIGINAL B/L - 3 ORIGINALS ISSUED

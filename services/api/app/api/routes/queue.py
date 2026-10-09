@@ -17,10 +17,11 @@ from app.schemas.queue import (
     JobStatusResponse,
 )
 from app.models.celery_config import CeleryConfig
+from app.core.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/queue", tags=["queue"])
+router = APIRouter(prefix="/api/queue", tags=["queue"], dependencies=[Depends(get_current_user)])
 
 
 @router.post("/config", response_model=CeleryConfigResponse, status_code=status.HTTP_201_CREATED)

@@ -12,10 +12,11 @@ from app.schemas.raw_metadata import (
     RawMetadataQueryResponse,
 )
 from app.services.metadata.raw_metadata_service import RawMetadataService
+from app.core.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/internal/metadata", tags=["internal-metadata"])
+router = APIRouter(prefix="/api/internal/metadata", tags=["internal-metadata"], dependencies=[Depends(get_current_user)])
 
 
 @router.post(

@@ -245,6 +245,41 @@ class PostExtractionService:
                 naics_result = await self.classify_naics(product_descriptions)
                 result.naics_classifications.append(naics_result)
 
+            # 4. PGA determination — flag any HTS codes with agency requirements
+            if hts_codes:
+                try:
+                    from app.services.pga_determination_service import PGADeterminationEngine
+                    pga_engine = PGADeterminationEngine()
+                    for hts_code in hts_codes:
+                        pga_det = pga_engine.determine(hts_code=hts_code)
+                        if pga_det.is_pga_required:
+                            agencies = ", ".join(pga_det.agencies_involved)
+                            forms = ", ".join(
+                                r.filing_form for r in pga_det.requirements
+                                if r.filing_form
+                            ) or "See agency requirements"
+                            result.issues_found.append({
+                                "type": "pga_required",
+                                "severity": "info",
+                                "description": (
+                                    f"HTS {hts_code} requires additional PGA filings: "
+                                    f"{agencies} — {forms}"
+                                ),
+                                "field": "hts_code",
+                                "value": hts_code,
+                                "pga_agencies": pga_det.agencies_involved,
+                                "pga_requirements": [
+                                    {
+                                        "agency": r.agency,
+                                        "filing_form": r.filing_form,
+                                        "regulation": r.regulation,
+                                    }
+                                    for r in pga_det.requirements
+                                ],
+                            })
+                except Exception as pga_exc:
+                    logger.warning("PGA determination failed for %s: %s", document_id, pga_exc)
+
             # Calculate overall risk level
             result.overall_risk_level = self._calculate_overall_risk(result)
 

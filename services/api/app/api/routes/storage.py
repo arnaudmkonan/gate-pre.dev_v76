@@ -24,10 +24,11 @@ from app.services.audit_service import AuditService
 from app.services.queue_service import QueueService
 from app.workers.ingest_worker import enqueue_for_processing
 from app.core.config import settings
+from app.core.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/storage", tags=["storage"])
+router = APIRouter(prefix="/api/storage", tags=["storage"], dependencies=[Depends(get_current_user)])
 
 
 @router.post("/config", response_model=StorageConfigResponse, status_code=status.HTTP_201_CREATED)

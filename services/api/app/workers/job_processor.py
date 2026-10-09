@@ -172,7 +172,7 @@ def _process_job_sync(job_id: str) -> Dict[str, Any]:
             file_type=job.file_type,
             size=job.size,
             ingestion_status="processing",  # Will update to completed after embeddings
-            extracted_text_snippet=extracted_text[:1000] if extracted_text else None,
+            extracted_text_snippet=extracted_text[:10000] if extracted_text else None,
             raw_storage_path=job.storage_path,
             extraction_timestamp=datetime.now(timezone.utc),
             extractor_agent_version="1.0.0",
@@ -231,6 +231,16 @@ def _process_job_sync(job_id: str) -> Dict[str, Any]:
             logger.info(f"Queued agent processing for document {doc_metadata.id}")
         except Exception as e:
             logger.warning(f"Failed to queue agent processing (non-fatal): {e}")
+        
+        # Trigger trade document extraction for per-field structured data
+        # This populates extraction_results with individual fields (parties, amounts,
+        # BL numbers, HTS codes, etc.) that power the Export-to-Excel/CSV feature.
+        try:
+            from app.workers.trade_extraction_worker import extract_trade_document
+            extract_trade_document.delay(str(doc_metadata.id))
+            logger.info(f"Queued trade document extraction for document {doc_metadata.id}")
+        except Exception as e:
+            logger.warning(f"Failed to queue trade document extraction (non-fatal): {e}")
         
         result = {
             "job_id": str(job.id),

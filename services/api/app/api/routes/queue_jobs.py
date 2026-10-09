@@ -9,10 +9,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.schemas.queue_jobs import QueueJobResponse, QueueListResponse, EnqueueRequest
 from app.services.queue_service import QueueService
+from app.core.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/queue", tags=["queue"])
+router = APIRouter(prefix="/api/queue", tags=["queue"], dependencies=[Depends(get_current_user)])
 
 
 @router.post("/enqueue", response_model=dict, status_code=status.HTTP_201_CREATED)

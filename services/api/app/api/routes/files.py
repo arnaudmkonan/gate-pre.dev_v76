@@ -9,10 +9,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.schemas.file_versions import FileVersionResponse, VersionListResponse
 from app.services.snapshot_service import SnapshotService
+from app.core.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/files", tags=["files"])
+router = APIRouter(prefix="/api/files", tags=["files"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("/{file_id}/versions", response_model=VersionListResponse)

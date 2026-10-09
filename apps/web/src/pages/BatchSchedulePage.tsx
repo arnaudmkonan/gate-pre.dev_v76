@@ -1,3 +1,4 @@
+import { authFetch } from '../lib/authFetch';
 import { useState, useRef } from 'react'
 import { BatchScheduleList } from '../components/BatchScheduleList'
 import { Card } from '../components/Card'
@@ -24,7 +25,7 @@ export const BatchSchedulePage: React.FC = () => {
     setError(null)
 
     try {
-      const response = await fetch('/api/batch/schedules', {
+      const response = await authFetch('/api/batch/schedules', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),

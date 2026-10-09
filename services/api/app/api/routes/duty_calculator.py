@@ -12,8 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.services.duty_calculator_service import DutyCalculatorService
+from app.core.auth import get_current_user
 
-router = APIRouter(prefix="/api/tools/duty-calculator", tags=["Duty Calculator"])
+router = APIRouter(prefix="/api/tools/duty-calculator", tags=["Duty Calculator"], dependencies=[Depends(get_current_user)])
 
 
 # ==================== Request/Response Models ====================

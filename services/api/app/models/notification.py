@@ -2,6 +2,7 @@
 GATE Platform — Notification Model.
 
 Stores in-app and email notifications for users.
+Inherits id, created_at, updated_at from BaseModel.
 """
 import uuid
 from datetime import datetime, timezone
@@ -9,19 +10,28 @@ from datetime import datetime, timezone
 from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Text, JSON
 from sqlalchemy.dialects.postgresql import UUID
 
-from app.models.base import Base
+from app.models.base import BaseModel
 
 
-class Notification(Base):
+class Notification(BaseModel):
     """User notification (in-app and/or email)."""
+
     __tablename__ = "notifications"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("client_users.id"), nullable=False, index=True)
-    client_id = Column(UUID(as_uuid=True), ForeignKey("clients.id"), nullable=True)
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("client_users.id"),
+        nullable=False,
+        index=True,
+    )
+    client_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("clients.id"),
+        nullable=True,
+    )
 
     # Content
-    type = Column(String(50), nullable=False, index=True)  # entry_status, document_request, compliance_alert, etc.
+    type = Column(String(50), nullable=False, index=True)
     title = Column(String(255), nullable=False)
     body = Column(Text, nullable=True)
     data = Column(JSON, nullable=True)  # Additional structured data (entry_id, etc.)
@@ -34,6 +44,3 @@ class Notification(Base):
     # Status
     is_read = Column(Boolean, default=False, index=True)
     read_at = Column(DateTime(timezone=True), nullable=True)
-
-    # Timestamps
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)

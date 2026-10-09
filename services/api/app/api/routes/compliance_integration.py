@@ -24,8 +24,9 @@ from app.services.post_extraction_service import (
     PostExtractionResult,
     RiskLevel,
 )
+from app.core.auth import get_current_user
 
-router = APIRouter(prefix="/api/compliance", tags=["Compliance Integration"])
+router = APIRouter(prefix="/api/compliance", tags=["Compliance Integration"], dependencies=[Depends(get_current_user)])
 
 
 # ==================== Request/Response Models ====================

@@ -1,0 +1,80 @@
+CBP FORM 7551 - DRAWBACK ENTRY
+
+DRAWBACK ENTRY NUMBER: 331-2025-000123-4
+ENTRY TYPE: 31 - Duty Drawback
+FILING DATE: January 20, 2025
+
+CLAIMANT INFORMATION:
+American Electronics Corp.
+1234 Commerce Drive
+Los Angeles, CA 90001
+EIN: 95-4567890
+Drawback Bond Number: STB-2024-789456
+
+DRAWBACK TYPE: 19 USC 1313(j)(1) - Unused Merchandise
+
+EXPORT INFORMATION:
+AES ITN: X20250114789456
+Export Date: January 14, 2025
+Port of Export: 2704 - Los Angeles
+Destination: Germany
+
+IMPORT INFORMATION:
+Original Entry Number: 123-4567890-1
+Import Date: December 28, 2024
+Port of Import: 2704 - Los Angeles
+Importer of Record: American Electronics Corp.
+
+DRAWBACK CALCULATION:
+================================================================================
+| Line | HTS Number     | Description              | Import | Export | Duty    |
+|      |                |                          | Qty    | Qty    | Claimed |
+|------|----------------|--------------------------|--------|--------|---------|
+| 1    | 8471.30.0100   | Laptop Computer 15.6"   | 500    | 100    | $0.00   |
+|      |                | Import Value: $212,500   |        |        |         |
+|      |                | Export Value: $42,500    |        |        |         |
+|------|----------------|--------------------------|--------|--------|---------|
+| 2    | 8471.60.9050   | Wireless Mouse          | 2,000  | 500    | $0.00   |
+|      |                | Import Value: $17,000    |        |        |         |
+|      |                | Export Value: $4,250     |        |        |         |
+|------|----------------|--------------------------|--------|--------|---------|
+| 3    | 8471.60.1000   | Mechanical Keyboard     | 1,000  | 200    | $0.00   |
+|      |                | Import Value: $35,000    |        |        |         |
+|      |                | Export Value: $7,000     |        |        |         |
+================================================================================
+
+DUTY CALCULATION SUMMARY:
+Total Import Duty Paid: $0.00
+Merchandise Processing Fee Paid: $535.09
+Harbor Maintenance Fee Paid: $423.61
+Total Fees Eligible: $958.70
+
+DRAWBACK CLAIM:
+Percentage Exported: Based on quantity ratio
+Calculated Refund (99% of fees): $949.11
+
+Note: Primary duty rate is 0% under Information Technology Agreement (ITA).
+Drawback claim is for refund of MPF and HMF fees only.
+
+SUPPORTING DOCUMENTS:
+1. Import Entry Summary (CBP Form 7501) - Entry 123-4567890-1
+2. Commercial Invoice - INV-2024-TECH-0892
+3. Bill of Lading - MAEU-2024-789456
+4. Proof of Export - POE-2025-0114-TECH
+5. Export Declaration - SED X20250114789456
+
+CERTIFICATION:
+I declare under penalty of perjury that the information provided is true,
+correct, and complete. I understand that false statements may result in
+penalties and forfeiture.
+
+Claimant Signature: Robert Johnson
+Title: Import/Export Compliance Manager
+Date: January 20, 2025
+
+FOR CBP USE ONLY:
+Entry Received: ____________
+Entry Reviewed: ____________
+Liquidation Status: ____________
+Refund Approved: ____________
+Refund Amount: ____________

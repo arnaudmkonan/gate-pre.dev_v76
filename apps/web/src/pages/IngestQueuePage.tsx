@@ -1,3 +1,4 @@
+import { authFetch } from '../lib/authFetch';
 import { useState, useEffect } from 'react'
 import { UploadForm } from '../components/UploadForm'
 import { IngestJobList } from '../components/IngestJobList'
@@ -13,7 +14,7 @@ export const IngestQueuePage: React.FC = () => {
 
   const loadQueueStatus = async () => {
     try {
-      const response = await fetch('/api/ingest/status')
+      const response = await authFetch('/api/ingest/status')
       if (response.ok) {
         const data = await response.json()
         setQueueStatus(data)

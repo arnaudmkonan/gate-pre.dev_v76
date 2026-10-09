@@ -14,8 +14,9 @@ from app.schemas.organization import (
     OrganizationListResponse,
 )
 from app.services.audit_service import AuditService
+from app.core.auth import get_current_user
 
-router = APIRouter(prefix="/api/admin/organizations", tags=["Admin - Organizations"])
+router = APIRouter(prefix="/api/admin/organizations", tags=["Admin - Organizations"], dependencies=[Depends(get_current_user)])
 
 
 async def get_org_repo(session: AsyncSession = Depends(get_db)) -> OrganizationRepository:

@@ -14,9 +14,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.services.feedback_service import FeedbackService
+from app.core.auth import get_current_user
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/feedback", tags=["Feedback Learning"])
+router = APIRouter(prefix="/api/feedback", tags=["Feedback Learning"], dependencies=[Depends(get_current_user)])
 
 
 # Request/Response Models

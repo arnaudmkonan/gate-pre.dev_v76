@@ -12,10 +12,11 @@ from app.core.database import get_db
 from app.core.celery_app import celery_app
 from app.models import SilverRecord
 from app.services.silver_service import SilverService
+from app.core.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/vectorize", tags=["vectorization"])
+router = APIRouter(prefix="/api/vectorize", tags=["vectorization"], dependencies=[Depends(get_current_user)])
 
 
 class VectorizeRequest(BaseModel):
@@ -44,9 +45,6 @@ class VectorizeStatusResponse(BaseModel):
     error_message: Optional[str] = None
     processing_started_at: Optional[str] = None
     processing_completed_at: Optional[str] = None
-
-
-from typing import Optional
 
 
 @router.post(

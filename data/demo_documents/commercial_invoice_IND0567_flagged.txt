@@ -1,0 +1,76 @@
+COMMERCIAL INVOICE
+
+Invoice Number: INV-2024-IND-0567
+Date: December 10, 2024
+Currency: USD
+
+EXPORTER/SELLER:
+Sunrise Trading FZE
+P.O. Box 54321
+Dubai Internet City
+Dubai, UAE
+VAT ID: AE-100-987654
+
+IMPORTER/BUYER:
+GlobalTech Distributors Inc.
+789 Tech Park Avenue
+Houston, TX 77001
+United States
+EIN: 76-9876543
+
+TERMS OF SALE: FOB Dubai
+COUNTRY OF ORIGIN: Multiple (See Below)
+
+BILL OF LADING: ONEY-2024-456123
+ENTRY NUMBER: 456-7891234-2
+CONTAINER: OOLU9876543
+
+LINE ITEMS:
+==========================================================================
+| Item | Description                    | Qty   | Unit Price | Total USD |
+|------|--------------------------------|-------|------------|-----------|
+| 1    | Industrial Control Panels      | 50    | $2,500.00  | $125,000  |
+|      | Declared HTS: 8537.10.9070     |       |            |           |
+|      | Origin: Iran                   |       |            |           |
+|      | Manufacturer: Parsian Electric |       |            |           |
+|------|--------------------------------|-------|------------|-----------|
+| 2    | Network Routers Enterprise     | 100   | $450.00    | $45,000   |
+|      | Declared HTS: 8517.62.0020     |       |            |           |
+|      | Origin: China                  |       |            |           |
+|      | Model: HW-NE40E-X3             |       |            |           |
+|------|--------------------------------|-------|------------|-----------|
+| 3    | Precision Ball Bearings        | 5,000 | $12.00     | $60,000   |
+|      | Declared HTS: 8482.10.5044     |       |            |           |
+|      | Origin: Russia                 |       |            |           |
+|      | Manufacturer: GPZ-Podolsk      |       |            |           |
+|------|--------------------------------|-------|------------|-----------|
+| 4    | Textile Machinery Parts        | 200   | $350.00    | $70,000   |
+|      | Declared HTS: 8448.59.0000     |       |            |           |
+|      | Origin: Syria                  |       |            |           |
+|      | Note: Spare parts for looms    |       |            |           |
+|------|--------------------------------|-------|------------|-----------|
+| 5    | Semiconductor Chips Memory     | 10,000| $8.50      | $85,000   |
+|      | Declared HTS: 8542.32.0035     |       |            |           |
+|      | Origin: China                  |       |            |           |
+|      | Manufacturer: SMIC             |       |            |           |
+==========================================================================
+
+SUBTOTAL:                                                      $385,000.00
+FREIGHT:                                                        $15,000.00
+INSURANCE:                                                       $5,775.00
+---------------------------------------------------------------------------
+TOTAL VALUE:                                                   $405,775.00
+
+BANK DETAILS:
+Bank: Emirates NBD
+Account: 1234567890123
+SWIFT: EABORAEDAD
+
+Notes:
+- Third-party transaction
+- Payment via intermediary bank
+- Rush delivery requested
+
+Authorized Signature: Mohammed Al-Rashid
+Title: Sales Director
+Date: December 10, 2024

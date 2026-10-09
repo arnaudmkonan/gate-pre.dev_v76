@@ -46,8 +46,12 @@ class NotFoundError(GateError):
         super().__init__(message, details)
 
 
-class ValidationError(GateError):
-    """Request validation failed (422)."""
+class GateValidationError(GateError):
+    """Request validation failed (422).
+
+    Named GateValidationError (not ValidationError) to avoid shadowing
+    pydantic.ValidationError and fastapi.exceptions.RequestValidationError.
+    """
 
     code = "VALIDATION_ERROR"
     status_code = 422
@@ -57,6 +61,10 @@ class ValidationError(GateError):
         if field:
             _details["field"] = field
         super().__init__(message, _details)
+
+
+# Backwards-compatible alias — prefer GateValidationError in new code.
+ValidationError = GateValidationError
 
 
 class AuthenticationError(GateError):

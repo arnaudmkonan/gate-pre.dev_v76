@@ -1,3 +1,4 @@
+import { authFetch } from '../lib/authFetch';
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
@@ -66,7 +67,7 @@ export const ShipmentDetailPage = () => {
         setLoading(true)
         setError(null)
         try {
-            const response = await fetch(`${API_BASE}/api/shipments/${shipmentId}`)
+            const response = await authFetch(`${API_BASE}/api/shipments/${shipmentId}`)
             if (!response.ok) throw new Error('Failed to fetch shipment')
             const data = await response.json()
             setShipment(data)
@@ -88,7 +89,7 @@ export const ShipmentDetailPage = () => {
             const docData: ShipmentDocument[] = []
             for (const docId of docIds.slice(0, 20)) { // Limit to first 20
                 try {
-                    const response = await fetch(`${API_BASE}/api/documents/${docId}`)
+                    const response = await authFetch(`${API_BASE}/api/documents/${docId}`)
                     if (response.ok) {
                         const doc = await response.json()
                         docData.push({

@@ -11,8 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.services.template_service import TemplateService
+from app.core.auth import get_current_user
 
-router = APIRouter(prefix="/api/templates", tags=["templates"])
+router = APIRouter(prefix="/api/templates", tags=["templates"], dependencies=[Depends(get_current_user)])
 
 
 # Request/Response Models

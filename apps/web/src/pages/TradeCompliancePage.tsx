@@ -1,3 +1,4 @@
+import { authFetch } from '../lib/authFetch';
 import { useState } from 'react';
 import { Shield, AlertTriangle, CheckCircle2, Search, DollarSign, Globe, FileText, Calculator } from 'lucide-react';
 import { Card } from '../components/Card';
@@ -48,7 +49,7 @@ export const TradeCompliancePage = () => {
         if (!htsCode || !country) return;
         setLoading(true);
         try {
-            const res = await fetch('/api/trade-compliance/screen', {
+            const res = await authFetch('/api/trade-compliance/screen', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -70,7 +71,7 @@ export const TradeCompliancePage = () => {
         if (!dutyLoss) return;
         setLoading(true);
         try {
-            const res = await fetch('/api/trade-compliance/penalty/calculate', {
+            const res = await authFetch('/api/trade-compliance/penalty/calculate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

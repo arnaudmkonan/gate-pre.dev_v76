@@ -8,10 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.schemas.ingest import DLQItemResponse, DLQReprocessRequest
 from app.services.dlq_service import DLQService
+from app.core.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/ingest/dlq", tags=["dlq"])
+router = APIRouter(prefix="/api/ingest/dlq", tags=["dlq"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("", response_model=list[DLQItemResponse])

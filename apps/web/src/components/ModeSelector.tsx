@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Card } from './Card'
 import { Button } from './Button'
 import { AlertCircle, CheckCircle } from 'lucide-react'
+import { authFetch } from '../lib/authFetch'
 
 interface ModeSelectorProps {
   jobId: string
@@ -55,7 +56,7 @@ export const ModeSelector: React.FC<ModeSelectorProps> = ({ jobId, onModeSelect,
     setError(null)
 
     try {
-      const response = await fetch(`/api/ingest/jobs/${jobId}/mode`, {
+      const response = await authFetch(`/api/ingest/jobs/${jobId}/mode`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

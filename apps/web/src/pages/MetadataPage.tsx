@@ -1,3 +1,4 @@
+import { authFetch } from '../lib/authFetch';
 import { useState, useEffect } from 'react'
 import { Search, Loader, AlertCircle } from 'lucide-react'
 import { AdminLayout } from '../components/AdminLayout'
@@ -73,7 +74,7 @@ export const MetadataPage = () => {
       params.append('page', page.toString())
       params.append('page_size', pageSize.toString())
 
-      const response = await fetch(`/api/metadata?${params.toString()}`)
+      const response = await authFetch(`/api/metadata?${params.toString()}`)
 
       if (response.status === 204) {
         setNoDataYet(true)

@@ -31,6 +31,9 @@ services:
     build:
       context: ./services/api
       dockerfile: Dockerfile
+    # Use gunicorn with multiple uvicorn workers for true multi-process concurrency.
+    # This ensures rate limiting (when Redis-backed) is consistent across workers.
+    command: gunicorn app.main:app -w ${API_WORKERS:-4} -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000 --timeout 120 --access-logfile -
     restart: unless-stopped
     env_file:
       - .env.production
@@ -39,6 +42,7 @@ services:
       - DATABASE_URL=${DATABASE_URL}
       - REDIS_URL=${REDIS_URL}
       - SECRET_KEY=${SECRET_KEY}
+      - RATE_LIMIT_STORAGE=redis://${REDIS_HOST:-redis}:${REDIS_PORT:-6379}/2
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
       interval: 30s
@@ -99,15 +103,23 @@ services:
   # ==================== Frontend ====================
   frontend:
     build:
-      context: ./services/frontend
+      context: ./apps/web        # React/Vite app (was incorrectly ./services/frontend)
       dockerfile: Dockerfile
+      target: production
       args:
-        - NEXT_PUBLIC_API_URL=https://${DOMAIN}/api
+        - VITE_API_URL=/api      # Relative path — works behind Caddy reverse proxy
+        - VITE_ENV=production
     restart: unless-stopped
     environment:
       - NODE_ENV=production
     networks:
       - gate_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
 networks:
   gate_network:

@@ -5,7 +5,7 @@ import {
   BarChart3, Users, Lock, AlertCircle, Eye, Repeat, LineChart, Sparkles,
   ClipboardCheck, FileCode, TrendingUp, FolderArchive, Gauge, Package,
   Shield, ArrowRightLeft, FileUp, Activity, Calculator, ChevronDown,
-  ChevronRight, Building2, Settings, Upload, LogOut
+  ChevronRight, Building2, Settings, Upload, LogOut, Menu, X
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -31,6 +31,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
   const { user, logout } = useAuth()
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set(['System']))
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   const handleLogout = async () => {
     await logout()
@@ -122,15 +123,30 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50 flex-col md:flex-row">
+      {/* Mobile Top Bar */}
+      <div className="md:hidden flex items-center justify-between bg-white border-b border-gray-200 px-4 py-3 shrink-0">
+        <h1 className="text-xl font-bold text-gray-900">GATE</h1>
+        <button
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="p-2 text-gray-500 hover:text-gray-700 bg-gray-100 rounded-lg"
+        >
+          {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        </button>
+      </div>
+
       {/* Sidebar */}
-      <aside className="w-64 border-r border-gray-200 bg-white overflow-y-auto">
-        <div className="p-6">
+      <aside className={`
+        ${isMobileMenuOpen ? 'flex' : 'hidden'} 
+        md:flex flex-col w-full md:w-64 border-r border-gray-200 bg-white overflow-y-auto shrink-0
+        absolute md:relative z-20 h-[calc(100vh-60px)] md:h-full top-[60px] md:top-0
+      `}>
+        <div className="p-6 hidden md:block">
           <h1 className="text-xl font-bold text-gray-900">GATE Platform</h1>
           <p className="text-sm text-gray-500 mt-1">Customs Brokerage</p>
         </div>
 
-        <nav className="px-4 pb-6 space-y-4">
+        <nav className="px-4 py-6 md:pb-6 space-y-4">
           {navGroups.map((group) => {
             const isCollapsed = group.collapsible && collapsedGroups.has(group.label)
 
@@ -163,6 +179,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
                         <Link
                           key={item.path}
                           to={item.path}
+                          onClick={() => setIsMobileMenuOpen(false)}
                           className={`
                             flex items-center px-3 py-2 rounded-lg font-medium text-sm
                             transition-colors

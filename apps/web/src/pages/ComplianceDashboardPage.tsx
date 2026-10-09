@@ -1,3 +1,4 @@
+import { authFetch } from '../lib/authFetch';
 import { useState, useEffect } from 'react';
 import { Globe, FileText, AlertTriangle, CheckCircle2, Clock, BarChart3, RefreshCw } from 'lucide-react';
 import { Card } from '../components/Card';
@@ -75,7 +76,7 @@ export const ComplianceDashboardPage = () => {
         try {
             const params = new URLSearchParams();
             if (importerFilter) params.set('importer', importerFilter);
-            const res = await fetch(`/api/compliance/scorecard?${params}`);
+            const res = await authFetch(`/api/compliance/scorecard?${params}`);
             const data = await res.json();
             setScorecard(data);
         } catch (e) {
@@ -88,7 +89,7 @@ export const ComplianceDashboardPage = () => {
     const fetchCountries = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/compliance/country-risk?limit=15');
+            const res = await authFetch('/api/compliance/country-risk?limit=15');
             const data = await res.json();
             setCountries(data.countries || []);
         } catch (e) {
@@ -101,7 +102,7 @@ export const ComplianceDashboardPage = () => {
     const fetchDisclosurePreview = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/compliance/disclosure/preview', {
+            const res = await authFetch('/api/compliance/disclosure/preview', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -123,7 +124,7 @@ export const ComplianceDashboardPage = () => {
         if (!statuteDate) return;
         setLoading(true);
         try {
-            const res = await fetch(`/api/compliance/statute-check?entry_date=${statuteDate}`);
+            const res = await authFetch(`/api/compliance/statute-check?entry_date=${statuteDate}`);
             const data = await res.json();
             setStatuteResult(data);
         } catch (e) {

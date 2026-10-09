@@ -106,6 +106,7 @@ def _run_extraction_sync(document_id: str) -> Dict[str, Any]:
 async def _run_extraction_async(document_id: str) -> Dict[str, Any]:
     """Run the trade document extraction pipeline."""
     from app.services.trade_document_extraction_service import get_trade_extraction_service
+    from app.services.extractors.trade_field_extractor import TradeFieldExtractor
     
     # Get document from database
     with get_sync_db() as session:
@@ -125,13 +126,24 @@ async def _run_extraction_async(document_id: str) -> Dict[str, Any]:
         if not content or len(content.strip()) < 50:
             return {"status": "skipped", "reason": "content_too_short"}
     
-    # Run extraction using the trade document service
+    # Try LLM-based extraction first (higher quality)
+    extraction = None
     service = get_trade_extraction_service()
-    extraction = await service.extract_document(
-        document_text=content,
-        filename=filename,
-        file_type=file_type
-    )
+    
+    try:
+        extraction = await service.extract_document(
+            document_text=content,
+            filename=filename,
+            file_type=file_type
+        )
+    except Exception as e:
+        logger.warning(f"LLM extraction failed for {document_id}, will use regex fallback: {e}")
+    
+    # Fall back to regex-based extraction if LLM failed or returned error
+    if not extraction or extraction.get("status") != "success":
+        llm_error = extraction.get("error", "unknown") if extraction else "LLM not available"
+        logger.info(f"Using regex-based extraction for {document_id} (LLM: {llm_error})")
+        extraction = TradeFieldExtractor.extract_fields(content, filename)
     
     if extraction.get("status") != "success":
         return extraction
@@ -142,6 +154,7 @@ async def _run_extraction_async(document_id: str) -> Dict[str, Any]:
     return {
         "status": "success",
         "document_id": document_id,
+        "extraction_method": extraction.get("extraction_method", "llm"),
         "document_type": extraction.get("document_metadata", {}).get("document_type"),
         "parties_count": len([p for p in extraction.get("parties", {}).values() if p]),
         "cargo_items_count": len(extraction.get("cargo", {}).get("items", [])),
@@ -158,25 +171,31 @@ async def _store_extraction_results(document_id: str, extraction: Dict, service)
     doc_uuid = UUID(document_id)
     
     # Map to Bronze layer records
-    bronze_records = service.map_to_bronze_layer(extraction)
+    if extraction.get("extraction_method") == "regex":
+        # For regex extractions, build bronze records directly
+        bronze_records = _build_bronze_records_from_regex(extraction)
+    else:
+        # For LLM extractions, use the service mapper
+        bronze_records = service.map_to_bronze_layer(extraction)
     
     with get_sync_db() as session:
         # Store Bronze layer extractions
+        stored_count = 0
         for record in bronze_records:
             try:
                 extraction_record = ExtractionResult(
                     document_id=doc_uuid,
-                    extraction_type="trade_document",
+                    extraction_type=record.get("extraction_type", "trade_document"),
                     field_name=record["field_name"],
                     field_value=record.get("field_value"),
                     raw_value=str(record.get("field_value")) if record.get("field_value") else None,
                     confidence=record.get("confidence", 0.9),
-                    agent_name="trade_document_extractor",
+                    agent_name=record.get("agent_name", "trade_document_extractor"),
                     status="auto",
-                    # Store full metadata in extraction_metadata
                     extraction_metadata=record.get("metadata")
                 )
                 session.add(extraction_record)
+                stored_count += 1
             except Exception as e:
                 logger.warning(f"Failed to store extraction for {record.get('field_name')}: {e}")
         
@@ -187,20 +206,21 @@ async def _store_extraction_results(document_id: str, extraction: Dict, service)
         )
         doc = result.scalar_one_or_none()
         if doc:
-            doc.detected_language = doc_meta.get("document_type", "unknown")
             doc.agent_status = "completed"
             doc.agent_processed_at = datetime.now(timezone.utc)
             doc.agent_results = {
                 "trade_extraction": {
                     "document_type": doc_meta.get("document_type"),
                     "confidence": doc_meta.get("confidence_score"),
+                    "extraction_method": extraction.get("extraction_method", "llm"),
                     "parties": len([p for p in extraction.get("parties", {}).values() if p]),
                     "cargo_items": len(extraction.get("cargo", {}).get("items", [])),
+                    "fields_extracted": stored_count,
                 }
             }
         
         session.commit()
-        logger.info(f"Stored {len(bronze_records)} extractions for document {document_id}")
+        logger.info(f"Stored {stored_count} extractions for document {document_id}")
     
     # Trigger entity resolution for Silver layer
     try:
@@ -211,6 +231,119 @@ async def _store_extraction_results(document_id: str, extraction: Dict, service)
             logger.info(f"Entity resolution for {document_id}: {result}")
     except Exception as e:
         logger.warning(f"Entity resolution failed for {document_id}: {e}")
+
+
+def _build_bronze_records_from_regex(extraction: Dict) -> List[Dict]:
+    """Build bronze layer records from regex extraction results."""
+    records = []
+    
+    # Document type
+    doc_meta = extraction.get("document_metadata", {})
+    if doc_meta.get("document_type"):
+        records.append({
+            "field_name": "document_type",
+            "field_value": doc_meta["document_type"],
+            "confidence": doc_meta.get("confidence_score", 0.5),
+            "extraction_type": "regex",
+            "agent_name": "regex_trade_extractor",
+        })
+    
+    # Shipment identifiers
+    shipment = extraction.get("shipment", {})
+    for field in ["master_bl_number", "house_bl_number", "booking_number"]:
+        if shipment.get(field):
+            records.append({
+                "field_name": field,
+                "field_value": shipment[field],
+                "confidence": 0.9,
+                "extraction_type": "regex",
+                "agent_name": "regex_trade_extractor",
+            })
+    
+    # Container numbers
+    for i, container in enumerate(shipment.get("containers", [])):
+        if container.get("number"):
+            records.append({
+                "field_name": f"container_{i+1}",
+                "field_value": container["number"],
+                "confidence": 0.95,
+                "extraction_type": "regex",
+                "agent_name": "regex_trade_extractor",
+                "metadata": container,
+            })
+    
+    # Port info
+    for key, value in shipment.items():
+        if key.startswith("port_") and value:
+            records.append({
+                "field_name": key,
+                "field_value": value,
+                "confidence": 0.85,
+                "extraction_type": "regex",
+                "agent_name": "regex_trade_extractor",
+            })
+    
+    # Parties
+    for role, party_data in extraction.get("parties", {}).items():
+        if party_data and isinstance(party_data, dict) and party_data.get("name"):
+            records.append({
+                "field_name": role,
+                "field_value": party_data["name"],
+                "confidence": 0.85,
+                "extraction_type": "regex",
+                "agent_name": "regex_trade_extractor",
+                "metadata": party_data,
+            })
+    
+    # Cargo items
+    for i, item in enumerate(extraction.get("cargo", {}).get("items", [])):
+        if item.get("description") or item.get("hts_code_10_digit"):
+            records.append({
+                "field_name": f"cargo_item_{i+1}",
+                "field_value": item.get("description", f"HTS {item.get('hts_code_10_digit', '')}"),
+                "confidence": 0.8,
+                "extraction_type": "regex",
+                "agent_name": "regex_trade_extractor",
+                "metadata": {
+                    "hts_code": item.get("hts_code_10_digit"),
+                    "hs_code": item.get("hs_code"),
+                    "country_of_origin": item.get("country_of_origin"),
+                },
+            })
+    
+    # Financial fields
+    financials = extraction.get("financials", {})
+    if financials.get("invoice_number"):
+        records.append({
+            "field_name": "invoice_number",
+            "field_value": financials["invoice_number"],
+            "confidence": 0.9,
+            "extraction_type": "regex",
+            "agent_name": "regex_trade_extractor",
+        })
+    if financials.get("total_invoice_value"):
+        records.append({
+            "field_name": "total_invoice_value",
+            "field_value": str(financials["total_invoice_value"]),
+            "confidence": 0.8,
+            "extraction_type": "regex",
+            "agent_name": "regex_trade_extractor",
+            "metadata": {"currency": financials.get("currency")},
+        })
+    
+    # Customs entry
+    customs = extraction.get("customs_entry", {})
+    if customs.get("entry_number"):
+        records.append({
+            "field_name": "entry_number",
+            "field_value": customs["entry_number"],
+            "confidence": 0.9,
+            "extraction_type": "regex",
+            "agent_name": "regex_trade_extractor",
+            "metadata": customs,
+        })
+    
+    return records
 
 
 @celery_app.task(bind=True)

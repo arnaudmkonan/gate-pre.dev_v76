@@ -1,3 +1,4 @@
+import { authFetch } from '../lib/authFetch'
 import { useState, useCallback } from 'react'
 
 interface FieldDefinition {
@@ -68,7 +69,7 @@ export const useTemplates = (options: UseTemplatesOptions = {}) => {
       if (options.isActive !== undefined) params.append('is_active', String(options.isActive))
       if (options.templateType) params.append('template_type', options.templateType)
 
-      const response = await fetch(`/api/templates?${params.toString()}`)
+      const response = await authFetch(`/api/templates?${params.toString()}`)
       if (!response.ok) {
         const err = await response.json()
         throw new Error(err.detail || 'Failed to fetch templates')
@@ -95,7 +96,7 @@ export const useTemplate = (templateId: string | undefined) => {
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch(`/api/templates/${templateId}`)
+      const response = await authFetch(`/api/templates/${templateId}`)
       if (!response.ok) {
         const err = await response.json()
         throw new Error(err.detail || 'Failed to fetch template')
@@ -132,7 +133,7 @@ export const useTemplateActions = () => {
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch('/api/templates', {
+      const response = await authFetch('/api/templates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -155,7 +156,7 @@ export const useTemplateActions = () => {
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch(`/api/templates/${templateId}`, {
+      const response = await authFetch(`/api/templates/${templateId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates)
@@ -178,7 +179,7 @@ export const useTemplateActions = () => {
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch(`/api/templates/${templateId}`, {
+      const response = await authFetch(`/api/templates/${templateId}`, {
         method: 'DELETE'
       })
       if (!response.ok) {
@@ -199,7 +200,7 @@ export const useTemplateActions = () => {
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch(`/api/templates/${templateId}/clone`, {
+      const response = await authFetch(`/api/templates/${templateId}/clone`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ new_name: newName, customer_id: customerId })
@@ -226,7 +227,7 @@ export const useTemplateActions = () => {
       if (classification) params.append('classification', classification)
       if (customerId) params.append('customer_id', customerId)
 
-      const response = await fetch(`/api/templates/match/${documentId}?${params.toString()}`)
+      const response = await authFetch(`/api/templates/match/${documentId}?${params.toString()}`)
       if (!response.ok) {
         const err = await response.json()
         throw new Error(err.detail || 'Failed to match templates')

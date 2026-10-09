@@ -1,3 +1,4 @@
+import { authFetch } from '../lib/authFetch';
 import { useState } from 'react';
 import { ArrowRightLeft, Clock, DollarSign, Calendar, FileCheck, ArrowRight, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { Card } from '../components/Card';
@@ -65,7 +66,7 @@ export const DrawbackPage = () => {
             const params = new URLSearchParams({ import_date: importDate });
             if (exportDate) params.append('export_date', exportDate);
 
-            const res = await fetch(`/api/entry-reconciliation/eligibility?${params}`);
+            const res = await authFetch(`/api/entry-reconciliation/eligibility?${params}`);
             const data = await res.json();
             setEligibilityResult(data);
         } catch (e) {
@@ -86,7 +87,7 @@ export const DrawbackPage = () => {
                 match_type: matchType
             });
 
-            const res = await fetch(`/api/entry-reconciliation/estimate-refund?${params}`);
+            const res = await authFetch(`/api/entry-reconciliation/estimate-refund?${params}`);
             const data = await res.json();
             setRefundEstimate(data);
         } catch (e) {
@@ -101,7 +102,7 @@ export const DrawbackPage = () => {
         setLoading(true);
         try {
             const data = JSON.parse(reconcileJson);
-            const res = await fetch('/api/entry-reconciliation/reconcile', {
+            const res = await authFetch('/api/entry-reconciliation/reconcile', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Card } from './Card'
 import { Button } from './Button'
 import { AlertCircle, CheckCircle } from 'lucide-react'
+import { authFetch } from '../lib/authFetch'
 
 interface GuidedMappingProps {
   jobId: string
@@ -34,11 +35,8 @@ export const GuidedMapping: React.FC<GuidedMappingProps> = ({ jobId, onMappingAp
     setValidationWarnings([])
 
     try {
-      const response = await fetch(`/api/ingest/jobs/${jobId}/mapping-preview`, {
+      const response = await authFetch(`/api/ingest/jobs/${jobId}/mapping-preview`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           mapping_config: {
             document_type: documentType,
@@ -72,11 +70,8 @@ export const GuidedMapping: React.FC<GuidedMappingProps> = ({ jobId, onMappingAp
     setError(null)
 
     try {
-      const response = await fetch(`/api/ingest/jobs/${jobId}/mode`, {
+      const response = await authFetch(`/api/ingest/jobs/${jobId}/mode`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           mode: 'guided_mapping',
           mapping_config: {

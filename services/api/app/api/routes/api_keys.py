@@ -12,8 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.services.api_key_service import ApiKeyService, PERMISSION_SCOPES
+from app.core.auth import get_current_user
 
-router = APIRouter(prefix="/api/settings/api-keys", tags=["API Keys"])
+router = APIRouter(prefix="/api/settings/api-keys", tags=["API Keys"], dependencies=[Depends(get_current_user)])
 
 
 # ==================== Schemas ====================

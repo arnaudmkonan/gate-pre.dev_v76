@@ -11,10 +11,11 @@ from pydantic import BaseModel, Field
 from app.core.database import get_db
 from app.models import RoutingDecision, RoutingStatus
 from app.services.file_routing_service import FileRoutingService
+from app.core.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/routing", tags=["routing"])
+router = APIRouter(prefix="/api/routing", tags=["routing"], dependencies=[Depends(get_current_user)])
 
 
 class RoutingDecisionResponse(BaseModel):

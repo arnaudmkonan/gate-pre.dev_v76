@@ -1,3 +1,4 @@
+import { authFetch } from '../lib/authFetch';
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
@@ -119,7 +120,7 @@ export const EntryPrepPage = () => {
         setLoading(true)
         setError(null)
         try {
-            const response = await fetch(`${API_BASE}/api/entries/prep/${shipmentId}`)
+            const response = await authFetch(`${API_BASE}/api/entries/prep/${shipmentId}`)
             if (!response.ok) throw new Error('Failed to fetch entry data')
             const data = await response.json()
             setEntryData(data)
@@ -133,7 +134,7 @@ export const EntryPrepPage = () => {
     const validateEntry = async () => {
         setValidating(true)
         try {
-            const response = await fetch(`${API_BASE}/api/entries/prep/${shipmentId}/validate`, {
+            const response = await authFetch(`${API_BASE}/api/entries/prep/${shipmentId}/validate`, {
                 method: 'POST'
             })
             if (!response.ok) throw new Error('Validation failed')
@@ -149,7 +150,7 @@ export const EntryPrepPage = () => {
     const exportEntry = async (format: 'ace' | 'json') => {
         setExporting(true)
         try {
-            const response = await fetch(
+            const response = await authFetch(
                 `${API_BASE}/api/entries/prep/${shipmentId}/export?format=${format}`,
                 { method: 'POST' }
             )

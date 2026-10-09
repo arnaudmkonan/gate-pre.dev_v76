@@ -19,8 +19,9 @@ from app.models.gold_records import Shipment, ShipmentDocument, ShipmentStatus
 from app.models.document_key import KeyType
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
+from app.core.auth import get_current_user
 
-router = APIRouter(prefix="/api/shipments", tags=["Shipments"])
+router = APIRouter(prefix="/api/shipments", tags=["Shipments"], dependencies=[Depends(get_current_user)])
 
 
 # ==================== Request/Response Models ====================
@@ -241,6 +242,103 @@ async def get_orphan_documents(
         )
         for o in orphans
     ]
+
+
+@router.get("/suggestions", response_model=List[dict])
+async def list_all_suggestions(
+    limit: int = Query(50, ge=1, le=200),
+    db=Depends(get_db)
+):
+    """
+    List shipment assembly suggestions for all orphan documents.
+
+    Returns suggested document groupings based on shared keys (entry numbers,
+    BOL numbers, container numbers, etc.). Used by the Shipment Assembly UI.
+    """
+    linker = AutoLinkerService(db)
+
+    # Get orphan documents (not yet linked to any shipment)
+    orphans = await linker.get_orphan_documents(limit=limit)
+
+    suggestions = []
+    seen_shipments = set()
+
+    for orphan in orphans:
+        try:
+            doc_uuid = UUID(orphan["document_id"])
+        except (ValueError, KeyError):
+            continue
+
+        doc_suggestions = await linker.get_link_suggestions(doc_uuid, limit=5)
+
+        for s in doc_suggestions:
+            ship_id = s.get("shipment_id", "")
+            if ship_id not in seen_shipments:
+                seen_shipments.add(ship_id)
+                suggestions.append({
+                    "id": ship_id,
+                    "master_bl": s.get("match_key_value") if s.get("match_key_type") == "BOL_NUM" else None,
+                    "house_bl": None,
+                    "container_numbers": [],
+                    "booking_number": None,
+                    "confidence_score": s.get("confidence", 0.0),
+                    "match_reasons": [f"{s.get('match_key_type', 'unknown')}: {s.get('match_key_value', '')}"],
+                    "status": "PENDING",
+                    "document_ids": [orphan["document_id"]],
+                    "document_count": s.get("document_count", 1),
+                    "suggested_details": {
+                        "shipment_name": s.get("shipment_name", ""),
+                    },
+                    "created_shipment_id": None,
+                    "created_at": datetime.utcnow().isoformat() + "Z",
+                    "reviewed_at": None,
+                })
+
+    return suggestions
+
+
+@router.get("/assembly-mode")
+async def get_assembly_mode():
+    """
+    Get the current shipment assembly mode configuration.
+
+    Returns the assembly mode settings used by the Shipment Assembly UI.
+    """
+    return {
+        "assembly_mode": "assisted",
+        "auto_accept_threshold": 0.9,
+        "notify_on_suggestion": True,
+        "notify_on_auto_accept": True,
+    }
+
+
+@router.post("/auto-assemble")
+async def auto_assemble_shipments(
+    db=Depends(get_db)
+):
+    """
+    Trigger automatic shipment assembly.
+
+    Runs the auto-linker on all unlinked documents to create shipment groupings.
+    """
+    linker = AutoLinkerService(db)
+
+    try:
+        results = await linker.run_batch_linking(
+            document_ids=None,
+            only_unlinked=True
+        )
+        return {
+            "status": "completed",
+            "shipments_created": results.get("shipments_created", 0),
+            "documents_analyzed": results.get("documents_processed", 0),
+            "documents_linked": results.get("documents_linked", 0),
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Auto-assembly failed: {str(e)}"
+        )
 
 
 @router.get("/suggestions/{document_id}", response_model=List[LinkSuggestion])

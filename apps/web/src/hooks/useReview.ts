@@ -1,3 +1,4 @@
+import { authFetch } from '../lib/authFetch'
 import { useState, useCallback } from 'react'
 
 interface ReviewItem {
@@ -82,7 +83,7 @@ export const useReviewQueue = (options: UseReviewQueueOptions = {}) => {
       if (options.status) params.append('status', options.status)
       if (options.assignedTo) params.append('assigned_to', options.assignedTo)
 
-      const response = await fetch(`/api/review/queue?${params.toString()}`)
+      const response = await authFetch(`/api/review/queue?${params.toString()}`)
       if (!response.ok) {
         const err = await response.json()
         throw new Error(err.detail || 'Failed to fetch review queue')
@@ -115,7 +116,7 @@ export const useReviewItem = (itemId: string | undefined) => {
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch(`/api/review/item/${itemId}`)
+      const response = await authFetch(`/api/review/item/${itemId}`)
       if (!response.ok) {
         const err = await response.json()
         throw new Error(err.detail || 'Failed to fetch review item')
@@ -148,7 +149,7 @@ export const useReviewStats = () => {
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch('/api/review/stats')
+      const response = await authFetch('/api/review/stats')
       if (!response.ok) {
         const err = await response.json()
         throw new Error(err.detail || 'Failed to fetch review stats')
@@ -173,7 +174,7 @@ export const useReviewActions = () => {
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch(`/api/review/item/${itemId}/assign`, {
+      const response = await authFetch(`/api/review/item/${itemId}/assign`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reviewer })
@@ -196,7 +197,7 @@ export const useReviewActions = () => {
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch(`/api/review/item/${itemId}/approve`, {
+      const response = await authFetch(`/api/review/item/${itemId}/approve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reviewer, notes })
@@ -219,7 +220,7 @@ export const useReviewActions = () => {
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch(`/api/review/item/${itemId}/reject`, {
+      const response = await authFetch(`/api/review/item/${itemId}/reject`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reviewer, reason })
@@ -242,7 +243,7 @@ export const useReviewActions = () => {
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch(`/api/review/item/${itemId}/skip`, {
+      const response = await authFetch(`/api/review/item/${itemId}/skip`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       })
@@ -270,7 +271,7 @@ export const useReviewActions = () => {
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch(`/api/review/item/${itemId}/correct`, {
+      const response = await authFetch(`/api/review/item/${itemId}/correct`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

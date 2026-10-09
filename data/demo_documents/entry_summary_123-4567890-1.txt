@@ -1,0 +1,71 @@
+CBP FORM 7501 - ENTRY SUMMARY
+
+ENTRY NUMBER: 123-4567890-1
+ENTRY TYPE: 01 - Consumption Entry
+ENTRY DATE: December 28, 2024
+
+FILER CODE: AEC
+IMPORTER NUMBER: 95-4567890
+IMPORTER NAME: American Electronics Corp.
+
+CONSIGNEE:
+American Electronics Corp.
+1234 Commerce Drive
+Los Angeles, CA 90001
+
+PORT OF ENTRY: 2704 - Los Angeles
+MODE OF TRANSPORT: 11 - Vessel, Non-Container
+IMPORTING CARRIER: COSCO SHIPPING UNIVERSE
+B/L NUMBER: MAEU-2024-789456
+COUNTRY OF ORIGIN: CN - China
+
+MANUFACTURER/EXPORTER:
+MID: CNTECHPAR-456
+TechParts Global Ltd.
+Shenzhen, China
+
+LINE ITEMS:
+================================================================================
+Line | HTS Number      | Description               | Qty    | Value     | Duty |
+-----|-----------------|---------------------------|--------|-----------|------|
+001  | 8471.30.0100    | Laptop Computers         | 500 NO | $212,500  | Free |
+     | Country: CN     | ADP Machine, Portable    |        |           |      |
+     | SPI: -          |                           |        |           |      |
+-----|-----------------|---------------------------|--------|-----------|------|
+002  | 8471.60.9050    | Computer Mice            |2000 NO | $17,000   | Free |
+     | Country: CN     | Input/Output Units       |        |           |      |
+     | SPI: -          |                           |        |           |      |
+-----|-----------------|---------------------------|--------|-----------|------|
+003  | 8471.80.1000    | Docking Stations         | 300 NO | $19,500   | Free |
+     | Country: CN     | Other Units of ADP       |        |           |      |
+     | SPI: -          |                           |        |           |      |
+-----|-----------------|---------------------------|--------|-----------|------|
+004  | 8471.60.1000    | Keyboards                |1000 NO | $35,000   | Free |
+     | Country: CN     | Combined Input/Output    |        |           |      |
+     | SPI: -          |                           |        |           |      |
+-----|-----------------|---------------------------|--------|-----------|------|
+005  | 8528.52.0000    | Monitors                 | 200 NO | $55,000   | Free |
+     | Country: CN     | Capable of Direct Conn.  |        |           |      |
+     | SPI: -          | to ADP Machine           |        |           |      |
+================================================================================
+
+TOTALS:
+Total Entered Value: $339,000.00
+Total Dutiable Value: $339,000.00
+Total Duty: $0.00
+Total MPF (Merchandise Processing Fee): $535.09
+Total HMF (Harbor Maintenance Fee): $423.61
+TOTAL DUE: $958.70
+
+CERTIFICATION:
+I declare that the information provided is true and correct.
+The entries comply with all CBP requirements.
+
+Importer of Record: American Electronics Corp.
+Signature: Robert Johnson, Import Compliance Manager
+Date: December 28, 2024
+
+CBP USE ONLY:
+Entry Accepted: ___________
+Entry Liquidated: ___________
+Liquidation Date: ___________

@@ -3,7 +3,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../co
 import { Button } from '../components/Button'
 import { Input } from '../components/Input'
 import { useToast } from '../components/Toast'
-import axios from 'axios'
+import { apiClient } from '../lib/apiClient'
 
 import { API_URL } from '../config/api'
 
@@ -26,7 +26,7 @@ export const StorageConfig = () => {
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const response = await axios.get(`${API_URL}/api/storage/config`)
+        const response = await apiClient.get(`${API_URL}/api/storage/config`)
         setCurrentConfig(response.data)
         setFormData(response.data)
       } catch {
@@ -55,7 +55,7 @@ export const StorageConfig = () => {
 
       const method = currentConfig ? 'put' : 'post'
 
-      const response = await axios({
+      const response = await apiClient({
         method,
         url: `${API_URL}${endpoint}`,
         data: formData,
@@ -73,7 +73,7 @@ export const StorageConfig = () => {
   const handleTestConnection = async () => {
     setIsTesting(true)
     try {
-      await axios.get(`${API_URL}/api/storage/config`)
+      await apiClient.get(`${API_URL}/api/storage/config`)
       addToast('Storage connection successful', 'success')
     } catch (error: any) {
       addToast('Failed to connect to storage', 'error')
@@ -192,9 +192,8 @@ export const StorageConfig = () => {
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className={`p-4 rounded-lg text-white ${
-              toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'
-            }`}
+            className={`p-4 rounded-lg text-white ${toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'
+              }`}
           >
             {toast.message}
           </div>

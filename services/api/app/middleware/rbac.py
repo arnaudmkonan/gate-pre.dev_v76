@@ -1,152 +1,78 @@
-"""Role-Based Access Control (RBAC) middleware and dependencies."""
+"""
+DEPRECATED — middleware/rbac.py
 
-from typing import Optional, Set
-from fastapi import HTTPException, status, Depends, Request
-from sqlalchemy.ext.asyncio import AsyncSession
+This module is superseded by app.core.auth, which provides real database-backed
+authentication and role checking.
 
-from app.core.database import get_db
+This shim re-exports the same symbols so any remaining code that imports from
+here continues to work, but all references should be migrated to app.core.auth:
+
+    # Old (deprecated)
+    from app.middleware.rbac import admin_required, role_required
+
+    # New (canonical)
+    from app.core.auth import require_admin, require_role, get_current_user
+
+Background: The original rbac.py read roles from plain HTTP headers
+(X-User-Roles, X-User-ID) which any client can spoof.  app.core.auth
+validates bearer tokens and API keys against the database.
+
+This file will be removed in a future release.
+"""
+import warnings
+
+warnings.warn(
+    "app.middleware.rbac is deprecated. Import from app.core.auth instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
+# Re-export canonical equivalents under the old names so callers don't break.
+from app.core.auth import (  # noqa: E402
+    require_admin,
+    require_role,
+    get_current_user,
+    get_optional_user,
+)
+
+# Old names → canonical equivalents
+admin_required = require_admin
+role_required = require_role
 
 
-class RBACConfig:
-    """Configuration for RBAC checks."""
-
-    def __init__(self, required_roles: Optional[Set[str]] = None, required_permissions: Optional[Set[str]] = None):
-        self.required_roles = required_roles or set()
-        self.required_permissions = required_permissions or set()
-
-
-async def get_user_from_request(request: Request) -> Optional[dict]:
+def permission_required(required_permissions):
     """
-    Extract user information from request headers or context.
+    Deprecated stub.  Map to require_role for backwards compatibility.
 
-    In a real application, this would extract from JWT tokens or session.
-    For now, we use request headers for testing purposes.
+    The original implementation read permissions from a spoofable HTTP header.
+    Use require_role() from app.core.auth for proper database-backed checks.
     """
-    # Check for user context in request state (set by auth middleware)
-    if hasattr(request.state, "user"):
-        return request.state.user
-
-    # For development/testing, check headers
-    user_id = request.headers.get("X-User-ID")
-    user_roles = request.headers.get("X-User-Roles", "").split(",") if request.headers.get("X-User-Roles") else []
-    user_permissions = request.headers.get("X-User-Permissions", "").split(",") if request.headers.get("X-User-Permissions") else []
-
-    if not user_id:
-        return None
-
-    return {
-        "user_id": user_id,
-        "roles": [r.strip() for r in user_roles if r.strip()],
-        "permissions": [p.strip() for p in user_permissions if p.strip()],
-    }
+    warnings.warn(
+        "permission_required() is deprecated and has no real implementation. "
+        "Use require_role() from app.core.auth instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return require_role(*required_permissions)
 
 
-def admin_required():
+async def get_user_from_request(request):
     """
-    Dependency that checks if user has 'admin' role or 'admin' permission.
-
-    Returns:
-        dict: User information if authorized
-
-    Raises:
-        HTTPException: 403 Forbidden if user lacks admin role/permission
+    Deprecated stub.  The original version read from spoofable headers.
+    Use get_current_user() from app.core.auth as a FastAPI Depends().
     """
-    async def check_admin(
-        request: Request,
-        session: AsyncSession = Depends(get_db),
-    ) -> dict:
-        user = await get_user_from_request(request)
-
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="No user context found. Authentication required.",
-            )
-
-        # Check if user has 'admin' role or 'admin' permission
-        has_admin_role = "admin" in user.get("roles", [])
-        has_admin_permission = "admin" in user.get("permissions", [])
-
-        if not (has_admin_role or has_admin_permission):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Admin role or permission required to access this resource.",
-            )
-
-        return user
-
-    return check_admin
+    warnings.warn(
+        "get_user_from_request() reads from spoofable headers and is insecure. "
+        "Use Depends(get_current_user) from app.core.auth instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return None
 
 
-def role_required(required_roles: Set[str]):
-    """
-    Dependency factory that checks if user has one of the required roles.
-
-    Args:
-        required_roles: Set of role names required for access
-
-    Returns:
-        dict: User information if authorized
-
-    Raises:
-        HTTPException: 403 Forbidden if user lacks required role
-    """
-    async def check_role(
-        request: Request,
-        session: AsyncSession = Depends(get_db),
-    ) -> dict:
-        user = await get_user_from_request(request)
-
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="No user context found. Authentication required.",
-            )
-
-        user_roles = set(user.get("roles", []))
-        if not user_roles & required_roles:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"One of these roles required: {', '.join(required_roles)}",
-            )
-
-        return user
-
-    return check_role
-
-
-def permission_required(required_permissions: Set[str]):
-    """
-    Dependency factory that checks if user has one of the required permissions.
-
-    Args:
-        required_permissions: Set of permission names required for access
-
-    Returns:
-        dict: User information if authorized
-
-    Raises:
-        HTTPException: 403 Forbidden if user lacks required permission
-    """
-    async def check_permission(
-        request: Request,
-        session: AsyncSession = Depends(get_db),
-    ) -> dict:
-        user = await get_user_from_request(request)
-
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="No user context found. Authentication required.",
-            )
-
-        user_permissions = set(user.get("permissions", []))
-        if not user_permissions & required_permissions:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"One of these permissions required: {', '.join(required_permissions)}",
-            )
-
-        return user
-
-    return check_permission
+__all__ = [
+    "admin_required",
+    "role_required",
+    "permission_required",
+    "get_user_from_request",
+]

@@ -20,8 +20,9 @@ from app.models.client import (
     Client, ClientContact, ClientBond, ClientSettings,
     ClientStatus, ClientType, BondType, ContactType
 )
+from app.core.auth import get_current_user
 
-router = APIRouter(prefix="/api/clients", tags=["Clients"])
+router = APIRouter(prefix="/api/clients", tags=["Clients"], dependencies=[Depends(get_current_user)])
 
 
 # ==================== Request/Response Models ====================

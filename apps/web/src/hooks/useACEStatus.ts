@@ -5,7 +5,7 @@
  * Task 3.4 from ROADMAP_FULL_WORKFLOW.md
  */
 import { useState, useCallback } from 'react'
-import axios from 'axios'
+import { apiClient } from '../lib/apiClient'
 
 import { API_URL } from '../config/api'
 
@@ -108,7 +108,7 @@ export function useACEStatus(entryId: string) {
         setError(null)
 
         try {
-            const response = await axios.get<ACEStatusResponse>(
+            const response = await apiClient.get<ACEStatusResponse>(
                 `${API_URL}/api/entries/${entryId}/ace-status`
             )
             setStatus(response.data)
@@ -137,7 +137,7 @@ export function useACEStatusActions() {
         setError(null)
 
         try {
-            const response = await axios.post<FileEntryResponse>(
+            const response = await apiClient.post<FileEntryResponse>(
                 `${API_URL}/api/entries/${entryId}/file`
             )
             return response.data
@@ -155,7 +155,7 @@ export function useACEStatusActions() {
         setError(null)
 
         try {
-            const response = await axios.post(`${API_URL}/api/entries/${entryId}/poll-ace`)
+            const response = await apiClient.post(`${API_URL}/api/entries/${entryId}/poll-ace`)
             return response.data
         } catch (err: any) {
             console.error('Error polling ACE:', err)
@@ -174,7 +174,7 @@ export function useACEStatusActions() {
         setError(null)
 
         try {
-            const response = await axios.post(
+            const response = await apiClient.post(
                 `${API_URL}/api/entries/${entryId}/resubmit`,
                 corrections ? { corrections } : {}
             )
@@ -196,7 +196,7 @@ export function useACEStatusActions() {
         setError(null)
 
         try {
-            const response = await axios.post(
+            const response = await apiClient.post(
                 `${API_URL}/api/entries/${entryId}/simulate-ace-response`,
                 request
             )

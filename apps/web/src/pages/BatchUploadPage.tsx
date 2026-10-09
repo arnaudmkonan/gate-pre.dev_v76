@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
+import { apiClient } from '../lib/apiClient';
 
 // API URL - empty string uses relative path (works with nginx proxy)
 const API_URL = import.meta.env.VITE_API_URL || '';
@@ -66,7 +66,7 @@ export function BatchUploadPage() {
 
   const loadBatchJobs = useCallback(async () => {
     try {
-      const response = await axios.get(`${API_URL}/batch/jobs?limit=20`);
+      const response = await apiClient.get(`${API_URL}/batch/jobs?limit=20`);
       setBatchJobs(response.data.jobs || []);
     } catch (err) {
       console.error('Failed to load batch jobs:', err);
@@ -97,7 +97,7 @@ export function BatchUploadPage() {
         const formData = new FormData();
         formData.append('file', file);
 
-        const response = await axios.post<DuplicateCheckResult>(
+        const response = await apiClient.post<DuplicateCheckResult>(
           `${API_URL}/api/duplicates/check-file`,
           formData,
           { headers: { 'Content-Type': 'multipart/form-data' } }
@@ -143,7 +143,7 @@ export function BatchUploadPage() {
         formData.append('name', batchName);
         if (description) formData.append('description', description);
 
-        await axios.post(`${API_URL}/batch/upload?name=${encodeURIComponent(batchName)}`, formData, {
+        await apiClient.post(`${API_URL}/batch/upload?name=${encodeURIComponent(batchName)}`, formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
           onUploadProgress: (progressEvent) => {
             const percent = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1));
@@ -156,7 +156,7 @@ export function BatchUploadPage() {
           formData.append('files', selectedFiles[i]);
         }
 
-        await axios.post(
+        await apiClient.post(
           `${API_URL}/batch/upload/multifile?name=${encodeURIComponent(batchName)}${description ? `&description=${encodeURIComponent(description)}` : ''}`,
           formData,
           {
@@ -184,7 +184,7 @@ export function BatchUploadPage() {
 
   const handleExport = async (batchJobId: string) => {
     try {
-      const response = await axios.get(`${API_URL}/batch/jobs/${batchJobId}/export`, {
+      const response = await apiClient.get(`${API_URL}/batch/jobs/${batchJobId}/export`, {
         responseType: 'blob',
       });
 

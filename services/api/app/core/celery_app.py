@@ -2,6 +2,7 @@ import logging
 from typing import Optional
 
 from celery import Celery
+from celery.schedules import crontab
 try:
     from celery.signals import after_return, task_failure
 except ImportError:
@@ -68,6 +69,27 @@ celery_app.conf.update(
         "cleanup-audit-logs": {
             "task": "app.workers.audit_worker.cleanup_old_audit_logs",
             "schedule": 86400.0,  # Once per day
+        },
+        # ---- Gap Closure: Deadline & Alert Tasks (added 2026-02-22) -------
+        "check-isf-deadlines": {
+            "task": "app.workers.deadline_worker.check_isf_deadlines",
+            "schedule": 1800.0,   # Every 30 minutes — ISF 24h filing cut-off
+        },
+        "poll-ace-responses": {
+            "task": "app.workers.deadline_worker.poll_ace_responses",
+            "schedule": 900.0,    # Every 15 minutes — fetch ACE response files
+        },
+        "check-bond-sufficiency": {
+            "task": "app.workers.deadline_worker.check_bond_sufficiency",
+            "schedule": crontab(hour=8, minute=0),  # Daily at 08:00 UTC
+        },
+        "check-review-sla": {
+            "task": "app.workers.deadline_worker.check_review_sla",
+            "schedule": 900.0,   # Every 15 minutes
+        },
+        "check-overdue-invoices": {
+            "task": "app.workers.deadline_worker.check_overdue_invoices",
+            "schedule": crontab(hour=9, minute=0),  # Daily at 09:00 UTC
         },
     },
 )

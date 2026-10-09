@@ -1,3 +1,4 @@
+import { authFetch } from '../lib/authFetch';
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -60,7 +61,7 @@ export const ShipmentSuggestionsPage = () => {
         setLoading(true)
         setError(null)
         try {
-            const response = await fetch(`${API_BASE}/api/shipments/suggestions`)
+            const response = await authFetch(`${API_BASE}/api/shipments/suggestions`)
             if (!response.ok) throw new Error('Failed to fetch suggestions')
             const data = await response.json()
             setSuggestions(data.suggestions || data)
@@ -73,7 +74,7 @@ export const ShipmentSuggestionsPage = () => {
 
     const fetchAssemblyMode = async () => {
         try {
-            const response = await fetch(`${API_BASE}/api/shipments/assembly-mode`)
+            const response = await authFetch(`${API_BASE}/api/shipments/assembly-mode`)
             if (response.ok) {
                 const data = await response.json()
                 setAssemblyMode(data)
@@ -85,7 +86,7 @@ export const ShipmentSuggestionsPage = () => {
 
     const handleAccept = async (suggestionId: string) => {
         try {
-            const response = await fetch(`${API_BASE}/api/shipments/suggestions/${suggestionId}/accept`, {
+            const response = await authFetch(`${API_BASE}/api/shipments/suggestions/${suggestionId}/accept`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             })
@@ -98,7 +99,7 @@ export const ShipmentSuggestionsPage = () => {
 
     const handleReject = async (suggestionId: string) => {
         try {
-            const response = await fetch(`${API_BASE}/api/shipments/suggestions/${suggestionId}/reject`, {
+            const response = await authFetch(`${API_BASE}/api/shipments/suggestions/${suggestionId}/reject`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             })
@@ -112,7 +113,7 @@ export const ShipmentSuggestionsPage = () => {
     const handleBulkAccept = async () => {
         if (selectedIds.size === 0) return
         try {
-            const response = await fetch(`${API_BASE}/api/shipments/suggestions/accept-bulk`, {
+            const response = await authFetch(`${API_BASE}/api/shipments/suggestions/accept-bulk`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ suggestion_ids: Array.from(selectedIds) })
@@ -129,7 +130,7 @@ export const ShipmentSuggestionsPage = () => {
         setAutoAssembling(true)
         setError(null)
         try {
-            const response = await fetch(`${API_BASE}/api/shipments/auto-assemble`, {
+            const response = await authFetch(`${API_BASE}/api/shipments/auto-assemble`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             })

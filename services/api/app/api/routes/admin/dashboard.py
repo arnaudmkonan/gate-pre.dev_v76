@@ -6,8 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.schemas.dashboard import DashboardDataResponse
 from app.services.dashboard_service import DashboardService
+from app.core.auth import get_current_user
 
-router = APIRouter(prefix="/api/admin/dashboard", tags=["Admin - Dashboard"])
+router = APIRouter(prefix="/api/admin/dashboard", tags=["Admin - Dashboard"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("/", response_model=DashboardDataResponse, status_code=status.HTTP_200_OK)

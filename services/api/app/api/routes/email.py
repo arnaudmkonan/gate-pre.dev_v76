@@ -16,9 +16,10 @@ from app.services.email_ingest_service import (
     get_email_status,
 )
 from app.workers.email_monitor_worker import sync_email_now
+from app.core.auth import get_current_user
 
 
-router = APIRouter(prefix="/api/email", tags=["Email Ingestion"])
+router = APIRouter(prefix="/api/email", tags=["Email Ingestion"], dependencies=[Depends(get_current_user)])
 
 
 # ==================== Response Models ====================

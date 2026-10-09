@@ -20,8 +20,9 @@ from app.services.prior_disclosure_service import (
     ViolationType,
     ViolationCategory,
 )
+from app.core.auth import get_current_user
 
-router = APIRouter(prefix="/api/compliance", tags=["Compliance Scorecard"])
+router = APIRouter(prefix="/api/compliance", tags=["Compliance Scorecard"], dependencies=[Depends(get_current_user)])
 
 
 # ==================== Request Models ====================

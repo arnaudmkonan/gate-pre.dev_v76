@@ -3,7 +3,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../co
 import { Button } from '../components/Button'
 import { Input } from '../components/Input'
 import { useToast } from '../components/Toast'
-import axios from 'axios'
+import { apiClient } from '../lib/apiClient'
 
 import { API_URL } from '../config/api'
 
@@ -24,7 +24,7 @@ export const VectorStoreConfig = () => {
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const response = await axios.get(`${API_URL}/api/vector-store/config`)
+        const response = await apiClient.get(`${API_URL}/api/vector-store/config`)
         setCurrentConfig(response.data)
         setFormData(response.data)
       } catch {
@@ -54,7 +54,7 @@ export const VectorStoreConfig = () => {
 
       const method = currentConfig ? 'put' : 'post'
 
-      const response = await axios({
+      const response = await apiClient({
         method,
         url: `${API_URL}${endpoint}`,
         data: formData,
@@ -72,7 +72,7 @@ export const VectorStoreConfig = () => {
   const handleTestConnection = async () => {
     setIsTesting(true)
     try {
-      await axios.get(`${API_URL}/api/vector-store/config`)
+      await apiClient.get(`${API_URL}/api/vector-store/config`)
       addToast('Vector store connection successful', 'success')
     } catch (error: any) {
       addToast('Failed to connect to vector store', 'error')
@@ -182,9 +182,8 @@ export const VectorStoreConfig = () => {
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className={`p-4 rounded-lg text-white ${
-              toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'
-            }`}
+            className={`p-4 rounded-lg text-white ${toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'
+              }`}
           >
             {toast.message}
           </div>

@@ -13,9 +13,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.services.review_service import ReviewService
+from app.core.auth import get_current_user
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/review", tags=["Review"])
+router = APIRouter(prefix="/api/review", tags=["Review"], dependencies=[Depends(get_current_user)])
 
 
 # Request/Response Models

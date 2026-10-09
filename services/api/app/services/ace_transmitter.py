@@ -213,8 +213,10 @@ class ACETransmitter:
                     mode=TransmissionMode.LIVE,
                 )
             
-            # Run SFTP in thread pool to avoid blocking
-            loop = asyncio.get_event_loop()
+            # Run SFTP in thread pool to avoid blocking the async event loop.
+            # Use get_running_loop() — get_event_loop() is deprecated in Python 3.10+
+            # and raises DeprecationWarning / errors in 3.12+.
+            loop = asyncio.get_running_loop()
             result = await loop.run_in_executor(
                 None,
                 self._sftp_upload_sync,
@@ -255,15 +257,39 @@ class ACETransmitter:
             )
     
     def _sftp_upload_sync(self, content: str, filename: str) -> Dict[str, Any]:
-        """Synchronous SFTP upload (runs in thread pool)."""
+        """Synchronous SFTP upload (runs in thread pool).
+
+        Security note: We use RejectPolicy (not AutoAddPolicy) to prevent
+        trust-on-first-use / MITM attacks.  The CBP host key must be present
+        in ACE_KNOWN_HOSTS_PATH before live transmission is allowed.
+        """
         try:
-            # Create SSH client
+            # Create SSH client with strict host-key checking.
+            # AutoAddPolicy is insecure — it blindly accepts any host key,
+            # making MITM attacks trivial.  Always use RejectPolicy in production.
             ssh = paramiko.SSHClient()
-            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            
+            ssh.set_missing_host_key_policy(paramiko.RejectPolicy())
+
+            # Load pinned CBP host key from known_hosts file.
+            # Set ACE_KNOWN_HOSTS_PATH in your environment to the path of a
+            # known_hosts file that contains the CBP SFTP server's public key.
+            # Generate with: ssh-keyscan -p <PORT> <HOST> >> ace_known_hosts
+            known_hosts_path = getattr(settings, "ace_known_hosts_path", None)
+            if not known_hosts_path or not os.path.exists(known_hosts_path):
+                return {
+                    "success": False,
+                    "error": (
+                        "ACE_KNOWN_HOSTS_PATH is not set or the file does not exist. "
+                        "Cannot connect to CBP SFTP without a pinned host key. "
+                        "Run: ssh-keyscan -p {port} {host} >> /path/to/ace_known_hosts "
+                        "and set ACE_KNOWN_HOSTS_PATH accordingly."
+                    ).format(port=self.sftp_port, host=self.sftp_host),
+                }
+            ssh.load_host_keys(known_hosts_path)
+
             # Load private key
             private_key = paramiko.RSAKey.from_private_key_file(self.sftp_key_path)
-            
+
             # Connect
             ssh.connect(
                 hostname=self.sftp_host,
@@ -272,22 +298,24 @@ class ACETransmitter:
                 pkey=private_key,
                 timeout=30,
             )
-            
+
             # Open SFTP session
             sftp = ssh.open_sftp()
-            
+
             # Write file to remote
             remote_path = f"{self.upload_path}/{filename}"
             with sftp.file(remote_path, 'w') as remote_file:
                 remote_file.write(content)
-            
+
             # Close connections
             sftp.close()
             ssh.close()
-            
+
             logger.info(f"Successfully uploaded {filename} to {self.sftp_host}")
             return {"success": True}
-            
+
+        except paramiko.BadHostKeyException as e:
+            return {"success": False, "error": f"Host key mismatch — possible MITM attack: {e}"}
         except paramiko.AuthenticationException as e:
             return {"success": False, "error": f"Authentication failed: {e}"}
         except paramiko.SSHException as e:
@@ -392,14 +420,18 @@ class ACETransmitter:
     ) -> TransmissionResult:
         """
         Check for ACE response for a transmitted entry.
-        
-        In LIVE mode, polls SFTP response directory.
-        In SIMULATION mode, automatically returns success after delay.
+
+        SIMULATION mode: immediately returns CONFIRMED (as before).
+        LIVE mode:       polls the CBP SFTP response folder for a file
+                         matching the entry number, parses it with
+                         ACEResponseParser, and advances the entry status.
         """
+        from app.services.ace_response_parser import ACEResponseParser
+
         query = select(Entry).where(Entry.id == entry_id)
         result = await self.db.execute(query)
         entry = result.scalar_one_or_none()
-        
+
         if not entry:
             return TransmissionResult(
                 success=False,
@@ -409,9 +441,8 @@ class ACETransmitter:
                 error="Entry not found",
                 mode=self.mode,
             )
-        
+
         if self.mode == TransmissionMode.SIMULATION:
-            # Simulate immediate acceptance
             await asyncio.sleep(1)
             return TransmissionResult(
                 success=True,
@@ -422,21 +453,139 @@ class ACETransmitter:
                 message="SIMULATION: Entry accepted by CBP",
                 mode=TransmissionMode.SIMULATION,
             )
-        
-        # LIVE mode: Poll for response file
-        # This would look for response files in the SFTP response directory
-        # matching the entry number
-        
-        # For now, return pending status
+
+        # ------------------------------------------------------------------
+        # LIVE mode — pull response file from CBP SFTP response folder
+        # ------------------------------------------------------------------
+        raw_content = await self._fetch_sftp_response_file(entry.entry_number or "")
+
+        if raw_content is None:
+            # No response file yet — still waiting
+            return TransmissionResult(
+                success=True,
+                entry_id=entry_id,
+                entry_number=entry.entry_number or "",
+                status=TransmissionStatus.PENDING,
+                ace_confirmation_id=entry.ace_entry_id,
+                message="Awaiting CBP response — no file found yet",
+                mode=TransmissionMode.LIVE,
+            )
+
+        # Parse the response
+        parser = ACEResponseParser()
+        parsed_list = parser.parse(raw_content)
+        # Take the first non-unknown result
+        parsed = next(
+            (r for r in parsed_list if r.message_type == "entry"), parsed_list[0]
+        )
+
+        # Map to TransmissionStatus
+        if parsed.response_code in ("AE", "AP", "CF", "WO"):
+            tx_status = TransmissionStatus.CONFIRMED
+        elif parsed.response_code in ("AC",):
+            tx_status = TransmissionStatus.CONFIRMED
+        elif parsed.response_code in ("RJ", "ER", "1C"):
+            tx_status = TransmissionStatus.FAILED
+        else:
+            tx_status = TransmissionStatus.PENDING
+
+        # Advance entry status in DB if mapped
+        if parsed.new_status:
+            await self._advance_entry_status(entry, parsed.new_status, parsed.status_description)
+
         return TransmissionResult(
-            success=True,
+            success=tx_status != TransmissionStatus.FAILED,
             entry_id=entry_id,
             entry_number=entry.entry_number or "",
-            status=TransmissionStatus.PENDING,
+            status=tx_status,
             ace_confirmation_id=entry.ace_entry_id,
-            message="Awaiting CBP response",
+            message=f"CBP {parsed.response_code}: {parsed.status_description}",
+            error="; ".join(parsed.cbp_messages) if parsed.cbp_messages and tx_status == TransmissionStatus.FAILED else None,
             mode=TransmissionMode.LIVE,
         )
+
+    async def _fetch_sftp_response_file(self, entry_number: str) -> Optional[str]:
+        """
+        Poll the ACE SFTP response directory for a file matching `entry_number`.
+
+        Returns the file content as a string, or None if no file is found.
+        Errors are logged and treated as "no response yet" to allow retries.
+        """
+        if not paramiko:
+            logger.warning("paramiko not installed — cannot fetch SFTP response files")
+            return None
+        if not entry_number:
+            return None
+        try:
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            connect_kwargs: Dict[str, Any] = {
+                "hostname": self.sftp_host,
+                "port": self.sftp_port,
+                "username": self.sftp_user,
+                "timeout": 15,
+            }
+            if self.sftp_key_path and os.path.exists(self.sftp_key_path):
+                connect_kwargs["pkey"] = paramiko.RSAKey.from_private_key_file(
+                    self.sftp_key_path
+                )
+            ssh.connect(**connect_kwargs)
+            sftp = ssh.open_sftp()
+
+            try:
+                files = sftp.listdir(self.response_path)
+            except FileNotFoundError:
+                logger.warning("ACE response path not found: %s", self.response_path)
+                return None
+
+            # Match by entry number prefix (CBP names response files with entry number)
+            target = None
+            for fname in files:
+                if entry_number.replace("-", "") in fname.replace("-", ""):
+                    target = fname
+                    break
+
+            if not target:
+                return None
+
+            remote_path = f"{self.response_path.rstrip('/')}/{target}"
+            with sftp.open(remote_path, "r") as fh:
+                content = fh.read().decode("utf-8", errors="replace")
+
+            # Remove the response file so we don't re-process it
+            try:
+                sftp.remove(remote_path)
+            except Exception:
+                pass  # Best-effort delete
+
+            sftp.close()
+            ssh.close()
+            logger.info("Fetched ACE response file %s for entry %s", target, entry_number)
+            return content
+
+        except Exception as exc:
+            logger.warning("Could not fetch ACE SFTP response for %s: %s", entry_number, exc)
+            return None
+
+    async def _advance_entry_status(
+        self, entry: Entry, new_status: str, reason: str
+    ) -> None:
+        """Persist the ACE-resolved status onto the Entry record."""
+        try:
+            from app.models.entry import EntryStatus
+            # Only advance forward — never revert a released entry
+            final_statuses = {EntryStatus.RELEASED.value, EntryStatus.LIQUIDATED.value}
+            if entry.status in final_statuses:
+                return
+            entry.status = new_status
+            entry.updated_at = datetime.now(timezone.utc)
+            await self.db.commit()
+            logger.info(
+                "Entry %s status advanced to '%s' via ACE response: %s",
+                entry.entry_number, new_status, reason,
+            )
+        except Exception as exc:
+            logger.error("Failed to advance entry status: %s", exc)
     
     def get_connection_status(self) -> Dict[str, Any]:
         """Get ACE connection status and configuration."""

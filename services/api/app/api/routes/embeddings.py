@@ -19,10 +19,11 @@ from app.core.database import get_db
 from app.core.config import settings
 from app.models.document_metadata import DocumentMetadata
 from app.models.document_embedding import DocumentEmbedding
+from app.core.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/embeddings", tags=["embeddings"])
+router = APIRouter(prefix="/api/embeddings", tags=["embeddings"], dependencies=[Depends(get_current_user)])
 
 
 # ============================================================================

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import { apiClient } from "../lib/apiClient";
 import { Activity, AlertCircle, BarChart3, Clock } from "lucide-react";
 
 interface DashboardData {
@@ -44,7 +44,7 @@ export default function AdminDashboard() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const response = await axios.get("/api/admin/dashboard/");
+      const response = await apiClient.get("/api/admin/dashboard/");
       setData(response.data);
       setLastUpdate(new Date());
       setError(null);
@@ -109,15 +109,14 @@ export default function AdminDashboard() {
             Pipeline Status
           </h2>
           <span
-            className={`px-3 py-1 rounded-full text-xs font-medium ${
-              data.pipeline_status.status === "idle"
-                ? "bg-gray-100 text-gray-700"
-                : data.pipeline_status.status === "running"
-                  ? "bg-green-100 text-green-700"
-                  : data.pipeline_status.status === "paused"
-                    ? "bg-yellow-100 text-yellow-700"
-                    : "bg-red-100 text-red-700"
-            }`}
+            className={`px-3 py-1 rounded-full text-xs font-medium ${data.pipeline_status.status === "idle"
+              ? "bg-gray-100 text-gray-700"
+              : data.pipeline_status.status === "running"
+                ? "bg-green-100 text-green-700"
+                : data.pipeline_status.status === "paused"
+                  ? "bg-yellow-100 text-yellow-700"
+                  : "bg-red-100 text-red-700"
+              }`}
           >
             {data.pipeline_status.status.toUpperCase()}
           </span>

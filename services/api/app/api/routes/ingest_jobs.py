@@ -17,10 +17,11 @@ from app.schemas.ingest_jobs import (
     MappingPreviewResponse,
 )
 from app.services.ingest_service import IngestService
+from app.core.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/ingest", tags=["ingest_jobs"])
+router = APIRouter(prefix="/api/ingest", tags=["ingest_jobs"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("/jobs", response_model=IngestJobListResponse)

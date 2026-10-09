@@ -21,10 +21,11 @@ from app.services.silver_service import SilverService
 from app.services.audit_service import AuditService
 from app.services.normalization_validation_service import NormalizationValidationService
 from app.services.vectorization_trigger_service import VectorizationTriggerService
+from app.core.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/metadata", tags=["metadata"])
+router = APIRouter(prefix="/api/metadata", tags=["metadata"], dependencies=[Depends(get_current_user)])
 
 
 @router.get(

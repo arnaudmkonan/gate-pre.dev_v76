@@ -100,7 +100,7 @@ class GoldLayerService:
         if ref_num:
             query = select(Shipment).where(Shipment.reference_num == ref_num)
             result = await session.execute(query)
-            shipment = result.scalar_one_or_none()
+            shipment = result.scalars().first()
             
         if not shipment:
             shipment = Shipment(
@@ -154,7 +154,7 @@ class GoldLayerService:
         # Check existence
         query = select(CommercialInvoice).where(CommercialInvoice.invoice_num == invoice_num)
         result = await session.execute(query)
-        invoice = result.scalar_one_or_none()
+        invoice = result.scalars().first()
         
         if not invoice:
             invoice = CommercialInvoice(
@@ -180,6 +180,7 @@ class GoldLayerService:
             EntityLink.link_type == "extraction_to_party"
         )
         result = await session.execute(query)
-        link = result.scalar_one_or_none()
+        link = result.scalars().first()
         
         return link.target_entity_id if link else None
+

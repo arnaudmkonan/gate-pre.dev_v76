@@ -14,8 +14,9 @@ from app.services.entry_reconciliation_service import (
     calculate_drawback_eligibility,
     estimate_drawback_refund,
 )
+from app.core.auth import get_current_user
 
-router = APIRouter(prefix="/api/entry-reconciliation", tags=["Entry Reconciliation"])
+router = APIRouter(prefix="/api/entry-reconciliation", tags=["Entry Reconciliation"], dependencies=[Depends(get_current_user)])
 
 
 # ==================== Request/Response Models ====================

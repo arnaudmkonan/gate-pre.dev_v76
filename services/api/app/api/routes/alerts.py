@@ -17,9 +17,10 @@ from app.schemas.alerts import (
     TestNotificationRequest,
     TestNotificationResponse,
 )
+from app.core.auth import get_current_user
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/alerts", tags=["alerts"])
+router = APIRouter(prefix="/api/alerts", tags=["alerts"], dependencies=[Depends(get_current_user)])
 
 
 @router.post("/rules", response_model=AlertRuleResponse)

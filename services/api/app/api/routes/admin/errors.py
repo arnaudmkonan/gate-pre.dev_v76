@@ -17,10 +17,11 @@ from uuid import UUID
 from app.core.database import get_db
 from app.models.errors_raw import ErrorsRaw
 from app.repositories.error_repo import ErrorRepository
+from app.core.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/admin/errors", tags=["admin-errors"])
+router = APIRouter(prefix="/api/admin/errors", tags=["admin-errors"], dependencies=[Depends(get_current_user)])
 
 
 class ErrorResponse(BaseModel):

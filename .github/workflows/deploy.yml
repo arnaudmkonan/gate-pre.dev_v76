@@ -14,6 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: staging
     steps:
       - uses: actions/checkout@v4
         with:
@@ -29,6 +30,21 @@ jobs:
 
       - name: Set up Railway CLI
         uses: railway-app/setup-cli@v1
+
+      # -----------------------------------------------------------------------
+      # Run migrations BEFORE deploying new API image.
+      # This ensures the schema is updated before the new code goes live.
+      # If migrations fail, deployment is aborted — the old image keeps running.
+      # -----------------------------------------------------------------------
+      - name: Run database migrations (staging)
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          echo "Running alembic migrations on staging..."
+          railway link ${{ secrets.RAILWAY_BACKEND_PROJECT_ID }}
+          railway run --environment staging -- \
+            alembic -c /app/alembic.ini upgrade head
+        # Fail the workflow on migration errors — do NOT use continue-on-error here.
 
       - name: Deploy Backend to Staging
         env:
@@ -36,7 +52,6 @@ jobs:
         run: |
           railway link ${{ secrets.RAILWAY_BACKEND_PROJECT_ID }}
           railway up --service api --environment staging
-        continue-on-error: true
 
       - name: Deploy Frontend to Staging
         env:
@@ -44,29 +59,49 @@ jobs:
         run: |
           railway link ${{ secrets.RAILWAY_FRONTEND_PROJECT_ID }}
           railway up --service web --environment staging
-        continue-on-error: true
 
-      - name: Health Check Staging
+      - name: Health Check — Staging
+        env:
+          STAGING_DOMAIN: ${{ secrets.STAGING_DOMAIN }}
         run: |
-          for i in {1..10}; do
-            if curl -f http://localhost:8000/health; then
-              echo "Backend health check passed"
+          echo "Waiting for staging deployment to stabilise..."
+          sleep 20
+          for i in {1..12}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://${STAGING_DOMAIN}/health")
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ Staging health check passed (attempt $i)"
               break
             fi
-            if [ $i -lt 10 ]; then
-              echo "Health check attempt $i failed, retrying..."
-              sleep 10
+            echo "Health check attempt $i: HTTP $STATUS — retrying in 10s..."
+            if [ $i -eq 12 ]; then
+              echo "❌ Staging health check failed after 12 attempts"
+              exit 1
             fi
+            sleep 10
           done
-        continue-on-error: true
+
+      - name: Readiness Check — Staging
+        env:
+          STAGING_DOMAIN: ${{ secrets.STAGING_DOMAIN }}
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://${STAGING_DOMAIN}/api/health/ready")
+          if [ "$STATUS" = "200" ]; then
+            echo "✅ Readiness check passed (DB + Redis confirmed healthy)"
+          else
+            echo "❌ Readiness check returned HTTP $STATUS"
+            curl -s "https://${STAGING_DOMAIN}/api/health/ready" | python3 -m json.tool
+            exit 1
+          fi
 
       - name: Create Sentry Release (Staging)
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
         run: |
           npm install -g @sentry/cli
-          export SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
           sentry-cli releases create -p staging ${{ steps.version.outputs.version }}
           sentry-cli releases set-commits ${{ steps.version.outputs.version }} --auto
-        continue-on-error: true
+        continue-on-error: true  # Sentry is observability, not a deployment gate
 
   deploy-production:
     name: Deploy to Production
@@ -74,6 +109,7 @@ jobs:
     timeout-minutes: 30
     needs: [deploy-staging]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: production   # Requires GitHub environment approval if configured
     steps:
       - uses: actions/checkout@v4
         with:
@@ -90,13 +126,24 @@ jobs:
       - name: Set up Railway CLI
         uses: railway-app/setup-cli@v1
 
+      # -----------------------------------------------------------------------
+      # Run migrations BEFORE deploying to production.
+      # -----------------------------------------------------------------------
+      - name: Run database migrations (production)
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          echo "Running alembic migrations on production..."
+          railway link ${{ secrets.RAILWAY_BACKEND_PROJECT_ID }}
+          railway run --environment production -- \
+            alembic -c /app/alembic.ini upgrade head
+
       - name: Deploy Backend to Production
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
           railway link ${{ secrets.RAILWAY_BACKEND_PROJECT_ID }}
           railway up --service api --environment production
-        continue-on-error: true
 
       - name: Deploy Frontend to Production
         env:
@@ -104,36 +151,65 @@ jobs:
         run: |
           railway link ${{ secrets.RAILWAY_FRONTEND_PROJECT_ID }}
           railway up --service web --environment production
-        continue-on-error: true
 
-      - name: Health Check Production
+      - name: Health Check — Production
+        env:
+          PRODUCTION_DOMAIN: ${{ secrets.PRODUCTION_DOMAIN }}
         run: |
-          for i in {1..10}; do
-            if curl -f https://api.example.com/health; then
-              echo "Production health check passed"
+          echo "Waiting for production deployment to stabilise..."
+          sleep 30
+          for i in {1..12}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://${PRODUCTION_DOMAIN}/health")
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ Production health check passed (attempt $i)"
               break
             fi
-            if [ $i -lt 10 ]; then
-              echo "Health check attempt $i failed, retrying..."
-              sleep 10
+            echo "Health check attempt $i: HTTP $STATUS — retrying in 10s..."
+            if [ $i -eq 12 ]; then
+              echo "❌ Production health check failed after 12 attempts"
+              exit 1
             fi
+            sleep 10
           done
-        continue-on-error: true
+
+      - name: Readiness Check — Production
+        env:
+          PRODUCTION_DOMAIN: ${{ secrets.PRODUCTION_DOMAIN }}
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://${PRODUCTION_DOMAIN}/api/health/ready")
+          if [ "$STATUS" = "200" ]; then
+            echo "✅ Production readiness check passed"
+          else
+            echo "❌ Production readiness check failed with HTTP $STATUS"
+            curl -s "https://${PRODUCTION_DOMAIN}/api/health/ready" | python3 -m json.tool
+            echo "🔁 Trigger rollback with: ./deploy/rollback.sh --service api --environment production"
+            exit 1
+          fi
 
       - name: Create Sentry Release (Production)
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
         run: |
           npm install -g @sentry/cli
-          export SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
           sentry-cli releases create -p production ${{ steps.version.outputs.version }}
           sentry-cli releases set-commits ${{ steps.version.outputs.version }} --auto
           sentry-cli releases finalize ${{ steps.version.outputs.version }}
-        continue-on-error: true
+        continue-on-error: true  # Sentry is observability, not a deployment gate
+
+      - name: Record Deploy Summary
+        if: always()
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Version | ${{ steps.version.outputs.version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | ${{ steps.version.outputs.short_sha }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Environment | production |" >> $GITHUB_STEP_SUMMARY
+          echo "| Deployed at | $(date -u +'%Y-%m-%dT%H:%M:%SZ') |" >> $GITHUB_STEP_SUMMARY
+          echo "| Status | ${{ job.status }} |" >> $GITHUB_STEP_SUMMARY
 
       - name: Notify Deployment
         if: success()
         run: |
-          echo "Deployment to production completed: ${{ steps.version.outputs.version }}"
-
-      - name: Record Deploy Time
-        run: |
-          echo "Deployment completed at $(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Production deployment complete: ${{ steps.version.outputs.version }}"

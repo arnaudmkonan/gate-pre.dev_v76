@@ -21,14 +21,19 @@ db_url = settings.database_url or "postgresql+asyncpg://postgres:postgres@localh
 if "+asyncpg://" not in db_url:
     db_url = db_url.replace("+psycopg://", "+asyncpg://").replace("+psycopg2://", "+asyncpg://").replace("postgresql://", "postgresql+asyncpg://")
 
-# Create async engine with asyncpg
+# Create async engine with asyncpg.
+# pool_size=10: steady-state connections kept open.
+# max_overflow=15: allow up to 25 total connections under burst load;
+#   requests wait (pool_timeout default=30s) rather than failing immediately.
+# Leaves headroom for Celery workers and migrations sharing the same Postgres instance.
 engine = create_async_engine(
     db_url,
     echo=settings.debug,
     future=True,
     pool_pre_ping=True,
-    pool_size=20,
-    max_overflow=0,
+    pool_size=10,
+    max_overflow=15,
+    pool_timeout=30,
     connect_args={"server_settings": {"jit": "off"}},
 )
 

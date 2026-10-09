@@ -3,7 +3,7 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
-import axios from 'axios';
+import { apiClient } from '../lib/apiClient';
 
 import { API_URL } from '../config/api';
 
@@ -92,7 +92,7 @@ export function useFeedbackStats() {
     try {
       setLoading(true);
       setError(null);
-      const response = await axios.get(`${API_URL}/api/feedback/stats`);
+      const response = await apiClient.get(`${API_URL}/api/feedback/stats`);
       setData(response.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch feedback stats');
@@ -123,7 +123,7 @@ export function useCorrectionPatterns(templateId?: string, fieldName?: string, d
       if (fieldName) params.append('field_name', fieldName);
       params.append('days', days.toString());
 
-      const response = await axios.get(`${API_URL}/api/feedback/patterns?${params}`);
+      const response = await apiClient.get(`${API_URL}/api/feedback/patterns?${params}`);
       setData(response.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch correction patterns');
@@ -150,7 +150,7 @@ export function useTemplateAccuracyReport(templateId: string | null) {
     try {
       setLoading(true);
       setError(null);
-      const response = await axios.get(`${API_URL}/api/feedback/template/${templateId}/report`);
+      const response = await apiClient.get(`${API_URL}/api/feedback/template/${templateId}/report`);
       setData(response.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch accuracy report');
@@ -177,7 +177,7 @@ export function useTemplateFieldMetrics(templateId: string | null) {
     try {
       setLoading(true);
       setError(null);
-      const response = await axios.get(`${API_URL}/api/feedback/template/${templateId}/metrics`);
+      const response = await apiClient.get(`${API_URL}/api/feedback/template/${templateId}/metrics`);
       setData(response.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch field metrics');
@@ -207,7 +207,7 @@ export function useFewShotExamples(templateId: string | null, fieldName?: string
       const params = new URLSearchParams();
       if (fieldName) params.append('field_name', fieldName);
 
-      const response = await axios.get(
+      const response = await apiClient.get(
         `${API_URL}/api/feedback/template/${templateId}/examples?${params}`
       );
       setData(response.data);
@@ -248,7 +248,7 @@ export function useCorrections(filters: {
       if (filters.limit) params.append('limit', filters.limit.toString());
       if (filters.offset) params.append('offset', filters.offset.toString());
 
-      const response = await axios.get(`${API_URL}/api/feedback/corrections?${params}`);
+      const response = await apiClient.get(`${API_URL}/api/feedback/corrections?${params}`);
       setData(response.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch corrections');
@@ -273,7 +273,7 @@ export function useRecalibrateThreshold() {
     try {
       setLoading(true);
       setError(null);
-      const response = await axios.post(`${API_URL}/api/feedback/template/${templateId}/recalibrate`);
+      const response = await apiClient.post(`${API_URL}/api/feedback/template/${templateId}/recalibrate`);
       return response.data;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to recalibrate';
@@ -296,7 +296,7 @@ export function useDeactivateExample() {
     try {
       setLoading(true);
       setError(null);
-      const response = await axios.delete(
+      const response = await apiClient.delete(
         `${API_URL}/api/feedback/template/${templateId}/examples/${exampleId}`
       );
       return response.data;
@@ -321,7 +321,7 @@ export function useSyncExamples() {
     try {
       setLoading(true);
       setError(null);
-      const response = await axios.post(`${API_URL}/api/feedback/sync-examples`);
+      const response = await apiClient.post(`${API_URL}/api/feedback/sync-examples`);
       return response.data;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to sync examples';

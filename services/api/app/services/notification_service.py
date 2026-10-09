@@ -42,6 +42,24 @@ NOTIFICATION_TYPES = {
         "title_template": "ISF deadline approaching: {entry_number}",
         "email_method": None,  # In-app only
     },
+    # ISF deadline windows
+    "isf_deadline_72h": {"title_template": "ISF filing due in 72h: {isf_number}", "email_method": None},
+    "isf_deadline_48h": {"title_template": "ISF filing due in 48h: {isf_number}", "email_method": None},
+    "isf_deadline_24h": {"title_template": "⚠️ ISF filing due in 24h: {isf_number}", "email_method": None},
+    "isf_deadline_missed": {"title_template": "🚨 ISF deadline MISSED: {isf_number}", "email_method": None},
+    # Bond sufficiency alerts
+    "bond_sufficiency_alert": {
+        "title_template": "Bond utilisation {severity}: {bond_number}",
+        "email_method": "send_bond_alert",
+    },
+    # Review SLA alerts
+    "sla_approaching": {"title_template": "Review SLA approaching: item due soon", "email_method": None},
+    "sla_breached": {"title_template": "🚨 Review SLA breached", "email_method": None},
+    # POA alerts
+    "poa_expiry_warning": {
+        "title_template": "Power of Attorney expiring in {days_remaining} days",
+        "email_method": None,
+    },
     "system": {
         "title_template": "{message}",
         "email_method": None,

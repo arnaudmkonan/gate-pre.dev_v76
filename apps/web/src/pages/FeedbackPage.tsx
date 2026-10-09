@@ -9,7 +9,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import { apiClient } from '../lib/apiClient';
 import {
   useFeedbackStats,
   useCorrectionPatterns,
@@ -55,7 +55,7 @@ export function FeedbackPage() {
   useEffect(() => {
     const loadTemplates = async () => {
       try {
-        const response = await axios.get(`${API_URL}/api/templates`);
+        const response = await apiClient.get(`${API_URL}/api/templates`);
         setTemplates(response.data.templates || []);
       } catch (err) {
         console.error('Failed to load templates:', err);

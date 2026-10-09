@@ -14,8 +14,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.services.entry_prep_service import EntryPrepService
+from app.core.auth import get_current_user
 
-router = APIRouter(prefix="/api/entries/prep", tags=["Entry Prep"])
+router = APIRouter(prefix="/api/entries/prep", tags=["Entry Prep"], dependencies=[Depends(get_current_user)])
 
 
 

@@ -14,8 +14,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db as get_async_db
 from app.services.batch_service import BatchService
+from app.core.auth import get_current_user
 
-router = APIRouter(prefix="/api/batch", tags=["batch"])
+router = APIRouter(prefix="/api/batch", tags=["batch"], dependencies=[Depends(get_current_user)])
 
 
 # ===== Request/Response Models =====

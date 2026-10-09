@@ -11,8 +11,9 @@ from pydantic import BaseModel
 
 from app.core.database import get_db
 from app.services.ace_transmitter import ACETransmitter, TransmissionMode
+from app.core.auth import get_current_user
 
-router = APIRouter(prefix="/api/ace/transmit", tags=["ACE Transmission"])
+router = APIRouter(prefix="/api/ace/transmit", tags=["ACE Transmission"], dependencies=[Depends(get_current_user)])
 
 
 class TransmitRequest(BaseModel):

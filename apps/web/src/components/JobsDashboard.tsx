@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card } from './Card'
 import { Button } from './Button'
 import { AlertCircle, CheckCircle, Clock, RefreshCw } from 'lucide-react'
+import { authFetch } from '../lib/authFetch'
+import { useAuth } from '../contexts/AuthContext'
 
 interface IngestJob {
   id: string
@@ -57,59 +59,87 @@ const formatDate = (dateString: string): string => {
 }
 
 export const JobsDashboard: React.FC<JobsDashboardProps> = ({ onJobSelect, onRetryClick }) => {
+  const { isAuthenticated, isLoading: authLoading } = useAuth()
   const [jobs, setJobs] = useState<IngestJob[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+  const [totalCount, setTotalCount] = useState(0)
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [selectedJob, setSelectedJob] = useState<IngestJob | null>(null)
 
-  const fetchJobs = async (pageNum: number, status: string = '') => {
-    try {
-      setLoading(true)
-      setError(null)
+  const fetchJobs = useCallback(
+    async (pageNum: number, status: string = '', options?: { silent?: boolean }) => {
+      const silent = options?.silent ?? false
+      try {
+        if (silent) {
+          setRefreshing(true)
+        } else {
+          setLoading(true)
+          setError(null)
+        }
 
-      const params = new URLSearchParams({
-        page: pageNum.toString(),
-        page_size: '50',
-      })
+        const params = new URLSearchParams({
+          page: pageNum.toString(),
+          page_size: '50',
+        })
 
-      if (status) {
-        params.append('status', status)
+        if (status) {
+          params.append('status', status)
+        }
+
+        const response = await authFetch(`/api/ingest/jobs?${params}`)
+        if (!response.ok) {
+          if (response.status === 401) {
+            throw new Error('Session expired — please sign in again.')
+          }
+          throw new Error(`Failed to fetch jobs (${response.status})`)
+        }
+
+        const data = await response.json()
+        const list: IngestJob[] = data.items || data.jobs || []
+        setJobs(list)
+        const totalItems = data.total_count ?? data.total ?? list.length
+        setTotalCount(totalItems)
+        const pageSize = data.page_size || 50
+        const calculatedTotalPages = Math.ceil(totalItems / pageSize) || 1
+        setTotalPages(data.total_pages || calculatedTotalPages)
+        setPage(pageNum)
+        if (!silent) {
+          setError(null)
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to load jobs'
+        if (!silent) {
+          setError(message)
+          setJobs([])
+        }
+      } finally {
+        if (silent) {
+          setRefreshing(false)
+        } else {
+          setLoading(false)
+        }
       }
-
-      const response = await fetch(`/api/ingest/jobs?${params}`)
-      if (!response.ok) {
-        throw new Error('Failed to fetch jobs')
-      }
-
-      const data = await response.json()
-      setJobs(data.items || data.jobs || [])
-      const totalItems = data.total || 0
-      const pageSize = data.page_size || 50
-      const calculated_total_pages = Math.ceil(totalItems / pageSize) || 1
-      setTotalPages(data.total_pages || calculated_total_pages)
-      setPage(pageNum)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load jobs')
-      setJobs([])
-    } finally {
-      setLoading(false)
-    }
-  }
+    },
+    [],
+  )
 
   useEffect(() => {
-    // Initial fetch
-    fetchJobs(1, statusFilter)
+    if (authLoading || !isAuthenticated) {
+      return
+    }
 
-    // Set up polling every 5 seconds to check for job status updates
+    fetchJobs(page, statusFilter)
+
     const pollInterval = setInterval(() => {
-      fetchJobs(page, statusFilter)
+      fetchJobs(page, statusFilter, { silent: true })
     }, 5000)
 
     return () => clearInterval(pollInterval)
-  }, [statusFilter, page])
+  }, [authLoading, isAuthenticated, statusFilter, page, fetchJobs])
 
   const handleJobClick = (job: IngestJob) => {
     setSelectedJob(job)
@@ -134,9 +164,10 @@ export const JobsDashboard: React.FC<JobsDashboardProps> = ({ onJobSelect, onRet
             onClick={() => fetchJobs(page, statusFilter)}
             size="sm"
             variant="ghost"
+            disabled={loading || refreshing}
             className="flex items-center gap-2"
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         </div>
@@ -146,7 +177,10 @@ export const JobsDashboard: React.FC<JobsDashboardProps> = ({ onJobSelect, onRet
           <label className="text-sm font-medium">Status:</label>
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => {
+              setStatusFilter(e.target.value)
+              setPage(1)
+            }}
             className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">All</option>
@@ -156,6 +190,12 @@ export const JobsDashboard: React.FC<JobsDashboardProps> = ({ onJobSelect, onRet
             <option value="completed">Completed</option>
             <option value="failed">Failed</option>
           </select>
+          {!loading && totalCount > 0 && (
+            <span className="text-sm text-gray-500 ml-2">
+              {totalCount} job{totalCount === 1 ? '' : 's'}
+              {statusFilter ? ` (${statusFilter})` : ''}
+            </span>
+          )}
         </div>
 
         {/* Loading State */}
@@ -179,7 +219,8 @@ export const JobsDashboard: React.FC<JobsDashboardProps> = ({ onJobSelect, onRet
         {/* Empty State */}
         {!loading && !error && jobs.length === 0 && (
           <div className="text-center py-8 text-gray-500">
-            <p>No jobs found</p>
+            <p>No ingestion jobs yet.</p>
+            <p className="text-sm mt-1">Upload a document above — it will appear here with live status.</p>
           </div>
         )}
 
@@ -216,10 +257,10 @@ export const JobsDashboard: React.FC<JobsDashboardProps> = ({ onJobSelect, onRet
                         <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
                           <div
                             className="h-full bg-blue-600 transition-all"
-                            style={{ width: `${job.progress_percentage}%` }}
+                            style={{ width: `${job.progress_percentage ?? 0}%` }}
                           />
                         </div>
-                        <span className="text-xs text-gray-600">{job.progress_percentage}%</span>
+                        <span className="text-xs text-gray-600">{job.progress_percentage ?? 0}%</span>
                       </div>
                     </td>
                     <td className="py-3 px-2 text-gray-600">{formatFileSize(job.size)}</td>

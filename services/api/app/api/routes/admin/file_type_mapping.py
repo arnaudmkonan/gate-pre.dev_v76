@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.middleware.rbac import admin_required
+from app.core.auth import require_admin as admin_required
 from app.models.file_type_mapping import FileTypeMapping
 from app.repositories.file_type_mapping_repo import FileTypeMappingRepository
 from app.schemas.file_type_mapping import (

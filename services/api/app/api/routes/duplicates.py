@@ -12,7 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.services.duplicate_service import DuplicateDetectionService
 
-router = APIRouter(prefix="/api/duplicates", tags=["duplicates"])
+from app.core.auth import get_current_user
+router = APIRouter(prefix="/api/duplicates", tags=["duplicates"], dependencies=[Depends(get_current_user)])
 
 
 # Request/Response Models

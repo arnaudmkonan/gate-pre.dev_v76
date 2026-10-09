@@ -12,8 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.services.webhook_service import WebhookService, WEBHOOK_EVENTS
+from app.core.auth import get_current_user
 
-router = APIRouter(prefix="/api/settings/webhooks", tags=["Webhooks"])
+router = APIRouter(prefix="/api/settings/webhooks", tags=["Webhooks"], dependencies=[Depends(get_current_user)])
 
 
 # ==================== Schemas ====================

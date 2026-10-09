@@ -13,10 +13,11 @@ from app.schemas.ingest import (
     BatchMetricsResponse,
 )
 from app.services.batch_service import BatchService
+from app.core.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/batch/schedules", tags=["batch"])
+router = APIRouter(prefix="/api/batch/schedules", tags=["batch"], dependencies=[Depends(get_current_user)])
 
 
 @router.post("", response_model=BatchScheduleResponse, status_code=status.HTTP_201_CREATED)

@@ -5,7 +5,7 @@
  * Task 1.3 from ROADMAP_FULL_WORKFLOW.md
  */
 import { useState, useCallback, useEffect } from 'react'
-import axios from 'axios'
+import { apiClient } from '../lib/apiClient'
 
 import { API_URL } from '../config/api'
 
@@ -205,7 +205,7 @@ export function useEntries(filters?: EntryFilters) {
             params.set('offset', String(offset))
             params.set('limit', String(limit))
 
-            const response = await axios.get<EntryListResponse>(
+            const response = await apiClient.get<EntryListResponse>(
                 `${API_URL}/api/entries?${params.toString()}`
             )
             setEntries(response.data.entries)
@@ -236,7 +236,7 @@ export function useEntry(entryId?: string) {
         setError(null)
 
         try {
-            const response = await axios.get<Entry>(`${API_URL}/api/entries/${entryId}`)
+            const response = await apiClient.get<Entry>(`${API_URL}/api/entries/${entryId}`)
             setEntry(response.data)
         } catch (err: any) {
             setError(err.response?.data?.detail || err.message)
@@ -261,7 +261,7 @@ export function useEntryActions() {
         setError(null)
 
         try {
-            const response = await axios.post(`${API_URL}/api/entries`, data)
+            const response = await apiClient.post(`${API_URL}/api/entries`, data)
             return response.data
         } catch (err: any) {
             setError(err.response?.data?.detail || err.message)
@@ -276,7 +276,7 @@ export function useEntryActions() {
         setError(null)
 
         try {
-            await axios.put(`${API_URL}/api/entries/${entryId}`, data)
+            await apiClient.put(`${API_URL}/api/entries/${entryId}`, data)
             return true
         } catch (err: any) {
             setError(err.response?.data?.detail || err.message)
@@ -291,7 +291,7 @@ export function useEntryActions() {
         setError(null)
 
         try {
-            await axios.delete(`${API_URL}/api/entries/${entryId}`)
+            await apiClient.delete(`${API_URL}/api/entries/${entryId}`)
             return true
         } catch (err: any) {
             setError(err.response?.data?.detail || err.message)
@@ -306,7 +306,7 @@ export function useEntryActions() {
         setError(null)
 
         try {
-            const response = await axios.post(`${API_URL}/api/entries/${entryId}/lines`, data)
+            const response = await apiClient.post(`${API_URL}/api/entries/${entryId}/lines`, data)
             return response.data
         } catch (err: any) {
             setError(err.response?.data?.detail || err.message)
@@ -321,7 +321,7 @@ export function useEntryActions() {
         setError(null)
 
         try {
-            const response = await axios.post(`${API_URL}/api/entries/${entryId}/calculate`)
+            const response = await apiClient.post(`${API_URL}/api/entries/${entryId}/calculate`)
             return response.data
         } catch (err: any) {
             setError(err.response?.data?.detail || err.message)
@@ -336,7 +336,7 @@ export function useEntryActions() {
         setError(null)
 
         try {
-            const response = await axios.post(`${API_URL}/api/entries/${entryId}/validate`)
+            const response = await apiClient.post(`${API_URL}/api/entries/${entryId}/validate`)
             return response.data
         } catch (err: any) {
             setError(err.response?.data?.detail || err.message)
@@ -373,7 +373,7 @@ export function useDutyCalculator() {
         setError(null)
 
         try {
-            const response = await axios.post(`${API_URL}/api/tools/duty-calculator/calculate`, {
+            const response = await apiClient.post(`${API_URL}/api/tools/duty-calculator/calculate`, {
                 hts_code,
                 value,
                 quantity,
@@ -398,7 +398,7 @@ export function useDutyCalculator() {
         setError(null)
 
         try {
-            const response = await axios.post(`${API_URL}/api/tools/duty-calculator/calculate-fees`, {
+            const response = await apiClient.post(`${API_URL}/api/tools/duty-calculator/calculate-fees`, {
                 total_value,
                 line_count,
                 entry_type,
@@ -461,7 +461,7 @@ export function useDocumentLinking(entryId?: string) {
         setError(null)
 
         try {
-            const response = await axios.get(`${API_URL}/api/entries/${entryId}/documents`)
+            const response = await apiClient.get(`${API_URL}/api/entries/${entryId}/documents`)
             setDocuments(response.data.documents || [])
         } catch (err: any) {
             setError(err.response?.data?.detail || err.message)
@@ -474,7 +474,7 @@ export function useDocumentLinking(entryId?: string) {
         if (!entryId) return
 
         try {
-            const response = await axios.get(`${API_URL}/api/entries/${entryId}/extraction-suggestions`)
+            const response = await apiClient.get(`${API_URL}/api/entries/${entryId}/extraction-suggestions`)
             setSuggestions(response.data.suggestions || [])
             setConflicts(response.data.conflicts || [])
         } catch (err: any) {
@@ -501,7 +501,7 @@ export function useDocumentLinking(entryId?: string) {
         setError(null)
 
         try {
-            const response = await axios.post(`${API_URL}/api/entries/${entryId}/documents`, {
+            const response = await apiClient.post(`${API_URL}/api/entries/${entryId}/documents`, {
                 document_ids: documentIds,
                 auto_populate: autoPopulate,
             })
@@ -530,7 +530,7 @@ export function useDocumentLinking(entryId?: string) {
         setError(null)
 
         try {
-            await axios.delete(`${API_URL}/api/entries/${entryId}/documents/${documentId}`)
+            await apiClient.delete(`${API_URL}/api/entries/${entryId}/documents/${documentId}`)
             await fetchDocuments()
             return true
         } catch (err: any) {
@@ -551,7 +551,7 @@ export function useDocumentLinking(entryId?: string) {
         setError(null)
 
         try {
-            await axios.post(`${API_URL}/api/entries/${entryId}/apply-suggestion`, null, {
+            await apiClient.post(`${API_URL}/api/entries/${entryId}/apply-suggestion`, null, {
                 params: { field_name: fieldName, value },
             })
 

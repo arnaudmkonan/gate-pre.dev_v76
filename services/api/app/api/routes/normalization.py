@@ -6,10 +6,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/normalization", tags=["normalization"])
+router = APIRouter(prefix="/api/normalization", tags=["normalization"], dependencies=[Depends(get_current_user)])
 
 
 @router.post(

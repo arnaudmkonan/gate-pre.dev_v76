@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.middleware.rbac import admin_required
+from app.core.auth import require_admin as admin_required
 from app.schemas.ingest import DLQItemResponse
 from app.schemas.retry import RetryBulkResponse
 from app.services.dlq_service import DLQService

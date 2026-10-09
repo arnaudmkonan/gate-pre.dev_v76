@@ -1,0 +1,60 @@
+PACKING LIST
+
+Packing List Number: PL-2024-TECH-0892
+Date: December 8, 2024
+Reference: Invoice INV-2024-TECH-0892
+
+EXPORTER:
+TechParts Global Ltd.
+456 Manufacturing Way
+Shenzhen, Guangdong 518000, China
+
+CONSIGNEE:
+American Electronics Corp.
+1234 Commerce Drive
+Los Angeles, CA 90001, United States
+
+SHIPMENT DETAILS:
+B/L Number: MAEU-2024-789456
+Container: TCNU8765432
+Entry Number: 123-4567890-1
+
+PACKING DETAILS:
+================================================================================
+| Carton | Item Description              | Qty/Carton | Total Qty | Weight(kg) |
+|--------|-------------------------------|------------|-----------|------------|
+| 1-50   | Laptop Computer 15.6" i7      | 10         | 500       | 1,250      |
+|        | Model: TG-LT15-I7-2024        |            |           |            |
+|        | Dims: 45x35x12 cm             |            |           |            |
+|--------|-------------------------------|------------|-----------|------------|
+| 51-70  | Wireless Mouse Bluetooth      | 100        | 2,000     | 200        |
+|        | Model: TG-WM-BT-100           |            |           |            |
+|        | Dims: 60x40x30 cm             |            |           |            |
+|--------|-------------------------------|------------|-----------|------------|
+| 71-85  | USB-C Docking Station         | 20         | 300       | 450        |
+|        | Model: TG-DOCK-USB3           |            |           |            |
+|        | Dims: 50x40x25 cm             |            |           |            |
+|--------|-------------------------------|------------|-----------|------------|
+| 86-110 | Mechanical Keyboard RGB       | 40         | 1,000     | 750        |
+|        | Model: TG-KB-MECH-RGB         |            |           |            |
+|        | Dims: 55x40x35 cm             |            |           |            |
+|--------|-------------------------------|------------|-----------|------------|
+| 111-157| Monitor 27" 4K IPS            | 4          | 200       | 1,600      |
+|        | Model: TG-MON27-4K            |            |           |            |
+|        | Dims: 75x55x20 cm             |            |           |            |
+================================================================================
+
+SUMMARY:
+Total Cartons: 157
+Total Gross Weight: 4,250 kg
+Total Net Weight: 3,850 kg
+Total Volume: 52.5 CBM
+
+SPECIAL HANDLING:
+- Fragile: Items 111-157 (Monitors)
+- Keep Dry
+- This Side Up
+
+Packed By: Warehouse Team A
+Verified By: Li Ming
+Date: December 8, 2024

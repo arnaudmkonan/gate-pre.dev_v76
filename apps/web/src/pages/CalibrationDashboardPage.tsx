@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
+import { apiClient } from '../lib/apiClient';
 
 import { API_URL } from '../config/api';
 
@@ -82,10 +82,10 @@ export function CalibrationDashboardPage() {
     setLoading(true);
     try {
       const [dashboardRes, summaryRes, suggestionsRes, retrainingRes] = await Promise.all([
-        axios.get(`${API_URL}/api/feedback/dashboard/calibration?days=${days}`),
-        axios.get(`${API_URL}/api/feedback/learning/summary?days=7`),
-        axios.get(`${API_URL}/api/feedback/dashboard/auto-correction-suggestions`),
-        axios.get(`${API_URL}/api/feedback/dashboard/templates-needing-retraining`),
+        apiClient.get(`${API_URL}/api/feedback/dashboard/calibration?days=${days}`),
+        apiClient.get(`${API_URL}/api/feedback/learning/summary?days=7`),
+        apiClient.get(`${API_URL}/api/feedback/dashboard/auto-correction-suggestions`),
+        apiClient.get(`${API_URL}/api/feedback/dashboard/templates-needing-retraining`),
       ]);
 
       setDashboardData(dashboardRes.data);
@@ -106,7 +106,7 @@ export function CalibrationDashboardPage() {
   const handleTriggerLearningCycle = async () => {
     setTriggeringCycle(true);
     try {
-      await axios.post(`${API_URL}/api/feedback/learning/trigger-cycle`);
+      await apiClient.post(`${API_URL}/api/feedback/learning/trigger-cycle`);
       alert('Learning cycle triggered successfully');
       loadData();
     } catch (err) {

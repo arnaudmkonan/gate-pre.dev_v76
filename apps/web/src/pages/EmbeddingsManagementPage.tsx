@@ -1,3 +1,4 @@
+import { authFetch } from '../lib/authFetch';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     Box,
@@ -127,7 +128,7 @@ const EmbeddingsManagementPage: React.FC = () => {
                 body.document_ids = Array.from(selectedDocs);
             }
 
-            const response = await fetch(`${API_BASE}/api/embeddings/generate`, {
+            const response = await authFetch(`${API_BASE}/api/embeddings/generate`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

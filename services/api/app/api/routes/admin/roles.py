@@ -18,8 +18,9 @@ from app.schemas.role import (
     Permissions,
 )
 from app.services.audit_service import AuditService
+from app.core.auth import get_current_user
 
-router = APIRouter(prefix="/api/admin/roles", tags=["Admin - Roles"])
+router = APIRouter(prefix="/api/admin/roles", tags=["Admin - Roles"], dependencies=[Depends(get_current_user)])
 
 
 async def get_role_repo(session: AsyncSession = Depends(get_db)) -> RoleRepository:

@@ -15,6 +15,7 @@ from sqlalchemy import select, func, or_, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from fastapi.responses import Response as FastAPIResponse
 from app.core.database import get_db
 from app.models.entry import (
     Entry, EntryLine, EntryDocument, EntryParty, EntryStatusHistory,
@@ -30,8 +31,9 @@ from app.schemas.entries import (
     BulkABIExportRequest, SimulateACEResponseRequest,
     AmendmentChangeRequest, CreateAmendmentRequest, PreviewAmendmentRequest,
 )
+from app.core.auth import get_current_user
 
-router = APIRouter(prefix="/api/entries", tags=["Entries"])
+router = APIRouter(prefix="/api/entries", tags=["Entries"], dependencies=[Depends(get_current_user)])
 
 
 # ==================== CRUD Endpoints ====================
@@ -1987,6 +1989,97 @@ async def preview_amendment(
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+# ---------------------------------------------------------------------------
+# CBP Form 3461 — Entry Manifest (pre-release filing)  Task C.1
+# ---------------------------------------------------------------------------
+
+@router.get("/{entry_id}/documents/3461")
+async def get_entry_manifest_3461(
+    entry_id: UUID,
+    format: str = Query("json", enum=["json", "pdf"]),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Generate CBP Form 3461 (Entry / Immediate Delivery) for an entry.
+
+    Use format=pdf to receive a ready-to-print PDF.
+    Use format=json to receive the structured ABI data packet.
+    """
+    from app.services.cbp3461_generator import CBP3461Generator, CBP3461Data
+    from decimal import Decimal
+    from datetime import date as dt_date
+
+    result = await db.execute(select(Entry).where(Entry.id == entry_id))
+    entry = result.scalar_one_or_none()
+    if not entry:
+        raise HTTPException(status_code=404, detail=f"Entry {entry_id} not found")
+
+    # Build CBP3461Data from entry fields
+    data = CBP3461Data(
+        entry_number=entry.entry_number,
+        entry_type=getattr(entry, "entry_type", "01"),
+        entry_date=getattr(entry, "entry_date", dt_date.today()),
+        port_of_entry=getattr(entry, "port_of_entry", None),
+        port_of_unlading=getattr(entry, "port_of_unlading", None),
+        filer_code=getattr(entry, "filer_code", None),
+        importer_of_record_number=getattr(entry, "importer_of_record_number", None),
+        importer_name=getattr(entry, "importer_of_record_name", None),
+        consignee_name=getattr(entry, "consignee_name", None),
+        carrier_code=getattr(entry, "carrier_code", None),
+        vessel_name=getattr(entry, "vessel_name", None),
+        master_bill_of_lading=getattr(entry, "master_bill", None),
+        house_bill_of_lading=getattr(entry, "house_bill", None),
+        country_of_origin=getattr(entry, "country_of_origin", None),
+        arrival_date=getattr(entry, "arrival_date", None),
+        bond_type=getattr(entry, "bond_type", "9"),
+        total_entered_value=Decimal(str(getattr(entry, "total_entered_value", 0) or 0)),
+        broker_license_number=getattr(entry, "broker_license_number", None),
+    )
+
+    gen = CBP3461Generator()
+    validation_errors = gen.validate(data)
+
+    if format == "pdf":
+        if validation_errors:
+            raise HTTPException(
+                status_code=422,
+                detail={"message": "Cannot generate PDF: validation failed", "errors": validation_errors},
+            )
+        try:
+            pdf_bytes = gen.generate_pdf(data)
+        except RuntimeError as exc:
+            raise HTTPException(status_code=500, detail=str(exc))
+        filename = f"CBP3461_{entry.entry_number or str(entry_id)}.pdf"
+        return FastAPIResponse(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
+    # JSON response
+    return {
+        "entry_id": str(entry_id),
+        "validation_errors": validation_errors,
+        "is_ready_to_file": len(validation_errors) == 0,
+        "form_data": gen.to_dict(data),
+    }
+
+
+@router.get("/{entry_id}/pga-requirements")
+async def get_entry_pga_requirements(
+    entry_id: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Determine PGA (Partner Government Agency) requirements for an entry.
+
+    Shortcut that calls the PGA engine directly from the entry route.
+    For the full PGA endpoint see GET /api/pga/entry/{entry_id}.
+    """
+    from app.api.routes.pga import get_pga_for_entry
+    return await get_pga_for_entry(entry_id=entry_id, db=db)
 
 
 @router.post("/{entry_id}/amend")

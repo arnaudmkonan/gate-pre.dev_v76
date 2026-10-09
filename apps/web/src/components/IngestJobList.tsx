@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Card } from './Card'
 import { Button } from './Button'
 import { RefreshCw, AlertCircle, CheckCircle, Clock, Loader } from 'lucide-react'
+import { authFetch } from '../lib/authFetch'
 
 interface IngestJob {
   id: string
@@ -32,9 +33,11 @@ export const IngestJobList: React.FC<IngestJobListProps> = ({
   const [total, setTotal] = useState(0)
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
 
-  const loadJobs = async () => {
-    setLoading(true)
-    setError(null)
+  const loadJobs = async (silent = false) => {
+    if (!silent) {
+      setLoading(true)
+      setError(null)
+    }
 
     try {
       const params = new URLSearchParams({
@@ -46,20 +49,24 @@ export const IngestJobList: React.FC<IngestJobListProps> = ({
         params.append('status', statusFilter)
       }
 
-      const response = await fetch(`/api/ingest/jobs?${params}`)
+      const response = await authFetch(`/api/ingest/jobs?${params}`)
 
       if (!response.ok) {
         throw new Error('Failed to load jobs')
       }
 
       const data = await response.json()
-      setJobs(data.items || [])
-      setTotal(data.total || 0)
+      setJobs(data.items || data.jobs || [])
+      setTotal(data.total_count ?? data.total ?? 0)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load jobs')
-      setJobs([])
+      if (!silent) {
+        setError(err instanceof Error ? err.message : 'Failed to load jobs')
+        setJobs([])
+      }
     } finally {
-      setLoading(false)
+      if (!silent) {
+        setLoading(false)
+      }
     }
   }
 
@@ -71,11 +78,11 @@ export const IngestJobList: React.FC<IngestJobListProps> = ({
     if (!autoRefresh) return
 
     const interval = setInterval(() => {
-      loadJobs()
+      loadJobs(true)
     }, refreshInterval)
 
     return () => clearInterval(interval)
-  }, [autoRefresh, refreshInterval])
+  }, [autoRefresh, refreshInterval, page, statusFilter])
 
   const getStatusIcon = (status: string) => {
     switch (status) {

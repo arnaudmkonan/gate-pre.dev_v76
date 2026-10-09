@@ -19,7 +19,8 @@ from app.schemas.data_fabric import (
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/data-fabric", tags=["data-fabric"])
+from app.core.auth import get_current_user
+router = APIRouter(prefix="/api/data-fabric", tags=["data-fabric"], dependencies=[Depends(get_current_user)])
 
 # --- Silver Layer Endpoints ---
 

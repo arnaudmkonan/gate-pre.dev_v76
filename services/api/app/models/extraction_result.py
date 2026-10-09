@@ -47,6 +47,9 @@ class ExtractionResult(BaseModel):
     page_number = Column(String(50), nullable=True)  # e.g., "1", "1-5", "all"
     position_info = Column(JSON, nullable=True)  # {x, y, width, height} if applicable
     
+    # Additional metadata from extractor (party details, cargo metadata, etc.)
+    extraction_metadata = Column(JSON, nullable=True)
+    
     __table_args__ = (
         Index("idx_extraction_results_document", "document_id"),
         Index("idx_extraction_results_type", "extraction_type"),

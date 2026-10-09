@@ -1,0 +1,62 @@
+PROOF OF EXPORT CERTIFICATE
+
+Certificate Number: POE-2025-0114-TECH
+Date Issued: January 15, 2025
+
+This is to certify that the following merchandise was exported from the United States:
+
+EXPORTER:
+American Electronics Corp.
+1234 Commerce Drive
+Los Angeles, CA 90001
+EIN: 95-4567890
+
+EXPORT DETAILS:
+AES ITN: X20250114789456
+Export Date: January 14, 2025
+Port of Export: Los Angeles, CA
+Vessel: BERLIN EXPRESS
+Destination: Munich, Germany
+
+CONSIGNEE:
+TechWorld Distribution GmbH
+Industriestrasse 45
+80939 Munich, Germany
+
+EXPORTED MERCHANDISE:
+================================================================================
+| Description                    | Qty   | HTS Code     | Value    | Orig Entry |
+|-------------------------------|-------|--------------|----------|------------|
+| Laptop Computer 15.6" i7      | 100   | 8471.30.0100 | $42,500  | 123-4567890-1 |
+| Wireless Mouse Bluetooth      | 500   | 8471.60.9050 | $4,250   | 123-4567890-1 |
+| Mechanical Keyboard RGB       | 200   | 8471.60.1000 | $7,000   | 123-4567890-1 |
+================================================================================
+
+TOTAL EXPORT VALUE: $53,750.00
+
+IMPORT DUTY REFERENCE:
+Original Import Entry Number: 123-4567890-1
+Original Import Date: December 28, 2024
+Original Duty Paid: $0.00 (Duty-free under ITA)
+
+DRAWBACK ELIGIBILITY:
+These goods are eligible for drawback under:
+- 19 USC 1313(j)(1) - Unused Merchandise Drawback
+- 19 USC 1313(j)(2) - Substitution Drawback (same 8-digit HTS)
+
+Time Window Compliance:
+- Import Date: December 28, 2024
+- Export Date: January 14, 2025
+- Days Elapsed: 17 days
+- Status: WITHIN 5-YEAR WINDOW ✓
+
+CERTIFICATION:
+This document certifies that the above merchandise was physically exported
+from the United States and is eligible for customs drawback claims.
+
+Certified By: U.S. Customs and Border Protection
+Port: Los Angeles
+Officer: Badge #45678
+Date: January 15, 2025
+
+Document ID: CBP-POE-2025-0114-789456

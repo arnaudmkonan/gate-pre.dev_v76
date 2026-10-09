@@ -14,9 +14,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.api.routes.client_portal import get_current_portal_user
+from app.core.auth import get_current_user
 
 
-router = APIRouter(prefix="/api/portal/dashboard", tags=["Client Portal Dashboard"])
+router = APIRouter(prefix="/api/portal/dashboard", tags=["Client Portal Dashboard"], dependencies=[Depends(get_current_user)])
 
 
 # ==================== Request Models ====================

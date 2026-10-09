@@ -1,0 +1,84 @@
+CERTIFICATE OF ORIGIN
+
+CERTIFICATE NUMBER: CO-2024-CN-789456
+DATE OF ISSUE: December 5, 2024
+
+1. EXPORTER (Name, Address, Country):
+   TechParts Global Ltd.
+   456 Manufacturing Way
+   Shenzhen, Guangdong 518000
+   China
+
+2. PRODUCER (Name, Address, Country):
+   Same as Exporter
+   Factory Registration: CN-GD-TECH-2018-456
+
+3. CONSIGNEE (Name, Address, Country):
+   American Electronics Corp.
+   1234 Commerce Drive
+   Los Angeles, CA 90001
+   United States
+
+4. TRANSPORT DETAILS:
+   Vessel: COSCO SHIPPING UNIVERSE
+   Port of Loading: Yantian, China
+   Port of Discharge: Los Angeles, USA
+   Bill of Lading: MAEU-2024-789456
+
+5. DESCRIPTION OF GOODS:
+   +-----------------------------------------------------------------+
+   | Marks &   | Number &   | Description of Goods                   |
+   | Numbers   | Kind of    | HS Code                                |
+   |           | Packages   |                                        |
+   +-----------------------------------------------------------------+
+   | AECORP/LA | 50 Cartons | Laptop Computers 15.6"                |
+   | 2024      |            | HS: 8471.30.01                        |
+   |           |            | Origin Criterion: WO                   |
+   +-----------------------------------------------------------------+
+   | AECORP/LA | 20 Cartons | Wireless Mouse                         |
+   | 2024      |            | HS: 8471.60.90                        |
+   |           |            | Origin Criterion: WO                   |
+   +-----------------------------------------------------------------+
+   | AECORP/LA | 15 Cartons | USB-C Docking Stations                |
+   | 2024      |            | HS: 8471.80.10                        |
+   |           |            | Origin Criterion: WO                   |
+   +-----------------------------------------------------------------+
+   | AECORP/LA | 25 Cartons | Mechanical Keyboards                   |
+   | 2024      |            | HS: 8471.60.10                        |
+   |           |            | Origin Criterion: WO                   |
+   +-----------------------------------------------------------------+
+   | AECORP/LA | 47 Cartons | Computer Monitors 27"                  |
+   | 2024      |            | HS: 8528.52.00                        |
+   |           |            | Origin Criterion: WO                   |
+   +-----------------------------------------------------------------+
+
+6. TOTAL NUMBER OF PACKAGES: 157 Cartons
+   TOTAL GROSS WEIGHT: 4,250 KGS
+
+7. COUNTRY OF ORIGIN: PEOPLE'S REPUBLIC OF CHINA
+
+8. ORIGIN CRITERIA USED:
+   WO - Wholly Obtained or Produced in China
+
+9. INVOICE REFERENCE:
+   Invoice Number: INV-2024-TECH-0892
+   Invoice Date: December 15, 2024
+   Invoice Value: USD 354,890.00
+
+DECLARATION BY THE EXPORTER:
+The undersigned hereby declares that the above details and statements
+are correct and that all the goods were produced in CHINA and comply
+with the origin requirements.
+
+Exporter's Authorized Signature: Chen Wei
+Company Stamp: [TECHPARTS GLOBAL LTD.]
+Place and Date: Shenzhen, December 5, 2024
+
+CERTIFICATION BY CHAMBER OF COMMERCE:
+This is to certify that the declaration by the exporter is correct.
+
+Certifying Authority: China Council for Promotion of International Trade
+                      Shenzhen Sub-Council
+Certificate No: CCPIT-SZ-2024-789456
+Authorized Signature: ________________
+Date: December 5, 2024

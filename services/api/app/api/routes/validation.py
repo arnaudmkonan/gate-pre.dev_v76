@@ -17,10 +17,11 @@ from app.services.validation_reporting import (
 from app.models.normalization_validation import NormalizationValidation
 from pydantic import BaseModel
 from typing import Optional, List
+from app.core.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/validation", tags=["validation"])
+router = APIRouter(prefix="/api/validation", tags=["validation"], dependencies=[Depends(get_current_user)])
 
 
 class ValidationRequest(BaseModel):

@@ -14,8 +14,9 @@ from app.services.ace_importer_service import (
     load_sample_ace_data,
     SAMPLE_ACE_DATA,
 )
+from app.core.auth import get_current_user
 
-router = APIRouter(prefix="/api/ace", tags=["ACE Import"])
+router = APIRouter(prefix="/api/ace", tags=["ACE Import"], dependencies=[Depends(get_current_user)])
 
 
 # ==================== Request/Response Models ====================

@@ -11,14 +11,15 @@ Provides endpoints for:
 import logging
 from typing import List, Optional
 
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Query, HTTPException, Depends
 from pydantic import BaseModel
 
 from app.services.trade_compliance_service import trade_compliance_service
+from app.core.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/trade-compliance", tags=["trade-compliance"])
+router = APIRouter(prefix="/api/trade-compliance", tags=["trade-compliance"], dependencies=[Depends(get_current_user)])
 
 
 # --- Request/Response Models ---

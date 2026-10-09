@@ -15,10 +15,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.models.agent_ack import AgentAck, AgentAckStatus
 from app.models.ingest_job import IngestJob, IngestJobStatus
+from app.core.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/admin/queues", tags=["admin-queues"])
+router = APIRouter(prefix="/api/admin/queues", tags=["admin-queues"], dependencies=[Depends(get_current_user)])
 
 
 class QueuedFileResponse(BaseModel):

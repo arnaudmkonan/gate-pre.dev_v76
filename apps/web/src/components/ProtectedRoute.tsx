@@ -59,6 +59,11 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
         }
     }
 
+    // Ensure user object exists, otherwise show loading or redirect
+    if (!user) {
+        return <Navigate to="/login" state={{ from: location }} replace />;
+    }
+
     return <>{children}</>;
 }
 

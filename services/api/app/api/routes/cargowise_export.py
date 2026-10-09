@@ -13,9 +13,10 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.auth import get_current_user
 
 
-router = APIRouter(prefix="/api/export", tags=["Export"])
+router = APIRouter(prefix="/api/export", tags=["Export"], dependencies=[Depends(get_current_user)])
 
 
 # ==================== Response Models ====================

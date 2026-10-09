@@ -4,9 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DocuMind | AI-Powered Trade Document Intelligence</title>
+    <title>GATES | Global Automated Trade Entry System</title>
     <meta name="description"
-        content="Transform messy trade documents into structured, searchable data. AI-powered extraction for Commercial Invoices, Bills of Lading, Packing Lists, and more.">
+        content="AI-powered customs brokerage platform. Transform trade documents into structured, audit-ready entries with DocuMind AI extraction technology.">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -863,9 +863,9 @@
         <div class="nav-container">
             <a href="#" class="logo">
                 <div class="logo-icon">
-                    <i data-lucide="file-scan"></i>
+                    <i data-lucide="shield-check"></i>
                 </div>
-                DocuMind
+                GATES
             </a>
             <div class="nav-links">
                 <a href="#features">Features</a>
@@ -882,12 +882,12 @@
         <div class="hero-container">
             <div class="hero-content">
                 <h1>
-                    AI-Powered<br>
-                    <span>Trade Document Intelligence</span>
+                    Global Automated<br>
+                    <span>Trade Entry System</span>
                 </h1>
                 <p>
-                    Transform messy inboxes of trade documents into clean, structured, searchable data.
-                    Automate extraction from Commercial Invoices, Bills of Lading, Packing Lists, and more.
+                    The AI-powered customs brokerage platform. Powered by DocuMind AI, GATES transforms
+                    trade documents into audit-ready customs entries — automatically.
                 </p>
                 <div class="hero-buttons">
                     <a href="#" id="watch-demo-btn" class="btn-primary" onclick="openDemoModal(); return false;">
@@ -1253,7 +1253,7 @@
 
             try {
                 // Create lead via API
-                await fetch('http://localhost:8000/api/leads', {
+                await fetch('/api/leads', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1291,11 +1291,11 @@
                 <div class="footer-brand">
                     <a href="#" class="logo" style="color: white;">
                         <div class="logo-icon">
-                            <i data-lucide="file-scan"></i>
+                            <i data-lucide="shield-check"></i>
                         </div>
-                        DocuMind
+                        GATES
                     </a>
-                    <p>AI-powered document intelligence for trade professionals. Transform your document workflow today.
+                    <p>Global Automated Trade Entry System. Powered by DocuMind AI for customs brokerage professionals.
                     </p>
                 </div>
                 <div class="footer-col">
@@ -1321,8 +1321,8 @@
                 </div>
             </div>
             <div class="footer-bottom">
-                <span>© 2024 DocuMind. All rights reserved.</span>
-                <span>Built with ❤️ for trade professionals</span>
+                <span>© 2026 GATES Platform. All rights reserved.</span>
+                <span>Built for customs brokers</span>
             </div>
         </div>
     </footer>
@@ -1335,7 +1335,7 @@
                 style="position: absolute; top: -40px; right: 0; background: none; border: none; color: white; font-size: 2rem; cursor: pointer; padding: 0.5rem;">&times;</button>
             <div
                 style="background: #1e1b4b; border-radius: 16px; padding: 1rem; box-shadow: 0 25px 50px rgba(0,0,0,0.5);">
-                <h3 style="color: white; margin-bottom: 1rem; text-align: center;">DocuMind Platform Demo</h3>
+                <h3 style="color: white; margin-bottom: 1rem; text-align: center;">GATES Platform Demo</h3>
                 <img id="demo-video" src="/demo.webp" alt="DocuMind Demo"
                     style="max-width: 100%; max-height: 70vh; border-radius: 8px; display: block;">
                 <div style="text-align: center; margin-top: 1rem;">
@@ -1408,7 +1408,7 @@
                         event_data: metadata ? JSON.stringify(metadata) : null
                     };
 
-                    await fetch('http://localhost:8000/api/analytics/landing/track', {
+                    await fetch('/api/analytics/landing/track', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)

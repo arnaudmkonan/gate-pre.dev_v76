@@ -18,10 +18,11 @@ from sqlalchemy import select
 
 from app.core.database import get_db
 from app.models.document_metadata import DocumentMetadata
+from app.core.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/agents", tags=["Agents"])
+router = APIRouter(prefix="/api/agents", tags=["Agents"], dependencies=[Depends(get_current_user)])
 
 
 class AgentProcessRequest(BaseModel):

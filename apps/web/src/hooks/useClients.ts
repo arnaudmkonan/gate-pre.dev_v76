@@ -7,6 +7,7 @@
  */
 import { useState, useEffect, useCallback } from 'react'
 import { API_BASE } from '../config/api'
+import { authFetch } from '../lib/authFetch'
 
 // ==================== Types ====================
 
@@ -222,7 +223,7 @@ export function useClients(filters: ClientFilters = {}) {
             if (filters.offset) params.append('offset', filters.offset.toString())
 
             const url = `${API_BASE}/api/clients?${params.toString()}`
-            const response = await fetch(url)
+            const response = await authFetch(url)
 
             if (!response.ok) {
                 throw new Error(`Failed to fetch clients: ${response.statusText}`)
@@ -263,7 +264,7 @@ export function useClient(clientId: string | undefined) {
         setLoading(true)
         setError(null)
         try {
-            const response = await fetch(`${API_BASE}/api/clients/${clientId}`)
+            const response = await authFetch(`${API_BASE}/api/clients/${clientId}`)
 
             if (!response.ok) {
                 if (response.status === 404) {
@@ -299,7 +300,7 @@ export function useClientActions() {
         setLoading(true)
         setError(null)
         try {
-            const response = await fetch(`${API_BASE}/api/clients`, {
+            const response = await authFetch(`${API_BASE}/api/clients`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data),
@@ -323,7 +324,7 @@ export function useClientActions() {
         setLoading(true)
         setError(null)
         try {
-            const response = await fetch(`${API_BASE}/api/clients/${clientId}`, {
+            const response = await authFetch(`${API_BASE}/api/clients/${clientId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data),
@@ -347,7 +348,7 @@ export function useClientActions() {
         setLoading(true)
         setError(null)
         try {
-            const response = await fetch(`${API_BASE}/api/clients/${clientId}`, {
+            const response = await authFetch(`${API_BASE}/api/clients/${clientId}`, {
                 method: 'DELETE',
             })
 
@@ -375,7 +376,7 @@ export function useClientActions() {
         setLoading(true)
         setError(null)
         try {
-            const response = await fetch(`${API_BASE}/api/clients/${clientId}/contacts`, {
+            const response = await authFetch(`${API_BASE}/api/clients/${clientId}/contacts`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(contact),
@@ -406,7 +407,7 @@ export function useClientActions() {
         setLoading(true)
         setError(null)
         try {
-            const response = await fetch(`${API_BASE}/api/clients/${clientId}/bonds`, {
+            const response = await authFetch(`${API_BASE}/api/clients/${clientId}/bonds`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(bond),

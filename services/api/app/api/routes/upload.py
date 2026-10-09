@@ -1,7 +1,8 @@
 import logging
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Header, status
+from typing import Optional
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, Header, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -14,10 +15,11 @@ from app.services.storage_service import StorageService
 from app.services.idempotency_service import IdempotencyService
 from app.services.ingest_service import IngestService
 from sqlalchemy import select
+from app.core.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/upload", tags=["upload"])
+router = APIRouter(prefix="/api/upload", tags=["upload"], dependencies=[Depends(get_current_user)])
 
 # Supported file types for ingestion
 SUPPORTED_FILE_TYPES = {
@@ -40,10 +42,10 @@ def get_file_extension(filename: str) -> str:
 )
 async def upload_file(
     file: UploadFile = File(...),
-    source: str = None,
-    customer_id: str = None,
-    tags: str = None,
-    idempotency_key: str = Header(None),
+    source: Optional[str] = Form(None),
+    customer_id: Optional[str] = Form(None),
+    tags: Optional[str] = Form(None),
+    idempotency_key: Optional[str] = Header(None),
     session: AsyncSession = Depends(get_db),
 ):
     """

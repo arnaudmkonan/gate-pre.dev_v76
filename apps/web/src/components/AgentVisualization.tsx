@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { Card } from './Card'
 import { Button } from './Button'
+import { authFetch } from '../lib/authFetch'
 
 interface Agent {
     name: string
@@ -106,7 +107,7 @@ export const AgentVisualization: React.FC = () => {
 
     const fetchDocuments = async () => {
         try {
-            const response = await fetch('/api/ingest/jobs?page=1&page_size=20')
+            const response = await authFetch('/api/ingest/jobs?page=1&page_size=20')
             const data = await response.json()
 
             // Get agent results for each document

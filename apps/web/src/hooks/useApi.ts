@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
-import axios, { AxiosError } from 'axios'
-import { API_URL } from '../config/api'
+import { apiClient, ApiRequestError } from '../lib/apiClient'
+import type { AxiosRequestConfig } from 'axios'
 
 export interface ApiError {
   message: string
@@ -22,21 +22,23 @@ export function useApi<T, E = ApiError>() {
         setIsLoading(true)
         setError(null)
 
-        const response = await axios({
+        const config: AxiosRequestConfig = {
           method,
-          url: `${API_URL}${endpoint}`,
+          url: endpoint,
           data: payload,
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        })
+        }
+
+        const response = await apiClient(config)
 
         setData(response.data)
         return response.data
       } catch (err) {
-        const apiError = err as AxiosError
-        const errorData = (apiError.response?.data as E) || ({ message: apiError.message } as E)
-        setError(errorData)
+        if (err instanceof ApiRequestError) {
+          setError({ message: err.message, status: err.status } as E)
+        } else {
+          const message = err instanceof Error ? err.message : 'An unknown error occurred'
+          setError({ message } as E)
+        }
         return null
       } finally {
         setIsLoading(false)

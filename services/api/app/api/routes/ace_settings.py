@@ -21,8 +21,9 @@ from app.models.ace_settings import (
     validate_filer_code, validate_port_code, validate_surety_code
 )
 from app.models.organization import Organization
+from app.core.auth import get_current_user
 
-router = APIRouter(prefix="/api/settings/ace", tags=["ACE Settings"])
+router = APIRouter(prefix="/api/settings/ace", tags=["ACE Settings"], dependencies=[Depends(get_current_user)])
 
 
 # ==================== Request/Response Models ====================

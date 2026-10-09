@@ -1,0 +1,73 @@
+COMMERCIAL INVOICE
+
+Invoice Number: INV-2024-TECH-0892
+Date: December 15, 2024
+Currency: USD
+
+EXPORTER/SELLER:
+TechParts Global Ltd.
+456 Manufacturing Way
+Shenzhen, Guangdong 518000
+China
+VAT ID: CN440300-789456123
+
+IMPORTER/BUYER:
+American Electronics Corp.
+1234 Commerce Drive
+Los Angeles, CA 90001
+United States
+EIN: 95-4567890
+
+SHIP TO:
+American Electronics Corp.
+Distribution Center
+5678 Logistics Blvd
+Long Beach, CA 90802
+
+TERMS OF SALE: CIF Los Angeles
+TERMS OF PAYMENT: Net 30 Days
+COUNTRY OF ORIGIN: China
+
+BILL OF LADING: MAEU-2024-789456
+ENTRY NUMBER: 123-4567890-1
+CONTAINER: TCNU8765432
+
+LINE ITEMS:
+==========================================================================
+| Item | Description                    | Qty   | Unit Price | Total USD |
+|------|--------------------------------|-------|------------|-----------|
+| 1    | Laptop Computer 15.6" i7      | 500   | $425.00    | $212,500  |
+|      | HTS: 8471.30.0100             |       |            |           |
+|      | Model: TG-LT15-I7-2024        |       |            |           |
+|------|--------------------------------|-------|------------|-----------|
+| 2    | Wireless Mouse Bluetooth      | 2,000 | $8.50      | $17,000   |
+|      | HTS: 8471.60.9050             |       |            |           |
+|      | Model: TG-WM-BT-100           |       |            |           |
+|------|--------------------------------|-------|------------|-----------|
+| 3    | USB-C Docking Station         | 300   | $65.00     | $19,500   |
+|      | HTS: 8471.80.1000             |       |            |           |
+|      | Model: TG-DOCK-USB3           |       |            |           |
+|------|--------------------------------|-------|------------|-----------|
+| 4    | Mechanical Keyboard RGB       | 1,000 | $35.00     | $35,000   |
+|      | HTS: 8471.60.1000             |       |            |           |
+|      | Model: TG-KB-MECH-RGB         |       |            |           |
+|------|--------------------------------|-------|------------|-----------|
+| 5    | Monitor 27" 4K IPS            | 200   | $275.00    | $55,000   |
+|      | HTS: 8528.52.0000             |       |            |           |
+|      | Model: TG-MON27-4K            |       |            |           |
+==========================================================================
+
+SUBTOTAL:                                                      $339,000.00
+FREIGHT:                                                        $12,500.00
+INSURANCE:                                                       $3,390.00
+---------------------------------------------------------------------------
+TOTAL CIF VALUE:                                               $354,890.00
+
+CERTIFICATIONS:
+- All goods are new and unused
+- Goods comply with FCC Part 15
+- Manufacturer warranty: 1 year
+
+Authorized Signature: Chen Wei
+Title: Export Manager
+Date: December 15, 2024
