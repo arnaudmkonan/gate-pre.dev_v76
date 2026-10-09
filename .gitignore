@@ -36,6 +36,8 @@ MANIFEST
 .pytest_cache/
 .coverage
 .mypy_cache/
+celerybeat-schedule
+services/api/celerybeat-schedule
 .dmypy.json
 dmypy.json
 .tox/
