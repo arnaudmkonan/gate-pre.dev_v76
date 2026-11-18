@@ -192,3 +192,104 @@ async def test_connection():
             "success": False,
             "error": str(e)
         }
+
+
+class InboundEmailAttachment(BaseModel):
+    filename: str
+    content_base64: str
+    content_type: Optional[str] = "application/octet-stream"
+
+
+class InboundEmailWebhookRequest(BaseModel):
+    sender: str
+    subject: Optional[str] = ""
+    recipient: Optional[str] = "imports@gate.local"
+    attachments: list[InboundEmailAttachment] = []
+
+
+@router.post("/inbound-webhook")
+async def process_inbound_email_webhook(
+    payload: InboundEmailWebhookRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Zero-Click Inbound Email Webhook ("Forward to GATES").
+    Accepts forwarded email payloads with base64 attachments (compatible with
+    SendGrid/Postmark/Mailgun inbound webhooks), saves each attachment to storage,
+    creates RawFile & IngestJob records, and immediately dispatches pipeline extraction.
+    """
+    import base64
+    from app.core.database import AsyncSessionLocal
+    from app.models.raw_file import RawFile, RawFileStatus
+    from app.models.ingest_job import IngestJob, IngestJobStatus
+    from app.services.local_storage_service import LocalStorageService
+
+    storage = LocalStorageService()
+    created_jobs = []
+    uploader_id = current_user.get("id")
+
+    async with AsyncSessionLocal() as session:
+        for att in payload.attachments:
+            try:
+                file_bytes = base64.b64decode(att.content_base64)
+            except Exception as exc:
+                raise HTTPException(status_code=400, detail=f"Invalid base64 attachment {att.filename}: {exc}")
+
+            ext = att.filename.rsplit(".", 1)[-1].lower() if "." in att.filename else "txt"
+            storage_res = storage.upload_file(
+                file_bytes=file_bytes,
+                filename=att.filename,
+                content_type=att.content_type or "application/octet-stream",
+            )
+
+            raw_file = RawFile(
+                filename=att.filename,
+                file_type=ext,
+                file_size=len(file_bytes),
+                storage_path=storage_res["storage_path"],
+                mime_type=att.content_type or "application/octet-stream",
+                status=RawFileStatus.QUEUED,
+                uploader_id=uploader_id,
+                source=f"email:{payload.sender}",
+                tags=["inbound_email", payload.subject[:50]] if payload.subject else ["inbound_email"],
+                checksum=storage_res["checksum"],
+            )
+            session.add(raw_file)
+            await session.flush()
+
+            job = IngestJob(
+                filename=att.filename,
+                file_type=ext,
+                size=len(file_bytes),
+                storage_path=storage_res["storage_path"],
+                status=IngestJobStatus.PENDING,
+                uploader_id=uploader_id,
+            )
+            session.add(job)
+            await session.flush()
+
+            created_jobs.append({
+                "filename": att.filename,
+                "file_id": str(raw_file.id),
+                "job_id": str(job.id),
+                "size": len(file_bytes),
+            })
+
+        await session.commit()
+
+    # Dispatch async extraction jobs
+    for cj in created_jobs:
+        try:
+            from app.workers.job_processor import process_ingest_job
+            process_ingest_job.delay(cj["job_id"])
+        except Exception:
+            pass
+
+    return {
+        "status": "accepted",
+        "sender": payload.sender,
+        "subject": payload.subject,
+        "attachments_received": len(payload.attachments),
+        "jobs_created": created_jobs,
+        "timestamp": datetime.utcnow().isoformat(),
+    }

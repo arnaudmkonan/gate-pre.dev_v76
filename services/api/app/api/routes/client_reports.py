@@ -18,6 +18,7 @@ import io
 
 from app.core.database import get_db
 from app.core.auth import get_current_user
+from app.startup.client_access import require_client_scope
 
 
 router = APIRouter(prefix="/api/clients", tags=["Client Reports"], dependencies=[Depends(get_current_user)])
@@ -80,7 +81,7 @@ def generate_csv(data: dict, report_type: str) -> str:
 
 @router.get("/{client_id}/reports")
 async def list_available_reports(
-    client_id: str,
+    client_uuid: UUID = Depends(require_client_scope),
     db: AsyncSession = Depends(get_db),
 ):
     """List all available report types."""
@@ -90,14 +91,14 @@ async def list_available_reports(
     reports = await service.list_available_reports()
     
     return {
-        "client_id": client_id,
+        "client_id": str(client_uuid),
         "available_reports": reports,
     }
 
 
 @router.get("/{client_id}/reports/entry-summary")
 async def get_entry_summary_report(
-    client_id: str,
+    client_uuid: UUID = Depends(require_client_scope),
     start_date: str = Query(..., description="Start date (YYYY-MM-DD)"),
     end_date: str = Query(..., description="End date (YYYY-MM-DD)"),
     db: AsyncSession = Depends(get_db),
@@ -108,11 +109,6 @@ async def get_entry_summary_report(
     Shows all entries with totals and breakdowns.
     """
     from app.services.client_reporting_service import ClientReportService
-    
-    try:
-        client_uuid = UUID(client_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid client ID")
     
     service = ClientReportService(db)
     report = await service.get_entry_summary(
@@ -126,7 +122,7 @@ async def get_entry_summary_report(
 
 @router.get("/{client_id}/reports/duty-paid")
 async def get_duty_paid_report(
-    client_id: str,
+    client_uuid: UUID = Depends(require_client_scope),
     start_date: str = Query(..., description="Start date (YYYY-MM-DD)"),
     end_date: str = Query(..., description="End date (YYYY-MM-DD)"),
     db: AsyncSession = Depends(get_db),
@@ -137,11 +133,6 @@ async def get_duty_paid_report(
     Detailed breakdown of all duties, fees, and taxes.
     """
     from app.services.client_reporting_service import ClientReportService
-    
-    try:
-        client_uuid = UUID(client_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid client ID")
     
     service = ClientReportService(db)
     report = await service.get_duty_paid_report(
@@ -155,7 +146,7 @@ async def get_duty_paid_report(
 
 @router.get("/{client_id}/reports/hts-chapter")
 async def get_hts_chapter_report(
-    client_id: str,
+    client_uuid: UUID = Depends(require_client_scope),
     start_date: str = Query(..., description="Start date (YYYY-MM-DD)"),
     end_date: str = Query(..., description="End date (YYYY-MM-DD)"),
     db: AsyncSession = Depends(get_db),
@@ -166,11 +157,6 @@ async def get_hts_chapter_report(
     Import history grouped by HTS chapter (first 2 digits).
     """
     from app.services.client_reporting_service import ClientReportService
-    
-    try:
-        client_uuid = UUID(client_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid client ID")
     
     service = ClientReportService(db)
     report = await service.get_hts_chapter_report(
@@ -184,7 +170,7 @@ async def get_hts_chapter_report(
 
 @router.get("/{client_id}/reports/ytd")
 async def get_ytd_statistics(
-    client_id: str,
+    client_uuid: UUID = Depends(require_client_scope),
     year: Optional[int] = Query(None, description="Year (defaults to current year)"),
     db: AsyncSession = Depends(get_db),
 ):
@@ -195,11 +181,6 @@ async def get_ytd_statistics(
     """
     from app.services.client_reporting_service import ClientReportService
     
-    try:
-        client_uuid = UUID(client_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid client ID")
-    
     service = ClientReportService(db)
     report = await service.get_ytd_statistics(client_uuid, year)
     
@@ -208,7 +189,7 @@ async def get_ytd_statistics(
 
 @router.get("/{client_id}/reports/country-of-origin")
 async def get_country_of_origin_report(
-    client_id: str,
+    client_uuid: UUID = Depends(require_client_scope),
     start_date: str = Query(..., description="Start date (YYYY-MM-DD)"),
     end_date: str = Query(..., description="End date (YYYY-MM-DD)"),
     db: AsyncSession = Depends(get_db),
@@ -219,11 +200,6 @@ async def get_country_of_origin_report(
     Import breakdown by country of origin.
     """
     from app.services.client_reporting_service import ClientReportService
-    
-    try:
-        client_uuid = UUID(client_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid client ID")
     
     service = ClientReportService(db)
     report = await service.get_country_of_origin_report(
@@ -237,8 +213,8 @@ async def get_country_of_origin_report(
 
 @router.post("/{client_id}/reports/generate")
 async def generate_report(
-    client_id: str,
     request: ReportRequest,
+    client_uuid: UUID = Depends(require_client_scope),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -247,11 +223,6 @@ async def generate_report(
     Unified endpoint for all report types.
     """
     from app.services.client_reporting_service import ClientReportService
-    
-    try:
-        client_uuid = UUID(client_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid client ID")
     
     service = ClientReportService(db)
     
@@ -272,7 +243,7 @@ async def generate_report(
 
 @router.get("/{client_id}/reports/export/csv")
 async def export_report_csv(
-    client_id: str,
+    client_uuid: UUID = Depends(require_client_scope),
     report_type: str = Query(..., description="Report type"),
     start_date: str = Query(..., description="Start date (YYYY-MM-DD)"),
     end_date: str = Query(..., description="End date (YYYY-MM-DD)"),
@@ -285,11 +256,6 @@ async def export_report_csv(
     Downloads a CSV file of the report data.
     """
     from app.services.client_reporting_service import ClientReportService
-    
-    try:
-        client_uuid = UUID(client_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid client ID")
     
     service = ClientReportService(db)
     
@@ -319,7 +285,7 @@ async def export_report_csv(
 
 @router.get("/{client_id}/reports/export/json")
 async def export_report_json(
-    client_id: str,
+    client_uuid: UUID = Depends(require_client_scope),
     report_type: str = Query(..., description="Report type"),
     start_date: str = Query(..., description="Start date (YYYY-MM-DD)"),
     end_date: str = Query(..., description="End date (YYYY-MM-DD)"),
@@ -332,11 +298,6 @@ async def export_report_json(
     Downloads a JSON file of the report data.
     """
     from app.services.client_reporting_service import ClientReportService
-    
-    try:
-        client_uuid = UUID(client_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid client ID")
     
     service = ClientReportService(db)
     
@@ -366,7 +327,7 @@ async def export_report_json(
 
 @router.get("/{client_id}/stats/quick")
 async def get_quick_stats(
-    client_id: str,
+    client_uuid: UUID = Depends(require_client_scope),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -376,11 +337,6 @@ async def get_quick_stats(
     """
     from app.services.client_reporting_service import ClientReportService
     from datetime import date
-    
-    try:
-        client_uuid = UUID(client_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid client ID")
     
     service = ClientReportService(db)
     
@@ -394,7 +350,7 @@ async def get_quick_stats(
     monthly = await service.get_entry_summary(client_uuid, start_date, end_date)
     
     return {
-        "client_id": client_id,
+        "client_id": str(client_uuid),
         "ytd": {
             "year": current_year,
             "entries": ytd["ytd_totals"]["entries"],

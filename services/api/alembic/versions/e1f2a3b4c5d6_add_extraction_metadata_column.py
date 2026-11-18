@@ -17,11 +17,15 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Add extraction_metadata column for storing extractor-specific metadata
-    # (party details, cargo item metadata, etc.) from trade document extraction
+    from sqlalchemy import inspect
+
+    bind = op.get_bind()
+    cols = {c["name"] for c in inspect(bind).get_columns("extraction_results")}
+    if "extraction_metadata" in cols:
+        return
     op.add_column(
-        'extraction_results',
-        sa.Column('extraction_metadata', postgresql.JSON(astext_type=sa.Text()), nullable=True)
+        "extraction_results",
+        sa.Column("extraction_metadata", postgresql.JSON(astext_type=sa.Text()), nullable=True),
     )
 
 

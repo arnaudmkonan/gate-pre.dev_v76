@@ -153,10 +153,10 @@ async def validate_entry_data(
         )
 
 
-@router.post("/{shipment_id}/export", response_model=ExportResult)
+@router.post("/{shipment_id}/export")
 async def export_entry_data(
     shipment_id: UUID,
-    format: str = "ace",  # ace, json, csv
+    format: str = "ace",  # ace, json, pdf, excel
     session: AsyncSession = Depends(get_db)
 ):
     """
@@ -165,19 +165,92 @@ async def export_entry_data(
     Formats:
     - ace: ACE-compatible JSON structure
     - json: Full entry data as JSON
-    - csv: Line items as CSV (future)
+    - pdf: CBP Form 7501 Entry Summary PDF
+    - excel: CBP Form 7501 Entry Summary Excel (.xlsx)
     """
+    from fastapi.responses import Response
+    from app.services.cargowise_exporter import CargoWiseExporter
+
     try:
         entry_data = await EntryPrepService.prepare_from_shipment(session, shipment_id)
-        
-        if format.lower() == "ace":
+        fmt = format.lower()
+
+        if fmt in ("pdf", "excel", "xlsx"):
+            raw = entry_data.to_dict()
+            summary = {
+                "entry_number": raw.get("entry_number") or f"PREP-{str(shipment_id)[:8].upper()}",
+                "entry_type": raw.get("entry_type") or "01",
+                "status": "prepared",
+                "port_of_entry": raw.get("port_code") or raw.get("transport", {}).get("port_of_entry") or "-",
+                "port_of_unlading": raw.get("transport", {}).get("port_of_unlading") or "-",
+                "entry_date": raw.get("entry_date") or "-",
+                "import_date": raw.get("transport", {}).get("import_date") or "-",
+                "mode_of_transport": "10 (Vessel)",
+                "carrier_code": raw.get("transport", {}).get("carrier_code") or raw.get("transport", {}).get("scac_code") or "-",
+                "vessel_name": raw.get("transport", {}).get("vessel_name") or "-",
+                "voyage_number": raw.get("transport", {}).get("voyage_number") or "-",
+                "bill_of_lading": raw.get("transport", {}).get("master_bill") or "-",
+                "house_bill": raw.get("transport", {}).get("house_bill") or "-",
+                "bond_type": raw.get("bond", {}).get("type") or "8 (Continuous)",
+                "surety_code": raw.get("bond", {}).get("surety_code") or "-",
+                "importer_name": raw.get("importer", {}).get("name") or "-",
+                "importer_ior": raw.get("importer", {}).get("ior_number") or "-",
+                "consignee_name": raw.get("consignee", {}).get("name") or raw.get("importer", {}).get("name") or "-",
+                "country_of_origin": raw.get("origin", {}).get("country_of_origin") or "-",
+                "totals": {
+                    "entered_value": float(raw.get("totals", {}).get("entered_value") or 0),
+                    "base_duty": float(raw.get("totals", {}).get("duty") or 0),
+                    "section_301": 0.0,
+                    "section_232": 0.0,
+                    "add_amount": 0.0,
+                    "cvd_amount": 0.0,
+                    "mpf": float(raw.get("totals", {}).get("mpf") or 0),
+                    "hmf": float(raw.get("totals", {}).get("hmf") or 0),
+                    "total_due": float(raw.get("totals", {}).get("grand_total") or 0),
+                },
+                "lines": [
+                    {
+                        "line_number": item.get("line_number", idx + 1),
+                        "hts_code": item.get("hts_number") or "-",
+                        "description": item.get("description") or "-",
+                        "country_of_origin": item.get("country_of_origin") or "-",
+                        "quantity": float(item.get("quantity") or 0),
+                        "uom": item.get("unit") or "PCS",
+                        "entered_value": float(item.get("entered_value") or 0),
+                        "duty_rate": float(item.get("duty_rate") or 0),
+                        "duty_amount": float(item.get("duty_amount") or 0),
+                    }
+                    for idx, item in enumerate(raw.get("line_items", []))
+                ],
+                "parties": [],
+            }
+            if fmt == "pdf":
+                pdf_bytes = CargoWiseExporter.build_7501_pdf_from_dict(summary)
+                return Response(
+                    content=pdf_bytes,
+                    media_type="application/pdf",
+                    headers={
+                        "Content-Disposition": f'attachment; filename="CBP_7501_Prep_{str(shipment_id)[:8]}.pdf"',
+                    },
+                )
+            else:
+                xlsx_bytes = CargoWiseExporter.build_7501_excel_from_dict(summary)
+                return Response(
+                    content=xlsx_bytes,
+                    media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    headers={
+                        "Content-Disposition": f'attachment; filename="CBP_7501_Prep_{str(shipment_id)[:8]}.xlsx"',
+                    },
+                )
+
+        if fmt == "ace":
             export_data = EntryPrepService.export_to_ace_format(entry_data)
-        elif format.lower() == "json":
+        elif fmt == "json":
             export_data = entry_data.to_dict()
         else:
             raise HTTPException(
                 status_code=400,
-                detail=f"Unsupported export format: {format}. Use 'ace' or 'json'."
+                detail=f"Unsupported export format: {format}. Use 'ace', 'json', 'pdf', or 'excel'."
             )
         
         return ExportResult(

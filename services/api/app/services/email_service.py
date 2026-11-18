@@ -11,7 +11,6 @@ Handles outbound email sending for all platform notifications:
 When SMTP is not configured, emails are logged to console (dev mode).
 """
 import logging
-import os
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Optional, List, Dict, Any
@@ -138,8 +137,7 @@ class EmailService:
         """Send password reset email."""
         # Build reset URL
         if not reset_url:
-            base = os.getenv("INSTANCE_URL", "http://localhost:3000")
-            reset_url = f"{base}/reset-password?token={reset_token}"
+            reset_url = f"{settings.public_app_url}/reset-password?token={reset_token}"
 
         content = f"""
         <p>Hello,</p>
@@ -165,6 +163,31 @@ class EmailService:
             text_content=text,
         )
 
+    async def send_email_verification(
+        self,
+        to_email: str,
+        verify_token: str,
+        user_name: Optional[str] = None,
+    ) -> bool:
+        verify_url = f"{settings.public_app_url}/verify-email?token={verify_token}"
+        greeting = f"Hello {user_name}," if user_name else "Hello,"
+        content = f"""
+        <p>{greeting}</p>
+        <p>Confirm your email to activate your GATE Platform account:</p>
+        <p style="text-align: center;">
+            <a href="{verify_url}" class="btn">Verify Email</a>
+        </p>
+        <p>Or copy this link:</p>
+        <p class="code">{verify_url}</p>
+        """
+        text = f"Verify your GATE account:\n{verify_url}\n"
+        return await self.send_email(
+            to_email=to_email,
+            subject="GATE Platform — Verify your email",
+            html_content=BASE_TEMPLATE.format(content=content),
+            text_content=text,
+        )
+
     async def send_invitation(
         self,
         to_email: str,
@@ -175,8 +198,7 @@ class EmailService:
     ) -> bool:
         """Send user invitation email."""
         if not invitation_url:
-            base = os.getenv("INSTANCE_URL", "http://localhost:3000")
-            invitation_url = f"{base}/accept-invitation?token={invitation_token}"
+            invitation_url = f"{settings.public_app_url}/accept-invitation?token={invitation_token}"
 
         content = f"""
         <p>Hello,</p>

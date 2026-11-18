@@ -33,8 +33,11 @@ COPY . .
 # Create non-root user and storage directories for security
 RUN useradd --create-home --shell /bin/bash appuser && \
     mkdir -p /app/storage/uploads && \
+    chmod +x /app/docker-entrypoint.sh && \
     chown -R appuser:appuser /app
 USER appuser
+
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 
 # Expose port
 EXPOSE 8000

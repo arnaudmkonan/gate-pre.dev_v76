@@ -1,3 +1,4 @@
+# Optional dev tools: docker compose --profile devtools up -d  (pgweb :8081, flower :5555)
 services:
   # =============================================================================
   # DATABASE - PostgreSQL with pgvector extension
@@ -31,7 +32,7 @@ services:
     image: redis:7-alpine
     container_name: docingestion_redis
     ports:
-      - "6379:6379"
+      - "${REDIS_PUBLISH_HOST:-127.0.0.1}:6379:6379"
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
@@ -68,6 +69,7 @@ services:
       API_PORT: 8000
       DEBUG: "true"
       ENVIRONMENT: development
+      SEED_DEMO_USERS: "true"
       # Sentry (disabled by default)
       SENTRY_ENABLED: "false"
       # Local storage for development (no cloud storage needed)
@@ -92,6 +94,7 @@ services:
     networks:
       - docingestion_network
     restart: unless-stopped
+    entrypoint: ["/bin/bash", "/app/docker-entrypoint.sh"]
     # For development, use reload
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
@@ -132,6 +135,7 @@ services:
     networks:
       - docingestion_network
     restart: unless-stopped
+    entrypoint: []
     command: celery -A app.core.celery_app worker --loglevel=info --concurrency=4
     healthcheck:
       test: [ "CMD-SHELL", "celery -A app.core.celery_app inspect ping -d celery@$$HOSTNAME || exit 1" ]
@@ -169,6 +173,7 @@ services:
     networks:
       - docingestion_network
     restart: unless-stopped
+    entrypoint: []
     command: celery -A app.core.celery_app beat --loglevel=info --pidfile=/tmp/celerybeat.pid
     healthcheck:
       # Verify the beat process is alive by checking its PID file.
@@ -207,6 +212,8 @@ services:
   # PGWEB - Database visualization
   # =============================================================================
   pgweb:
+    profiles:
+      - devtools
     image: sosedoff/pgweb:latest
     container_name: docingestion_pgweb
     ports:
@@ -230,6 +237,8 @@ services:
   # FLOWER - Celery monitoring dashboard
   # =============================================================================
   flower:
+    profiles:
+      - devtools
     image: mher/flower:2.0
     container_name: docingestion_flower
     ports:

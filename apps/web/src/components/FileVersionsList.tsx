@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Download, AlertCircle, Loader } from 'lucide-react'
 import { Card } from './Card'
+import { authFetch } from '../lib/authFetch'
 
 interface FileVersion {
   version_id: string
@@ -28,7 +29,7 @@ export const FileVersionsList: React.FC<FileVersionsListProps> = ({ fileId }) =>
       setError(null)
 
       try {
-        const response = await fetch(`/api/files/${fileId}/versions`)
+        const response = await authFetch(`/api/files/${fileId}/versions`)
 
         if (!response.ok) {
           throw new Error('Failed to fetch versions')

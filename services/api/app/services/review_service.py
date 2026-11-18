@@ -126,6 +126,15 @@ class ReviewService:
             doc = doc_result.scalar_one_or_none()
             
             item_dict = item.to_dict()
+            if not item_dict.get("confidence_score"):
+                avg_res = await session.execute(
+                    select(func.avg(ExtractionResult.confidence)).where(
+                        ExtractionResult.document_id == item.document_id
+                    )
+                )
+                avg_conf = avg_res.scalar()
+                if avg_conf:
+                    item_dict["confidence_score"] = round(float(avg_conf), 2)
             if doc:
                 item_dict["document"] = {
                     "filename": doc.filename,
@@ -178,14 +187,20 @@ class ReviewService:
         )
         history = history_result.scalars().all()
         
+        review_item_dict = item.to_dict()
+        if not review_item_dict.get("confidence_score") and extractions:
+            avg_conf = sum((e.confidence or 0.0) for e in extractions) / len(extractions)
+            review_item_dict["confidence_score"] = round(float(avg_conf), 2)
+
         return {
-            "review_item": item.to_dict(),
+            "review_item": review_item_dict,
             "document": {
                 "id": str(doc.id),
                 "filename": doc.filename,
                 "file_type": doc.file_type,
                 "size": doc.size,
                 "extracted_text_snippet": doc.extracted_text_snippet,
+                "raw_storage_path": doc.raw_storage_path,
                 "ingestion_status": doc.ingestion_status,
                 "page_count": doc.page_count,
                 "mime_type": doc.mime_type,

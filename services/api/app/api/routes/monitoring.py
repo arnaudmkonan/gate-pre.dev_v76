@@ -91,23 +91,29 @@ async def list_monitoring_statuses(
 @router.post("/probe", response_model=HealthCheckProbeResponse)
 async def run_health_check_probe(
     request: HealthCheckProbeRequest,
+    session: AsyncSession = Depends(get_db),
 ):
     """Run a health check probe on system components."""
+    from datetime import datetime, timezone
+    from sqlalchemy import text
+    import redis
+    from app.core.config import settings
+    from app.services.local_storage_service import LocalStorageService
+
     try:
         results = []
 
         # Check storage
         if "storage" in request.components:
             try:
-                # TODO: Implement actual storage connectivity check
+                storage = LocalStorageService()
+                storage.test_connection()
                 results.append(
                     HealthCheckResult(
                         passed=True,
                         component="storage",
-                        message="Storage connectivity OK",
-                        timestamp=__import__("datetime").datetime.now(
-                            __import__("datetime").timezone.utc
-                        ),
+                        message="Storage read/write probe OK",
+                        timestamp=datetime.now(timezone.utc),
                     )
                 )
             except Exception as e:
@@ -116,24 +122,22 @@ async def run_health_check_probe(
                         passed=False,
                         component="storage",
                         message=f"Storage connectivity failed: {str(e)}",
-                        timestamp=__import__("datetime").datetime.now(
-                            __import__("datetime").timezone.utc
-                        ),
+                        timestamp=datetime.now(timezone.utc),
                     )
                 )
 
         # Check queue
         if "queue" in request.components:
             try:
-                # TODO: Implement actual queue connectivity check
+                redis_url = getattr(settings, "celery_broker_url", None) or f"redis://{getattr(settings, 'redis_host', 'redis')}:{getattr(settings, 'redis_port', 6379)}/0"
+                r_client = redis.from_url(redis_url, socket_connect_timeout=3)
+                r_client.ping()
                 results.append(
                     HealthCheckResult(
                         passed=True,
                         component="queue",
-                        message="Queue connectivity OK",
-                        timestamp=__import__("datetime").datetime.now(
-                            __import__("datetime").timezone.utc
-                        ),
+                        message="Redis queue broker PING OK",
+                        timestamp=datetime.now(timezone.utc),
                     )
                 )
             except Exception as e:
@@ -142,24 +146,20 @@ async def run_health_check_probe(
                         passed=False,
                         component="queue",
                         message=f"Queue connectivity failed: {str(e)}",
-                        timestamp=__import__("datetime").datetime.now(
-                            __import__("datetime").timezone.utc
-                        ),
+                        timestamp=datetime.now(timezone.utc),
                     )
                 )
 
         # Check database
         if "database" in request.components:
             try:
-                # TODO: Implement actual database connectivity check
+                await session.execute(text("SELECT 1"))
                 results.append(
                     HealthCheckResult(
                         passed=True,
                         component="database",
-                        message="Database connectivity OK",
-                        timestamp=__import__("datetime").datetime.now(
-                            __import__("datetime").timezone.utc
-                        ),
+                        message="PostgreSQL SELECT 1 probe OK",
+                        timestamp=datetime.now(timezone.utc),
                     )
                 )
             except Exception as e:
@@ -168,9 +168,7 @@ async def run_health_check_probe(
                         passed=False,
                         component="database",
                         message=f"Database connectivity failed: {str(e)}",
-                        timestamp=__import__("datetime").datetime.now(
-                            __import__("datetime").timezone.utc
-                        ),
+                        timestamp=datetime.now(timezone.utc),
                     )
                 )
 

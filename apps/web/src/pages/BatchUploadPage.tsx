@@ -6,10 +6,12 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { apiClient } from '../lib/apiClient';
+import { apiClient, ApiRequestError } from '../lib/apiClient';
 
-// API URL - empty string uses relative path (works with nginx proxy)
-const API_URL = import.meta.env.VITE_API_URL || '';
+import { API_BASE } from '../config/api';
+
+/** Batch routes live under /api/batch (not /batch). */
+const batchApi = (path: string) => `${API_BASE}/api/batch${path}`;
 
 interface BatchJob {
   id: string;
@@ -66,7 +68,7 @@ export function BatchUploadPage() {
 
   const loadBatchJobs = useCallback(async () => {
     try {
-      const response = await apiClient.get(`${API_URL}/batch/jobs?limit=20`);
+      const response = await apiClient.get(batchApi('/jobs?limit=20'));
       setBatchJobs(response.data.jobs || []);
     } catch (err) {
       console.error('Failed to load batch jobs:', err);
@@ -98,7 +100,7 @@ export function BatchUploadPage() {
         formData.append('file', file);
 
         const response = await apiClient.post<DuplicateCheckResult>(
-          `${API_URL}/api/duplicates/check-file`,
+          `${API_BASE}/api/duplicates/check-file`,
           formData,
           { headers: { 'Content-Type': 'multipart/form-data' } }
         );
@@ -143,7 +145,7 @@ export function BatchUploadPage() {
         formData.append('name', batchName);
         if (description) formData.append('description', description);
 
-        await apiClient.post(`${API_URL}/batch/upload?name=${encodeURIComponent(batchName)}`, formData, {
+        await apiClient.post(batchApi(`/upload?name=${encodeURIComponent(batchName)}`), formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
           onUploadProgress: (progressEvent) => {
             const percent = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1));
@@ -157,7 +159,9 @@ export function BatchUploadPage() {
         }
 
         await apiClient.post(
-          `${API_URL}/batch/upload/multifile?name=${encodeURIComponent(batchName)}${description ? `&description=${encodeURIComponent(description)}` : ''}`,
+          batchApi(
+            `/upload/multifile?name=${encodeURIComponent(batchName)}${description ? `&description=${encodeURIComponent(description)}` : ''}`,
+          ),
           formData,
           {
             headers: { 'Content-Type': 'multipart/form-data' },
@@ -174,8 +178,21 @@ export function BatchUploadPage() {
       setDescription('');
       setSelectedFiles(null);
       loadBatchJobs();
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Upload failed');
+    } catch (err: unknown) {
+      let message = 'Upload failed';
+      if (err instanceof ApiRequestError) {
+        message = err.message;
+      } else if (err && typeof err === 'object' && 'response' in err) {
+        const data = (err as { response?: { data?: { detail?: string; error?: { message?: string } } } })
+          .response?.data;
+        message =
+          (typeof data?.detail === 'string' && data.detail) ||
+          data?.error?.message ||
+          message;
+      } else if (err instanceof Error) {
+        message = err.message;
+      }
+      setError(message);
     } finally {
       setUploading(false);
       setUploadProgress(0);
@@ -184,7 +201,7 @@ export function BatchUploadPage() {
 
   const handleExport = async (batchJobId: string) => {
     try {
-      const response = await apiClient.get(`${API_URL}/batch/jobs/${batchJobId}/export`, {
+      const response = await apiClient.get(batchApi(`/jobs/${batchJobId}/export`), {
         responseType: 'blob',
       });
 

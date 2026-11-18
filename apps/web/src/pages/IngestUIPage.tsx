@@ -61,28 +61,28 @@ export const IngestUIPage: React.FC = () => {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold">Document Ingestion UI</h1>
-        <p className="text-gray-600 mt-2">
-          Upload documents, monitor processing, and manage ingestion jobs with flexible modes and retry options
+        <h1 className="text-3xl font-bold text-gray-900">Trade Document Ingestion</h1>
+        <p className="text-gray-600 mt-1">
+          Upload Commercial Invoices, Bills of Lading, Packing Lists, and Arrival Notices for automated AI extraction and shipment assembly
         </p>
       </div>
 
-      {/* Story 1: Upload Form */}
+      {/* Upload Form */}
       <section className="bg-white rounded-lg border border-gray-200">
         <div className="p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold">Story 1: Upload Documents</h2>
+          <h2 className="text-xl font-semibold text-gray-900">Upload Trade Documents</h2>
           <p className="text-sm text-gray-600 mt-1">
-            Upload one or multiple documents via drag-and-drop or file picker
+            Drag and drop PDFs, spreadsheets, or customs packets to start automated extraction
           </p>
         </div>
         <UploadForm onUploadSuccess={handleUploadSuccess} />
       </section>
 
-      {/* Story 4: Mode Selection */}
+      {/* Mode Selection */}
       {_uploadedJobId && selectedJob && modePanel !== 'none' && (
         <section className="bg-white rounded-lg border border-gray-200">
           <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-semibold">Story 4: Select Ingestion Mode</h2>
+            <h2 className="text-xl font-semibold text-gray-900">Extraction Mode</h2>
             <p className="text-sm text-gray-600 mt-1">
               Choose how to process the uploaded document
             </p>
@@ -135,12 +135,12 @@ export const IngestUIPage: React.FC = () => {
         </section>
       )}
 
-      {/* Story 2: Monitor Processing */}
+      {/* Monitor Processing */}
       <section className="bg-white rounded-lg border border-gray-200">
         <div className="p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold">Story 2: Monitor Processing</h2>
+          <h2 className="text-xl font-semibold text-gray-900">Live Ingestion Pipeline</h2>
           <p className="text-sm text-gray-600 mt-1">
-            View ingestion job status, progress, and detailed information
+            Real-time OCR, classification, entity extraction, and shipment auto-linking status
           </p>
         </div>
         <div className="p-6">
@@ -152,13 +152,13 @@ export const IngestUIPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Story 3: Retry Failed Jobs */}
+      {/* Retry Failed Jobs */}
       {selectedJob && actionPanel === 'retry' && (
         <section className="bg-white rounded-lg border border-gray-200">
           <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-semibold">Story 3: Retry Failed Jobs</h2>
+            <h2 className="text-xl font-semibold text-gray-900">Retry Failed Document</h2>
             <p className="text-sm text-gray-600 mt-1">
-              Retry failed ingestion jobs with optional settings overrides
+              Re-queue failed ingestion jobs with optional extractor overrides
             </p>
           </div>
           <div className="p-6">

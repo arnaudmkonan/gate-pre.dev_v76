@@ -15,9 +15,28 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.auth import get_current_user
+from app.startup.client_access import (
+    is_broker_admin,
+    portal_user_client_id,
+    require_client_scope,
+    require_fee_config_scope,
+    require_invoice_scope,
+)
 
 
 router = APIRouter(prefix="/api/billing", tags=["Client Billing"], dependencies=[Depends(get_current_user)])
+
+
+@router.get("/clients/{client_id}/usage")
+async def get_client_usage_summary(
+    client_uuid: UUID = Depends(require_client_scope),
+    days: int = Query(30, ge=1, le=365),
+    db: AsyncSession = Depends(get_db),
+):
+    """Pilot usage metering: documents, extractions, ACE transmits."""
+    from app.services.usage_metering_service import UsageMeteringService
+
+    return await UsageMeteringService.summary(db, client_uuid, days=days)
 
 
 # ==================== Request Models ====================
@@ -82,18 +101,13 @@ class PaymentRecord(BaseModel):
 
 @router.post("/clients/{client_id}/fee-configs")
 async def create_fee_config(
-    client_id: str,
     request: FeeConfigCreate,
+    client_uuid: UUID = Depends(require_client_scope),
     db: AsyncSession = Depends(get_db),
 ):
     """Create a fee configuration for a client."""
     from app.services.client_billing_service import ClientBillingService
-    
-    try:
-        client_uuid = UUID(client_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid client ID")
-    
+
     service = ClientBillingService(db)
     config = await service.create_fee_config(client_uuid, request.model_dump())
     
@@ -105,23 +119,18 @@ async def create_fee_config(
 
 @router.get("/clients/{client_id}/fee-configs")
 async def list_fee_configs(
-    client_id: str,
     active_only: bool = Query(True),
+    client_uuid: UUID = Depends(require_client_scope),
     db: AsyncSession = Depends(get_db),
 ):
     """List fee configurations for a client."""
     from app.services.client_billing_service import ClientBillingService
-    
-    try:
-        client_uuid = UUID(client_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid client ID")
-    
+
     service = ClientBillingService(db)
     configs = await service.list_fee_configs(client_uuid, active_only)
-    
+
     return {
-        "client_id": client_id,
+        "client_id": str(client_uuid),
         "fee_configs": [c.to_dict() for c in configs],
         "count": len(configs),
     }
@@ -129,18 +138,13 @@ async def list_fee_configs(
 
 @router.put("/fee-configs/{config_id}")
 async def update_fee_config(
-    config_id: str,
     request: FeeConfigUpdate,
+    config_uuid: UUID = Depends(require_fee_config_scope),
     db: AsyncSession = Depends(get_db),
 ):
     """Update a fee configuration."""
     from app.services.client_billing_service import ClientBillingService
-    
-    try:
-        config_uuid = UUID(config_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid config ID")
-    
+
     service = ClientBillingService(db)
     
     try:
@@ -157,18 +161,13 @@ async def update_fee_config(
 
 @router.post("/clients/{client_id}/billable-items")
 async def create_billable_item(
-    client_id: str,
     request: BillableItemCreate,
+    client_uuid: UUID = Depends(require_client_scope),
     db: AsyncSession = Depends(get_db),
 ):
     """Create a billable item for a client."""
     from app.services.client_billing_service import ClientBillingService
-    
-    try:
-        client_uuid = UUID(client_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid client ID")
-    
+
     service = ClientBillingService(db)
     
     item = await service.create_billable_item(
@@ -191,21 +190,16 @@ async def create_billable_item(
 
 @router.get("/clients/{client_id}/billable-items")
 async def list_billable_items(
-    client_id: str,
     invoiced: Optional[bool] = Query(None),
     item_type: Optional[str] = Query(None),
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
+    client_uuid: UUID = Depends(require_client_scope),
     db: AsyncSession = Depends(get_db),
 ):
     """List billable items for a client."""
     from app.services.client_billing_service import ClientBillingService
-    
-    try:
-        client_uuid = UUID(client_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid client ID")
-    
+
     service = ClientBillingService(db)
     
     items = await service.list_billable_items(
@@ -217,7 +211,7 @@ async def list_billable_items(
     )
     
     return {
-        "client_id": client_id,
+        "client_id": str(client_uuid),
         "billable_items": [i.to_dict() for i in items],
         "count": len(items),
     }
@@ -225,17 +219,12 @@ async def list_billable_items(
 
 @router.get("/clients/{client_id}/billable-items/uninvoiced")
 async def get_uninvoiced_summary(
-    client_id: str,
+    client_uuid: UUID = Depends(require_client_scope),
     db: AsyncSession = Depends(get_db),
 ):
     """Get summary of uninvoiced items for a client."""
     from app.services.client_billing_service import ClientBillingService
-    
-    try:
-        client_uuid = UUID(client_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid client ID")
-    
+
     service = ClientBillingService(db)
     summary = await service.get_uninvoiced_summary(client_uuid)
     
@@ -246,18 +235,13 @@ async def get_uninvoiced_summary(
 
 @router.post("/clients/{client_id}/invoices")
 async def create_invoice(
-    client_id: str,
     request: InvoiceCreate,
+    client_uuid: UUID = Depends(require_client_scope),
     db: AsyncSession = Depends(get_db),
 ):
     """Create an invoice for a client."""
     from app.services.client_billing_service import ClientBillingService
-    
-    try:
-        client_uuid = UUID(client_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid client ID")
-    
+
     service = ClientBillingService(db)
     
     try:
@@ -280,20 +264,15 @@ async def create_invoice(
 
 @router.get("/clients/{client_id}/invoices")
 async def list_client_invoices(
-    client_id: str,
     status: Optional[str] = Query(None),
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
+    client_uuid: UUID = Depends(require_client_scope),
     db: AsyncSession = Depends(get_db),
 ):
     """List invoices for a client."""
     from app.services.client_billing_service import ClientBillingService
-    
-    try:
-        client_uuid = UUID(client_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid client ID")
-    
+
     service = ClientBillingService(db)
     
     invoices = await service.list_invoices(
@@ -304,7 +283,7 @@ async def list_client_invoices(
     )
     
     return {
-        "client_id": client_id,
+        "client_id": str(client_uuid),
         "invoices": [i.to_dict() for i in invoices],
         "count": len(invoices),
     }
@@ -312,17 +291,12 @@ async def list_client_invoices(
 
 @router.get("/invoices/{invoice_id}")
 async def get_invoice(
-    invoice_id: str,
+    invoice_uuid: UUID = Depends(require_invoice_scope),
     db: AsyncSession = Depends(get_db),
 ):
     """Get invoice details."""
     from app.services.client_billing_service import ClientBillingService
-    
-    try:
-        invoice_uuid = UUID(invoice_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid invoice ID")
-    
+
     service = ClientBillingService(db)
     invoice = await service.get_invoice(invoice_uuid)
     
@@ -334,17 +308,12 @@ async def get_invoice(
 
 @router.post("/invoices/{invoice_id}/send")
 async def send_invoice(
-    invoice_id: str,
+    invoice_uuid: UUID = Depends(require_invoice_scope),
     db: AsyncSession = Depends(get_db),
 ):
     """Mark invoice as sent."""
     from app.services.client_billing_service import ClientBillingService
-    
-    try:
-        invoice_uuid = UUID(invoice_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid invoice ID")
-    
+
     service = ClientBillingService(db)
     
     try:
@@ -359,17 +328,12 @@ async def send_invoice(
 
 @router.post("/invoices/{invoice_id}/void")
 async def void_invoice(
-    invoice_id: str,
+    invoice_uuid: UUID = Depends(require_invoice_scope),
     db: AsyncSession = Depends(get_db),
 ):
     """Void an invoice."""
     from app.services.client_billing_service import ClientBillingService
-    
-    try:
-        invoice_uuid = UUID(invoice_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid invoice ID")
-    
+
     service = ClientBillingService(db)
     
     try:
@@ -386,18 +350,13 @@ async def void_invoice(
 
 @router.post("/invoices/{invoice_id}/payments")
 async def record_payment(
-    invoice_id: str,
     request: PaymentRecord,
+    invoice_uuid: UUID = Depends(require_invoice_scope),
     db: AsyncSession = Depends(get_db),
 ):
     """Record a payment for an invoice."""
     from app.services.client_billing_service import ClientBillingService
-    
-    try:
-        invoice_uuid = UUID(invoice_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid invoice ID")
-    
+
     service = ClientBillingService(db)
     
     try:
@@ -420,22 +379,17 @@ async def record_payment(
 
 @router.get("/invoices/{invoice_id}/payments")
 async def get_payment_history(
-    invoice_id: str,
+    invoice_uuid: UUID = Depends(require_invoice_scope),
     db: AsyncSession = Depends(get_db),
 ):
     """Get payment history for an invoice."""
     from app.services.client_billing_service import ClientBillingService
-    
-    try:
-        invoice_uuid = UUID(invoice_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid invoice ID")
-    
+
     service = ClientBillingService(db)
     payments = await service.get_payment_history(invoice_uuid)
     
     return {
-        "invoice_id": invoice_id,
+        "invoice_id": str(invoice_uuid),
         "payments": [p.to_dict() for p in payments],
         "count": len(payments),
         "total_paid": sum(float(p.amount) for p in payments),
@@ -449,14 +403,17 @@ async def list_all_invoices(
     status: Optional[str] = Query(None),
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
+    user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """List all invoices (across all clients)."""
+    """List invoices (all clients for broker admin; own client otherwise)."""
     from app.services.client_billing_service import ClientBillingService
-    
+
     service = ClientBillingService(db)
-    
+    scoped_client = None if is_broker_admin(user) else portal_user_client_id(user)
+
     invoices = await service.list_invoices(
+        client_id=scoped_client,
         status=status,
         start_date=datetime.strptime(start_date, "%Y-%m-%d").date() if start_date else None,
         end_date=datetime.strptime(end_date, "%Y-%m-%d").date() if end_date else None,

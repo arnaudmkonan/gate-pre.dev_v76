@@ -374,6 +374,7 @@ async def update_entry(
     entry_id: str,
     request: EntryUpdate,
     db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Update entry fields.
@@ -400,13 +401,15 @@ async def update_entry(
         if hasattr(entry, key) and value is not None:
             setattr(entry, key, value)
     
+    actor_email = current_user.get("email") or current_user.get("sub") or "user"
+
     # Track status change
     if "status" in update_data and update_data["status"] != old_status:
         history = EntryStatusHistory(
             entry_id=entry.id,
             from_status=old_status,
             to_status=update_data["status"],
-            changed_by="user",  # TODO: Get from auth
+            changed_by=actor_email,
             reason="Manual status update",
         )
         db.add(history)
@@ -421,6 +424,7 @@ async def update_entry(
 async def delete_entry(
     entry_id: str,
     db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Delete (soft-delete via status) an entry.
@@ -441,12 +445,13 @@ async def delete_entry(
     # Soft delete - change status to cancelled
     old_status = entry.status
     entry.status = EntryStatus.CANCELLED.value
+    actor_email = current_user.get("email") or current_user.get("sub") or "user"
     
     history = EntryStatusHistory(
         entry_id=entry.id,
         from_status=old_status,
         to_status=EntryStatus.CANCELLED.value,
-        changed_by="user",
+        changed_by=actor_email,
         reason="Entry deleted",
     )
     db.add(history)

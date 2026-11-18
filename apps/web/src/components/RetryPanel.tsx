@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { authFetch } from '../lib/authFetch'
 import { Card } from './Card'
 import { Button } from './Button'
 import { AlertCircle, CheckCircle, X } from 'lucide-react'
@@ -36,7 +37,7 @@ export const RetryPanel: React.FC<RetryPanelProps> = ({ jobId, onRetrySuccess, o
     setSuccess(null)
 
     try {
-      const response = await fetch('/api/jobs/retry', {
+      const response = await authFetch('/api/jobs/retry', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

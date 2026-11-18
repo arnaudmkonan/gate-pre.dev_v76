@@ -108,7 +108,36 @@ export const EntryPrepPage = () => {
     const [loading, setLoading] = useState(true)
     const [validating, setValidating] = useState(false)
     const [exporting, setExporting] = useState(false)
+    const [creatingEntry, setCreatingEntry] = useState(false)
     const [error, setError] = useState<string | null>(null)
+
+    const saveOfficialEntry = async () => {
+        if (!shipmentId) return
+        setCreatingEntry(true)
+        try {
+            const resp = await authFetch(`${API_BASE}/api/shipments/${shipmentId}/create-entry`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    entry_type: entryData?.entry_type || '01',
+                    port_of_entry: entryData?.port_code || entryData?.transport?.port_of_entry || undefined,
+                    auto_calculate: true,
+                }),
+            })
+            if (!resp.ok) {
+                const err = await resp.json()
+                throw new Error(err.detail || 'Failed to create official entry')
+            }
+            const data = await resp.json()
+            if (data.entry_id) {
+                navigate(`/entries/${data.entry_id}`)
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to create entry')
+        } finally {
+            setCreatingEntry(false)
+        }
+    }
 
     useEffect(() => {
         if (shipmentId) {
@@ -147,7 +176,7 @@ export const EntryPrepPage = () => {
         }
     }
 
-    const exportEntry = async (format: 'ace' | 'json') => {
+    const exportEntry = async (format: 'ace' | 'json' | 'pdf' | 'excel') => {
         setExporting(true)
         try {
             const response = await authFetch(
@@ -155,16 +184,26 @@ export const EntryPrepPage = () => {
                 { method: 'POST' }
             )
             if (!response.ok) throw new Error('Export failed')
-            const data = await response.json()
 
-            // Download as file
-            const blob = new Blob([JSON.stringify(data.data, null, 2)], { type: 'application/json' })
-            const url = URL.createObjectURL(blob)
-            const a = document.createElement('a')
-            a.href = url
-            a.download = `entry_${shipmentId}_${format}.json`
-            a.click()
-            URL.revokeObjectURL(url)
+            if (format === 'pdf' || format === 'excel') {
+                const blob = await response.blob()
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url
+                const ext = format === 'pdf' ? 'pdf' : 'xlsx'
+                a.download = `CBP_7501_Prep_${shipmentId?.substring(0, 8)}.${ext}`
+                a.click()
+                URL.revokeObjectURL(url)
+            } else {
+                const data = await response.json()
+                const blob = new Blob([JSON.stringify(data.data, null, 2)], { type: 'application/json' })
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url
+                a.download = `entry_${shipmentId}_${format}.json`
+                a.click()
+                URL.revokeObjectURL(url)
+            }
         } catch (err) {
             console.error('Export error:', err)
         } finally {
@@ -249,13 +288,25 @@ export const EntryPrepPage = () => {
                         )}
                         Validate
                     </Button>
-                    <Button onClick={() => exportEntry('ace')} disabled={exporting}>
+                    <Button onClick={() => exportEntry('pdf')} variant="secondary" disabled={exporting}>
+                        <Download className="w-4 h-4 mr-2" />
+                        7501 PDF
+                    </Button>
+                    <Button onClick={() => exportEntry('excel')} variant="secondary" disabled={exporting}>
+                        <Download className="w-4 h-4 mr-2" />
+                        Excel
+                    </Button>
+                    <Button onClick={() => exportEntry('ace')} variant="secondary" disabled={exporting}>
                         {exporting ? (
                             <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
                         ) : (
                             <Download className="w-4 h-4 mr-2" />
                         )}
                         Export ACE
+                    </Button>
+                    <Button onClick={saveOfficialEntry} disabled={creatingEntry}>
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        {creatingEntry ? 'Saving Entry...' : 'Save as Official Entry'}
                     </Button>
                 </div>
             </div>

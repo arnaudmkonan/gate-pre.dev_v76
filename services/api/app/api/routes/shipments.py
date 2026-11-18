@@ -94,11 +94,14 @@ class ShipmentDetail(ShipmentSummary):
     total_declared_value: Optional[float]
     total_duty: Optional[float]
     document_types: Optional[List[str]]
+    documents: Optional[List[str]] = None
 
 
 class LinkedDocument(BaseModel):
     """Document linked to a shipment."""
     document_id: str
+    filename: Optional[str] = None
+    file_type: Optional[str] = None
     linked_by_key_type: Optional[str]
     linked_by_key_value: Optional[str]
     link_method: str
@@ -166,7 +169,7 @@ async def list_shipments(
             (Shipment.name.ilike(search_filter))
         )
     
-    query = query.order_by(Shipment.created_at.desc()).limit(limit).offset(offset)
+    query = query.order_by(Shipment.document_count.desc(), Shipment.created_at.desc()).limit(limit).offset(offset)
     
     result = await db.execute(query)
     shipments = result.scalars().all()
@@ -380,6 +383,7 @@ async def get_shipment(
     
     result = await db.execute(
         select(Shipment)
+        .options(selectinload(Shipment.linked_documents))
         .where(Shipment.id == ship_uuid)
     )
     shipment = result.scalar_one_or_none()
@@ -387,16 +391,37 @@ async def get_shipment(
     if not shipment:
         raise HTTPException(status_code=404, detail="Shipment not found")
     
+    doc_ids = [str(link.document_id) for link in (shipment.linked_documents or [])]
+
+    prep = None
+    if doc_ids:
+        try:
+            from app.services.entry_prep_service import EntryPrepService
+            prep = await EntryPrepService.prepare_from_shipment(db, ship_uuid)
+        except Exception:
+            prep = None
+
+    decl_val = (
+        float(shipment.total_declared_value)
+        if shipment.total_declared_value
+        else (float(prep.total_entered_value) if prep and prep.total_entered_value else None)
+    )
+    est_duty = (
+        float(shipment.total_duty)
+        if shipment.total_duty
+        else (float(prep.grand_total) if prep and prep.grand_total else None)
+    )
+
     return ShipmentDetail(
         id=str(shipment.id),
-        name=shipment.name,
+        name=shipment.name or (f"Shipment {prep.master_bill}" if prep and prep.master_bill else None),
         reference_num=shipment.reference_num,
         status=shipment.status or ShipmentStatus.PARTIAL.value,
-        document_count=shipment.document_count or 0,
-        entry_number=shipment.entry_number,
-        bol_number=shipment.bol_number,
+        document_count=shipment.document_count or len(doc_ids),
+        entry_number=shipment.entry_number or (prep.entry_number if prep else None),
+        bol_number=shipment.bol_number or (prep.master_bill if prep else None),
         awb_number=shipment.awb_number,
-        importer_name=shipment.importer_name,
+        importer_name=shipment.importer_name or (prep.importer_name if prep else None),
         created_at=shipment.created_at,
         primary_key_type=shipment.primary_key_type,
         primary_key_value=shipment.primary_key_value,
@@ -404,9 +429,10 @@ async def get_shipment(
         manufacturer_name=shipment.manufacturer_name,
         container_numbers=shipment.container_numbers,
         po_numbers=shipment.po_numbers,
-        total_declared_value=float(shipment.total_declared_value) if shipment.total_declared_value else None,
-        total_duty=float(shipment.total_duty) if shipment.total_duty else None,
-        document_types=shipment.document_types
+        total_declared_value=decl_val,
+        total_duty=est_duty,
+        document_types=shipment.document_types,
+        documents=doc_ids,
     )
 
 
@@ -416,6 +442,9 @@ async def get_shipment_documents(
     db=Depends(get_db)
 ):
     """Get all documents linked to a shipment."""
+    from app.models.document_metadata import DocumentMetadata
+    from app.models.raw_file import RawFile
+
     try:
         ship_uuid = UUID(shipment_id)
     except ValueError:
@@ -428,17 +457,42 @@ async def get_shipment_documents(
     )
     links = result.scalars().all()
     
-    return [
-        LinkedDocument(
-            document_id=str(link.document_id),
-            linked_by_key_type=link.linked_by_key_type,
-            linked_by_key_value=link.linked_by_key_value,
-            link_method=link.link_method,
-            link_confidence=link.link_confidence,
-            linked_at=link.created_at
+    enriched_docs = []
+    for link in links:
+        doc_res = await db.execute(
+            select(DocumentMetadata).where(DocumentMetadata.id == link.document_id)
         )
-        for link in links
-    ]
+        doc = doc_res.scalar_one_or_none()
+        raw_file = None
+        if not doc:
+            raw_res = await db.execute(
+                select(RawFile).where(RawFile.id == link.document_id)
+            )
+            raw_file = raw_res.scalar_one_or_none()
+
+        filename = (
+            (doc.filename if doc else None)
+            or (raw_file.filename if raw_file else None)
+            or f"Document {str(link.document_id)[:8]}"
+        )
+        file_type = (
+            (doc.file_type if doc else None)
+            or (raw_file.file_type if raw_file else None)
+        )
+        enriched_docs.append(
+            LinkedDocument(
+                document_id=str(link.document_id),
+                filename=filename,
+                file_type=file_type,
+                linked_by_key_type=link.linked_by_key_type,
+                linked_by_key_value=link.linked_by_key_value,
+                link_method=link.link_method,
+                link_confidence=link.link_confidence,
+                linked_at=link.created_at,
+            )
+        )
+
+    return enriched_docs
 
 
 @router.post("", response_model=ShipmentDetail)
@@ -950,26 +1004,17 @@ class CreateEntryFromShipmentRequest(BaseModel):
 
 @router.post("/{shipment_id}/create-entry")
 async def create_entry_from_shipment(
-    request: CreateEntryFromShipmentRequest,
+    request: Optional[CreateEntryFromShipmentRequest] = None,
     shipment_id: str = Path(..., description="Shipment ID"),
-    db=Depends(get_db)
+    db=Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """
-    Create a customs entry from a shipment.
-    
-    This endpoint:
-    1. Creates a new Entry linked to the shipment
-    2. Links all shipment documents to the entry
-    3. Auto-populates entry fields from document extractions:
-       - Importer from extraction data
-       - BOL number from shipment
-       - Entry number if already assigned
-    4. Creates suggestions for fields that need review
-    
-    The entry is created in DRAFT status for review before filing.
-    
-    Task 1.7 from ROADMAP_FULL_WORKFLOW.md
+    Create a customs entry from a shipment (or return existing entry if already created).
     """
+    if request is None:
+        request = CreateEntryFromShipmentRequest()
+
     try:
         ship_uuid = UUID(shipment_id)
     except ValueError:
@@ -987,40 +1032,45 @@ async def create_entry_from_shipment(
         raise HTTPException(status_code=404, detail="Shipment not found")
     
     # Check if shipment already has an entry
-    from app.models.entry import Entry, EntryStatus, EntryStatusHistory, EntryDocument
+    from app.models.entry import Entry, EntryLine, EntryStatus, EntryStatusHistory, EntryDocument
     
-    existing_entry = await db.execute(
-        select(Entry).where(Entry.shipment_id == ship_uuid)
+    existing_res = await db.execute(
+        select(Entry).where(Entry.shipment_id == ship_uuid).limit(1)
     )
-    if existing_entry.scalar_one_or_none():
-        raise HTTPException(
-            status_code=400, 
-            detail="Shipment already has an entry. Use the existing entry or unlink it first."
-        )
+    existing_entry = existing_res.scalar_one_or_none()
+    if existing_entry:
+        return {
+            "message": "Entry already exists for this shipment",
+            "already_exists": True,
+            "entry_id": str(existing_entry.id),
+            "entry_number": existing_entry.entry_number,
+            "shipment_id": shipment_id,
+            "status": existing_entry.status,
+            "created_at": existing_entry.created_at.isoformat() if existing_entry.created_at else None,
+        }
     
-    # Collect extraction data from all linked documents
+    # Collect extraction data from all linked documents + EntryPrepService
     extraction_data = {}
     doc_types_seen = set()
     document_ids = []
     
+    from app.models.document_metadata import DocumentMetadata
+    from app.models.extraction_result import ExtractionResult
+
     for doc_link in shipment.linked_documents:
         document_ids.append(doc_link.document_id)
         
-        # Get document metadata
-        from app.models.document import DocumentMetadata
         doc_result = await db.execute(
             select(DocumentMetadata).where(DocumentMetadata.id == doc_link.document_id)
         )
         doc = doc_result.scalar_one_or_none()
-        if doc and doc.document_type:
-            doc_types_seen.add(doc.document_type)
+        doc_type = getattr(doc, "document_type", None) or (doc.file_type if doc else None)
+        if doc_type:
+            doc_types_seen.add(doc_type)
         
-        # Get extractions from this document
-        from app.models.extraction_result import ExtractionResult
         ext_result = await db.execute(
             select(ExtractionResult).where(
                 ExtractionResult.document_id == doc_link.document_id,
-                ExtractionResult.extraction_type == "template"
             )
         )
         extractions = ext_result.scalars().all()
@@ -1029,38 +1079,58 @@ async def create_entry_from_shipment(
             field = ext.field_name.lower().replace(" ", "_")
             confidence = ext.confidence or 0.5
             
-            # Keep highest confidence value for each field
             if field not in extraction_data or confidence > extraction_data[field]["confidence"]:
                 extraction_data[field] = {
                     "value": ext.field_value,
                     "confidence": confidence,
                     "source_doc_id": str(doc_link.document_id),
-                    "source_doc_type": doc.document_type if doc else None,
+                    "source_doc_type": doc_type,
                 }
-    
-    # Create the entry with populated data
+
+    # Prepare rich 7501 data from EntryPrepService if available
+    prep_data = None
+    try:
+        from app.services.entry_prep_service import EntryPrepService
+        prep_data = await EntryPrepService.prepare_from_shipment(db, ship_uuid)
+    except Exception:
+        prep_data = None
+
+    actor_email = current_user.get("email") or current_user.get("sub") or "system"
+
     entry = Entry(
-        entry_type=request.entry_type,
-        port_of_entry=request.port_of_entry or shipment.entry_number[:4] if shipment.entry_number else None,
-        entry_number=shipment.entry_number,
-        bill_of_lading=shipment.bol_number,
-        importer_of_record_name=shipment.importer_name,
+        entry_type=request.entry_type or (prep_data.entry_type if prep_data else "01"),
+        port_of_entry=(
+            request.port_of_entry
+            or (prep_data.port_of_entry or prep_data.port_code if prep_data else None)
+            or (shipment.entry_number[:4] if shipment.entry_number and len(shipment.entry_number) >= 4 else None)
+        ),
+        entry_number=shipment.entry_number or (prep_data.entry_number if prep_data else None),
+        bill_of_lading=shipment.bol_number or (prep_data.master_bill if prep_data else None),
+        master_bill=prep_data.master_bill if prep_data else shipment.bol_number,
+        house_bill=prep_data.house_bill if prep_data else None,
+        carrier_code=prep_data.carrier_code if prep_data else None,
+        vessel_name=prep_data.vessel_name if prep_data else None,
+        voyage_flight_number=prep_data.voyage_number if prep_data else None,
+        importer_of_record_name=shipment.importer_name or (prep_data.importer_name if prep_data else None),
+        importer_of_record_number=prep_data.importer_of_record_number if prep_data else None,
+        ultimate_consignee_name=prep_data.consignee_name if prep_data else shipment.importer_name,
+        total_entered_value=float(prep_data.total_entered_value) if prep_data else float(shipment.total_declared_value or 0),
+        total_duty=float(prep_data.total_duty) if prep_data else float(shipment.total_duty or 0),
+        mpf_amount=float(prep_data.total_mpf) if prep_data else 0.0,
+        hmf_amount=float(prep_data.total_hmf) if prep_data else 0.0,
+        total_amount_due=float(prep_data.grand_total) if prep_data else float((shipment.total_duty or 0)),
         status=EntryStatus.DRAFT.value,
         shipment_id=ship_uuid,
         notes=f"Created from shipment: {shipment.name or shipment_id}",
     )
     
-    # Map extracted fields to entry fields
     field_mappings = {
         "importer_name": "importer_of_record_name",
         "importer": "importer_of_record_name",
-        "consignee": "consignee_name",
-        "seller": "exporter_name",
-        "exporter": "exporter_name",
-        "manufacturer": "manufacturer_name",
+        "consignee": "ultimate_consignee_name",
         "carrier": "carrier_code",
         "vessel": "vessel_name",
-        "voyage": "voyage_number",
+        "voyage": "voyage_flight_number",
         "port_of_entry": "port_of_entry",
         "port": "port_of_entry",
     }
@@ -1073,16 +1143,37 @@ async def create_entry_from_shipment(
                 setattr(entry, entry_field, value)
                 fields_populated.append(entry_field)
     
-    # Add entry to DB
     db.add(entry)
-    await db.flush()  # Get entry ID
+    await db.flush()
+
+    # Add line items from EntryPrepService if available
+    lines_created = 0
+    if prep_data and prep_data.line_items:
+        for idx, item in enumerate(prep_data.line_items, 1):
+            line = EntryLine(
+                entry_id=entry.id,
+                line_number=item.get("line_number") or idx,
+                hts_code=item.get("hts_number") or "0000.00.0000",
+                product_description=item.get("description") or "Imported Merchandise",
+                country_of_origin=(item.get("country_of_origin") or "US")[:2],
+                quantity_1=float(item.get("quantity") or 1),
+                uom_1=item.get("unit") or "PCS",
+                gross_weight=float(item.get("gross_weight") or 0),
+                entered_value=float(item.get("entered_value") or 0),
+                duty_rate=float(item.get("duty_rate") or 0),
+                duty_amount=float(item.get("duty_amount") or 0),
+                total_line_duty=float(item.get("duty_amount") or 0),
+            )
+            db.add(line)
+            lines_created += 1
+        entry.line_count = lines_created
     
     # Create status history
     history = EntryStatusHistory(
         entry_id=entry.id,
         from_status=None,
         to_status=EntryStatus.DRAFT.value,
-        changed_by="system",
+        changed_by=actor_email,
         reason=f"Created from shipment {shipment_id}",
     )
     db.add(history)
@@ -1090,34 +1181,21 @@ async def create_entry_from_shipment(
     # Link documents to entry
     linked_count = 0
     for doc_id in document_ids:
-        # Check if EntryDocument model exists
         try:
             entry_doc = EntryDocument(
                 entry_id=entry.id,
                 document_id=doc_id,
-                is_primary=linked_count == 0,  # First doc is primary
-                added_by="system",
+                is_primary=linked_count == 0,
+                added_by=actor_email,
             )
             db.add(entry_doc)
             linked_count += 1
         except Exception:
-            # EntryDocument might not exist, skip
             pass
     
     await db.commit()
     await db.refresh(entry)
     
-    # Optionally calculate duties
-    duty_summary = None
-    if request.auto_calculate and entry.lines:
-        try:
-            from app.services.duty_calculator_service import DutyCalculatorService
-            calc = DutyCalculatorService(db)
-            # Would calculate duties here if lines exist
-        except Exception:
-            pass
-    
-    # Build suggestions for fields that need review
     suggestions = []
     for field, data in extraction_data.items():
         if data["confidence"] < 0.8 and field in field_mappings:
@@ -1131,10 +1209,12 @@ async def create_entry_from_shipment(
     
     return {
         "message": "Entry created successfully from shipment",
+        "already_exists": False,
         "entry_id": str(entry.id),
         "entry_number": entry.entry_number,
         "shipment_id": shipment_id,
         "status": entry.status,
+        "lines_created": lines_created,
         "documents_linked": linked_count,
         "document_types": list(doc_types_seen),
         "fields_populated": fields_populated,

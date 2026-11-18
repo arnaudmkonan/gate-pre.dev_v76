@@ -30,7 +30,7 @@ export default defineConfig({
       '/batch': {
         target: apiTarget,
         changeOrigin: true,
-        rewrite: (path) => path,
+        rewrite: (path) => path.replace(/^\/batch/, '/api/batch'),
       },
     },
   },

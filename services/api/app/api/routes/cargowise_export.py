@@ -121,6 +121,72 @@ async def download_cargowise_xml(
         raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
 
 
+@router.get("/pdf/{entry_id}")
+@router.post("/pdf/{entry_id}")
+async def export_entry_to_pdf(
+    entry_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Export entry as a CBP Form 7501 Entry Summary PDF.
+    """
+    from app.services.cargowise_exporter import CargoWiseExporter
+
+    try:
+        UUID(entry_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid entry ID format")
+
+    try:
+        exporter = CargoWiseExporter(db)
+        pdf_bytes, filename = await exporter.export_entry_pdf(entry_id)
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "X-Export-Format": "cbp_7501_pdf",
+            },
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"PDF export failed: {str(e)}")
+
+
+@router.get("/excel/{entry_id}")
+@router.post("/excel/{entry_id}")
+async def export_entry_to_excel(
+    entry_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Export entry as a multi-sheet CBP Form 7501 Entry Summary Excel (.xlsx) workbook.
+    """
+    from app.services.cargowise_exporter import CargoWiseExporter
+
+    try:
+        UUID(entry_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid entry ID format")
+
+    try:
+        exporter = CargoWiseExporter(db)
+        xlsx_bytes, filename = await exporter.export_entry_excel(entry_id)
+        return Response(
+            content=xlsx_bytes,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "X-Export-Format": "cbp_7501_xlsx",
+            },
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Excel export failed: {str(e)}")
+
+
 @router.get("/formats")
 async def list_export_formats():
     """
@@ -136,6 +202,7 @@ async def list_export_formats():
                 "description": "CBP CATAIR-compliant fixed-width format for ACE filing",
                 "extensions": [".abi", ".txt"],
                 "endpoint": "/api/entries/{id}/export/abi",
+                "status": "available",
             },
             {
                 "id": "cargowise_xml",
@@ -143,22 +210,23 @@ async def list_export_formats():
                 "description": "UniversalShipment XML format for CargoWise One World",
                 "extensions": [".xml"],
                 "endpoint": "/api/export/cargowise/{id}",
+                "status": "available",
             },
             {
                 "id": "excel",
                 "name": "Excel Spreadsheet",
-                "description": "Entry summary in Excel format",
+                "description": "CBP Form 7501 Entry Summary in multi-sheet Excel format",
                 "extensions": [".xlsx"],
                 "endpoint": "/api/export/excel/{id}",
-                "status": "coming_soon",
+                "status": "available",
             },
             {
                 "id": "pdf",
-                "name": "PDF Report",
-                "description": "Entry summary as PDF document",
+                "name": "PDF Report (CBP Form 7501)",
+                "description": "CBP Form 7501 Entry Summary as a formatted PDF document",
                 "extensions": [".pdf"],
                 "endpoint": "/api/export/pdf/{id}",
-                "status": "coming_soon",
+                "status": "available",
             },
         ]
     }

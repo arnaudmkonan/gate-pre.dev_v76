@@ -33,6 +33,9 @@ AUTH_EXEMPT_ROUTES = [
     ("POST", r"^/api/portal/accept-invitation$"),
     ("GET", r"^/api/portal/invitations/[^/]+$"),
     ("GET", r"^/api/portal/reference/roles$"),
+    ("POST", r"^/api/portal/verify-email$"),
+    ("POST", r"^/api/portal/resend-verification$"),
+    ("POST", r"^/api/billing/stripe/webhook$"),
 
     # Landing analytics — public
     ("GET", r"^/api/analytics/landing"),

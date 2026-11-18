@@ -102,16 +102,24 @@ async def requeue_dlq_entry(
 
         # Mark as not archived to allow reprocessing
         dlq_item.archived = False
+        dlq_item.retry_count = (dlq_item.retry_count or 0) + 1
         dlq_item.updated_at = datetime.now(__import__("datetime").timezone.utc)
 
-        # TODO: Enqueue the job to the appropriate queue
-
         await session.commit()
+
+        enqueued_job_id = None
+        try:
+            from app.workers.ingest_tasks import queue_raw_file
+            if dlq_item.file_id:
+                queue_raw_file.delay(str(dlq_item.file_id))
+                enqueued_job_id = dlq_item.file_id
+        except Exception as q_err:
+            logger.warning(f"Could not dispatch Celery retry for DLQ {dlq_entry_id}: {q_err}")
 
         return DLQRequeueResponse(
             success=True,
             dlq_entry_id=dlq_entry_id,
-            job_id=None,  # Would be set if we enqueued a job
+            job_id=enqueued_job_id,
             message="DLQ entry requeued successfully",
             timestamp=datetime.now(__import__("datetime").timezone.utc),
         )

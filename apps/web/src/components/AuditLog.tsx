@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { authFetch } from '../lib/authFetch'
 import { Download, AlertCircle, Loader } from 'lucide-react'
 import { Card } from './Card'
 import { Button } from './Button'
@@ -40,7 +41,7 @@ export const AuditLog: React.FC<AuditLogProps> = ({ resourceId, resourceType }) 
         url.searchParams.append('action', action)
       }
 
-      const response = await fetch(url.toString())
+      const response = await authFetch(url.toString())
 
       if (!response.ok) {
         throw new Error('Failed to fetch audit logs')
@@ -57,7 +58,7 @@ export const AuditLog: React.FC<AuditLogProps> = ({ resourceId, resourceType }) 
 
   const handleExport = async () => {
     try {
-      const response = await fetch('/api/audit/export', {
+      const response = await authFetch('/api/audit/export', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

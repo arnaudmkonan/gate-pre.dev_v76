@@ -1,5 +1,5 @@
 import logging
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from typing import Optional
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, Header, status
@@ -47,6 +47,7 @@ async def upload_file(
     tags: Optional[str] = Form(None),
     idempotency_key: Optional[str] = Header(None),
     session: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Upload a document for ingestion.
@@ -136,6 +137,23 @@ async def upload_file(
         if tags:
             tags_list = [t.strip() for t in tags.split(",")]
 
+        uploader_id = current_user.get("id")
+
+        meter_client_id: Optional[UUID] = None
+        if customer_id:
+            from app.startup.client_access import assert_user_can_access_client
+
+            try:
+                meter_client_id = UUID(customer_id)
+            except ValueError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid customer_id",
+                ) from exc
+            await assert_user_can_access_client(current_user, meter_client_id)
+        elif current_user.get("client_id"):
+            meter_client_id = UUID(current_user["client_id"])
+
         # Check if file needs chunking (>50MB)
         chunk_size = 50 * 1024 * 1024  # 50MB
         is_chunked = file_size > chunk_size
@@ -152,7 +170,7 @@ async def upload_file(
                 storage_path=storage_result["storage_path"],
                 mime_type=file.content_type or "application/octet-stream",
                 status=RawFileStatus.UPLOADED,
-                uploader_id=None,
+                uploader_id=uploader_id,
                 source=source,
                 customer_id=customer_id,
                 tags=tags_list,
@@ -178,7 +196,7 @@ async def upload_file(
                 storage_path=storage_result["storage_path"],
                 mime_type=file.content_type or "application/octet-stream",
                 status=RawFileStatus.UPLOADED,
-                uploader_id=None,  # Can be set from auth context in production
+                uploader_id=uploader_id,
                 source=source,
                 customer_id=customer_id,
                 tags=tags_list,
@@ -195,7 +213,7 @@ async def upload_file(
             size=file_size,
             storage_path=storage_result["storage_path"],
             status=IngestJobStatus.PENDING,
-            uploader_id=None,
+            uploader_id=uploader_id,
         )
 
         session.add(ingest_job)
@@ -211,13 +229,33 @@ async def upload_file(
                 ttl_hours=24,
             )
 
+        if meter_client_id:
+            from app.services.usage_metering_service import (
+                UsageMeteringService,
+                EVENT_DOCUMENT_UPLOADED,
+            )
+
+            UsageMeteringService.add_event(
+                session,
+                EVENT_DOCUMENT_UPLOADED,
+                client_id=meter_client_id,
+                resource_id=str(ingest_job.id),
+                metadata={
+                    "filename": file.filename,
+                    "file_type": file_ext,
+                    "customer_id": str(meter_client_id),
+                },
+            )
+
         # Commit transaction
         await session.commit()
 
-        # Trigger async task to transition to "queued" status
+        # Trigger async task to transition to "queued" status and immediately start extraction
         try:
             from app.workers.ingest_tasks import queue_raw_file
+            from app.workers.job_processor import process_ingest_job
             queue_raw_file.delay(str(raw_files[0].id))
+            process_ingest_job.delay(str(ingest_job.id))
         except Exception as task_error:
             logger.warning(f"Could not trigger async queuing task: {task_error}. File will stay in UPLOADED state.")
             # Set to QUEUED synchronously as fallback

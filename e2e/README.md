@@ -28,6 +28,8 @@ npm run report   # HTML report
 
 Demo users are seeded automatically (`admin@example.com` / `adminpassword`).
 
+CI runs the same suite via GitHub Actions (`.github/workflows/e2e.yml`) on pushes to `main`. Add repository secret `OPENAI_API_KEY` for full pipeline extraction tests.
+
 ## Demo documents
 
 Pipeline tests use files under `data/demo_documents/`:

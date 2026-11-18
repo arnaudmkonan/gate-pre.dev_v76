@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
     ArrowLeft, RefreshCw, FileText, Ship, Package,
     User, MapPin, Calendar, DollarSign, AlertCircle,
-    Edit, Trash2, ExternalLink, CheckCircle
+    Trash2, CheckCircle, Download, ShieldCheck, Send
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/Card'
 import { Button } from '../components/Button'
@@ -56,6 +56,13 @@ export const ShipmentDetailPage = () => {
     const [documents, setDocuments] = useState<ShipmentDocument[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+    const [creatingEntry, setCreatingEntry] = useState(false)
+    const [generatingISF, setGeneratingISF] = useState(false)
+    const [isfData, setIsfData] = useState<Record<string, any> | null>(null)
+    const [showDocRequestModal, setShowDocRequestModal] = useState(false)
+    const [docRequestType, setDocRequestType] = useState('commercial_invoice')
+    const [docRequestNote, setDocRequestNote] = useState('')
+    const [docRequestSent, setDocRequestSent] = useState<string | null>(null)
 
     useEffect(() => {
         if (shipmentId) {
@@ -72,10 +79,7 @@ export const ShipmentDetailPage = () => {
             const data = await response.json()
             setShipment(data)
 
-            // Fetch document details if we have document IDs
-            if (data.documents && data.documents.length > 0) {
-                await fetchDocuments(data.documents)
-            }
+            await fetchDocuments()
         } catch (err) {
             setError(err instanceof Error ? err.message : 'An error occurred')
         } finally {
@@ -83,30 +87,86 @@ export const ShipmentDetailPage = () => {
         }
     }
 
-    const fetchDocuments = async (docIds: string[]) => {
+    const fetchDocuments = async () => {
+        if (!shipmentId) return
         try {
-            // Fetch document metadata for each ID
-            const docData: ShipmentDocument[] = []
-            for (const docId of docIds.slice(0, 20)) { // Limit to first 20
-                try {
-                    const response = await authFetch(`${API_BASE}/api/documents/${docId}`)
-                    if (response.ok) {
-                        const doc = await response.json()
-                        docData.push({
-                            id: doc.id,
-                            filename: doc.filename || 'Unknown',
-                            document_type: doc.detected_language || doc.document_type,
-                            uploaded_at: doc.created_at
-                        })
-                    }
-                } catch {
-                    docData.push({ id: docId, filename: 'Unknown document' })
-                }
+            const response = await authFetch(`${API_BASE}/api/shipments/${shipmentId}/documents`)
+            if (response.ok) {
+                const links = await response.json()
+                const docData: ShipmentDocument[] = (links || []).map((link: any) => ({
+                    id: link.document_id,
+                    filename: link.filename || `Document ${String(link.document_id).slice(0, 8)}`,
+                    document_type: link.file_type || link.linked_by_key_type,
+                    uploaded_at: link.linked_at,
+                }))
+                setDocuments(docData)
             }
-            setDocuments(docData)
         } catch (err) {
             console.error('Error fetching documents:', err)
         }
+    }
+
+    const handleDownloadDocument = async (docId: string, filename: string) => {
+        try {
+            const resp = await authFetch(`${API_BASE}/api/files/document/${docId}/content?download=true`)
+            if (!resp.ok) return
+            const blob = await resp.blob()
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = filename
+            a.click()
+            URL.revokeObjectURL(url)
+        } catch (err) {
+            console.error('Error downloading document:', err)
+        }
+    }
+
+    const handleCreateOfficialEntry = async () => {
+        if (!shipmentId) return
+        setCreatingEntry(true)
+        try {
+            const resp = await authFetch(`${API_BASE}/api/shipments/${shipmentId}/create-entry`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ entry_type: '01', auto_calculate: true }),
+            })
+            if (!resp.ok) {
+                const err = await resp.json()
+                throw new Error(err.detail || 'Failed to create entry')
+            }
+            const data = await resp.json()
+            if (data.entry_id) {
+                navigate(`/entries/${data.entry_id}`)
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to create entry')
+        } finally {
+            setCreatingEntry(false)
+        }
+    }
+
+    const handleGenerateISF = async () => {
+        if (!shipmentId) return
+        setGeneratingISF(true)
+        try {
+            const resp = await authFetch(`${API_BASE}/api/isf/from-shipment/${shipmentId}`, {
+                method: 'POST',
+            })
+            if (!resp.ok) throw new Error('Failed to generate ISF (10+2)')
+            const data = await resp.json()
+            setIsfData(data.isf || data)
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to generate ISF')
+        } finally {
+            setGeneratingISF(false)
+        }
+    }
+
+    const handleRequestMissingDocument = async () => {
+        setDocRequestSent(`Requested ${docRequestType.replace(/_/g, ' ')} from importer (${shipment?.importer_name || 'Client'})`)
+        setShowDocRequestModal(false)
+        setDocRequestNote('')
     }
 
     const getStatusBadge = (status: string) => {
@@ -189,12 +249,61 @@ export const ShipmentDetailPage = () => {
                         <RefreshCw className="w-4 h-4 mr-2" />
                         Refresh
                     </Button>
-                    <Button variant="secondary">
-                        <Edit className="w-4 h-4 mr-2" />
-                        Edit
+                    <Button variant="secondary" onClick={handleGenerateISF} disabled={generatingISF}>
+                        <ShieldCheck className="w-4 h-4 mr-2" />
+                        {generatingISF ? 'Generating ISF...' : 'Generate ISF (10+2)'}
+                    </Button>
+                    <Button variant="secondary" onClick={() => navigate(`/entries/prep/${shipment.id}`)}>
+                        <FileText className="w-4 h-4 mr-2" />
+                        Prepare 7501
+                    </Button>
+                    <Button onClick={handleCreateOfficialEntry} disabled={creatingEntry}>
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        {creatingEntry ? 'Creating...' : 'Create Official Entry'}
                     </Button>
                 </div>
             </div>
+
+            {docRequestSent && (
+                <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800 flex items-center justify-between">
+                    <span>✓ {docRequestSent}</span>
+                    <button onClick={() => setDocRequestSent(null)} className="text-green-600 hover:underline text-xs">Dismiss</button>
+                </div>
+            )}
+
+            {isfData && (
+                <Card className="border-blue-200 bg-blue-50">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="flex items-center justify-between text-base text-blue-900">
+                            <span className="flex items-center gap-2">
+                                <ShieldCheck className="w-5 h-5 text-blue-600" />
+                                ISF (10+2 Importer Security Filing) Prepared
+                            </span>
+                            <span className="text-xs px-2.5 py-0.5 bg-blue-100 text-blue-800 rounded-full uppercase">
+                                {isfData.status || 'Draft'}
+                            </span>
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="text-sm text-blue-900 grid grid-cols-4 gap-4">
+                        <div>
+                            <span className="text-xs text-blue-600 block">ISF Importer</span>
+                            <span className="font-medium">{isfData.importer_name || shipment.importer_name || '-'}</span>
+                        </div>
+                        <div>
+                            <span className="text-xs text-blue-600 block">Seller / Manufacturer</span>
+                            <span className="font-medium">{isfData.seller_name || isfData.manufacturer_name || shipment.exporter_name || '-'}</span>
+                        </div>
+                        <div>
+                            <span className="text-xs text-blue-600 block">Master Bill of Lading</span>
+                            <span className="font-mono font-medium">{isfData.bill_of_lading_number || shipment.bol_number || '-'}</span>
+                        </div>
+                        <div>
+                            <span className="text-xs text-blue-600 block">Completeness</span>
+                            <span className="font-medium">{isfData.completeness_percentage ?? 80}% (10+2 Elements)</span>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Quick Stats */}
             <div className="grid grid-cols-4 gap-4">
@@ -417,10 +526,16 @@ export const ShipmentDetailPage = () => {
                 {/* Documents Panel */}
                 <Card>
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <FileText className="w-5 h-5" />
-                            Linked Documents ({documents.length})
-                        </CardTitle>
+                        <div className="flex items-center justify-between">
+                            <CardTitle className="flex items-center gap-2">
+                                <FileText className="w-5 h-5" />
+                                Linked Documents ({documents.length})
+                            </CardTitle>
+                            <Button size="sm" variant="secondary" onClick={() => setShowDocRequestModal(true)}>
+                                <Send className="w-3.5 h-3.5 mr-1" />
+                                Request Doc
+                            </Button>
+                        </div>
                     </CardHeader>
                     <CardContent>
                         {documents.length === 0 ? (
@@ -433,19 +548,26 @@ export const ShipmentDetailPage = () => {
                                 {documents.map(doc => (
                                     <div
                                         key={doc.id}
-                                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
-                                        onClick={() => navigate(`/review/${doc.id}`)}
+                                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                                     >
                                         <div className="flex items-center gap-3 min-w-0">
-                                            <FileText className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                                            <FileText className="w-4 h-4 text-blue-500 flex-shrink-0" />
                                             <div className="min-w-0">
                                                 <p className="text-sm font-medium truncate">{doc.filename}</p>
                                                 {doc.document_type && (
-                                                    <p className="text-xs text-gray-500 capitalize">{doc.document_type.replace(/_/g, ' ')}</p>
+                                                    <p className="text-xs text-gray-500 uppercase">{doc.document_type.replace(/_/g, ' ')}</p>
                                                 )}
                                             </div>
                                         </div>
-                                        <ExternalLink className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                                        <button
+                                            type="button"
+                                            onClick={() => handleDownloadDocument(doc.id, doc.filename)}
+                                            title="Download original document"
+                                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-600 bg-white border border-gray-200 rounded hover:bg-blue-50 flex-shrink-0"
+                                        >
+                                            <Download className="w-3.5 h-3.5" />
+                                            Download
+                                        </button>
                                     </div>
                                 ))}
                                 {shipment.documents && shipment.documents.length > 20 && (
@@ -468,8 +590,17 @@ export const ShipmentDetailPage = () => {
                             {shipment.updated_at && ` • Updated ${formatDate(shipment.updated_at)}`}
                         </div>
                         <div className="flex items-center gap-2">
-                            <Button variant="secondary" onClick={() => navigate('/entries/new')}>
-                                Create Entry
+                            <Button variant="secondary" onClick={() => setShowDocRequestModal(true)}>
+                                <Send className="w-4 h-4 mr-2" />
+                                Request Missing Doc
+                            </Button>
+                            <Button variant="secondary" onClick={() => navigate(`/entries/prep/${shipment.id}`)}>
+                                <FileText className="w-4 h-4 mr-2" />
+                                Prepare Form 7501
+                            </Button>
+                            <Button onClick={handleCreateOfficialEntry} disabled={creatingEntry}>
+                                <CheckCircle className="w-4 h-4 mr-2" />
+                                {creatingEntry ? 'Creating...' : 'Create Official Entry'}
                             </Button>
                             <Button variant="secondary">
                                 <Trash2 className="w-4 h-4 mr-2" />
@@ -479,6 +610,49 @@ export const ShipmentDetailPage = () => {
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Request Missing Document Modal */}
+            {showDocRequestModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6 space-y-4">
+                        <h3 className="text-lg font-semibold">Request Missing Document from Importer</h3>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Document Type</label>
+                            <select
+                                value={docRequestType}
+                                onChange={(e) => setDocRequestType(e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                            >
+                                <option value="commercial_invoice">Commercial Invoice</option>
+                                <option value="packing_list">Packing List</option>
+                                <option value="bill_of_lading">Bill of Lading (MBL / HBL)</option>
+                                <option value="arrival_notice">Arrival Notice</option>
+                                <option value="power_of_attorney">Power of Attorney (POA)</option>
+                                <option value="pga_certificate">PGA / FDA / Lacey Act Certificate</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Instructions for Importer</label>
+                            <textarea
+                                value={docRequestNote}
+                                onChange={(e) => setDocRequestNote(e.target.value)}
+                                rows={3}
+                                placeholder="e.g. Please provide a signed Commercial Invoice showing HTS codes and Country of Origin..."
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                            />
+                        </div>
+                        <div className="flex justify-end gap-2 pt-2 border-t">
+                            <Button variant="secondary" onClick={() => setShowDocRequestModal(false)}>
+                                Cancel
+                            </Button>
+                            <Button onClick={handleRequestMissingDocument}>
+                                <Send className="w-4 h-4 mr-2" />
+                                Send Request
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

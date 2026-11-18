@@ -57,6 +57,7 @@ class AddToQueueRequest(BaseModel):
 # API Endpoints
 
 @router.get("/queue")
+@router.get("/items")
 async def get_review_queue(
     status: Optional[str] = Query(default=None, description="Filter by status"),
     assigned_to: Optional[str] = Query(default=None, description="Filter by assignee"),
@@ -122,19 +123,27 @@ async def get_review_item_detail(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def _resolve_reviewer(provided: Optional[str], current_user: dict) -> str:
+    if provided and provided not in ("reviewer", "user"):
+        return provided
+    return current_user.get("email") or current_user.get("sub") or provided or "reviewer"
+
+
 @router.post("/item/{item_id}/assign")
 async def assign_review_item(
     item_id: str,
     request: AssignRequest,
-    session: AsyncSession = Depends(get_db)
+    session: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Assign a review item to a reviewer.
     """
     try:
-        item = await ReviewService.assign_item(session, item_id, request.reviewer)
+        actor = _resolve_reviewer(request.reviewer, current_user)
+        item = await ReviewService.assign_item(session, item_id, actor)
         return {
-            "message": f"Assigned to {request.reviewer}",
+            "message": f"Assigned to {actor}",
             "item": item.to_dict(),
         }
     except ValueError as e:
@@ -148,14 +157,16 @@ async def assign_review_item(
 async def approve_review_item(
     item_id: str,
     request: ApproveRequest,
-    session: AsyncSession = Depends(get_db)
+    session: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Approve a review item (extractions are correct).
     """
     try:
+        actor = _resolve_reviewer(request.reviewer, current_user)
         item = await ReviewService.approve_item(
-            session, item_id, request.reviewer, request.notes
+            session, item_id, actor, request.notes
         )
         return {
             "message": "Item approved",
@@ -172,14 +183,16 @@ async def approve_review_item(
 async def reject_review_item(
     item_id: str,
     request: RejectRequest,
-    session: AsyncSession = Depends(get_db)
+    session: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Reject a review item (extractions are too poor to use).
     """
     try:
+        actor = _resolve_reviewer(request.reviewer, current_user)
         item = await ReviewService.reject_item(
-            session, item_id, request.reviewer, request.reason
+            session, item_id, actor, request.reason
         )
         return {
             "message": "Item rejected",
@@ -196,18 +209,20 @@ async def reject_review_item(
 async def correct_extraction(
     item_id: str,
     request: CorrectRequest,
-    session: AsyncSession = Depends(get_db)
+    session: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Correct a specific extraction field.
     """
     try:
+        actor = _resolve_reviewer(request.reviewer, current_user)
         extraction = await ReviewService.correct_extraction(
             session,
             item_id,
             request.extraction_id,
             request.corrected_value,
-            request.reviewer,
+            actor,
             request.notes
         )
         return {
@@ -249,8 +264,9 @@ async def add_to_review_queue(
 @router.post("/item/{item_id}/skip")
 async def skip_review_item(
     item_id: str,
-    reviewer: str = Query(...),
-    session: AsyncSession = Depends(get_db)
+    reviewer: Optional[str] = Query(default=None),
+    session: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Skip a review item (process later).
@@ -269,13 +285,14 @@ async def skip_review_item(
         if not item:
             raise HTTPException(status_code=404, detail="Item not found")
         
+        actor = _resolve_reviewer(reviewer, current_user)
         item.status = "skipped"
         item.assigned_to = None
         
         action = ReviewAction(
             review_item_id=item_uuid,
             action="skip",
-            actor=reviewer,
+            actor=actor,
         )
         session.add(action)
         

@@ -116,7 +116,7 @@ export const IngestJobList: React.FC<IngestJobListProps> = ({
       <div className="p-6 space-y-4">
         <div className="flex justify-between items-center">
           <h2 className="text-lg font-semibold">Ingest Jobs</h2>
-          <Button onClick={loadJobs} disabled={loading} variant="secondary" size="sm">
+          <Button onClick={() => loadJobs(false)} disabled={loading} variant="secondary" size="sm">
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>
         </div>

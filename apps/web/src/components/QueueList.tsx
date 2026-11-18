@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { authFetch } from '../lib/authFetch'
 import { RotateCw, AlertCircle, Loader } from 'lucide-react'
 import { Card } from './Card'
 
@@ -39,7 +40,7 @@ export const QueueList: React.FC<QueueListProps> = ({
         url.searchParams.append('status', status)
       }
 
-      const response = await fetch(url.toString())
+      const response = await authFetch(url.toString())
 
       if (!response.ok) {
         throw new Error('Failed to fetch queue jobs')
@@ -56,7 +57,7 @@ export const QueueList: React.FC<QueueListProps> = ({
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('/api/queue/stats/overview')
+      const response = await authFetch('/api/queue/stats/overview')
       if (response.ok) {
         const data = await response.json()
         setStats(data)
@@ -68,7 +69,7 @@ export const QueueList: React.FC<QueueListProps> = ({
 
   const handleRetry = async (jobId: string) => {
     try {
-      const response = await fetch(`/api/queue/${jobId}/retry`, {
+      const response = await authFetch(`/api/queue/${jobId}/retry`, {
         method: 'POST',
       })
 

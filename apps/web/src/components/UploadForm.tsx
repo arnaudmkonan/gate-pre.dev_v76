@@ -151,24 +151,17 @@ export const UploadForm: React.FC<UploadFormProps> = ({ onUploadSuccess }) => {
           </button>
         </div>
 
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Input
             type="text"
-            placeholder="Source (e.g., crm, email) - optional"
+            placeholder="Channel / Source (e.g., Importer Email, Forwarder EDI) - optional"
             value={source}
             onChange={(e) => setSource(e.target.value)}
             disabled={loading}
           />
           <Input
             type="text"
-            placeholder="Customer ID - optional"
-            value={customerId}
-            onChange={(e) => setCustomerId(e.target.value)}
-            disabled={loading}
-          />
-          <Input
-            type="text"
-            placeholder="Tags (comma-separated) - optional"
+            placeholder="Shipment / B/L Tags (e.g., MAEU123456789, Priority) - optional"
             value={tags}
             onChange={(e) => setTags(e.target.value)}
             disabled={loading}

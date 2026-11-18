@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { authFetch } from "../lib/authFetch";
 import { Toast } from "./Toast";
 import { Button } from "./Button";
 import { Card } from "./Card";
@@ -56,7 +57,7 @@ export const AdminErrorSearch: React.FC<AdminErrorSearchProps> = ({
       if (agentId.trim()) params.append("agent_id", agentId);
       if (errorType.trim()) params.append("error_type", errorType);
 
-      const response = await fetch(
+      const response = await authFetch(
         `/api/admin/errors/search?${params.toString()}`
       );
       if (!response.ok) throw new Error("Search failed");

@@ -22,6 +22,12 @@ sed -i '' "s|SECRET_KEY=.*|SECRET_KEY=$(python -c 'import secrets; print(secrets
 
 ---
 
+## Email (SMTP) — Required for Production Password Reset
+
+See **[docs/PILOT_SMTP.md](docs/PILOT_SMTP.md)** for Resend/SendGrid examples. Set `FRONTEND_URL` to your HTTPS app origin so reset links are correct.
+
+---
+
 ## 🟡 Change Before Production (Not Critical in Dev)
 
 | Secret | Location | Current Status | Action |

@@ -39,11 +39,25 @@ interface AssemblyMode {
     notify_on_auto_accept: boolean
 }
 
+interface AssembledShipment {
+    id: string
+    name: string | null
+    reference_num: string | null
+    status: string
+    document_count: number
+    entry_number: string | null
+    bol_number: string | null
+    awb_number: string | null
+    importer_name: string | null
+    created_at: string
+}
+
 import { API_BASE } from '../config/api'
 
 export const ShipmentSuggestionsPage = () => {
     const navigate = useNavigate()
     const [suggestions, setSuggestions] = useState<ShipmentSuggestion[]>([])
+    const [shipments, setShipments] = useState<AssembledShipment[]>([])
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -51,11 +65,24 @@ export const ShipmentSuggestionsPage = () => {
     const [assemblyMode, setAssemblyMode] = useState<AssemblyMode | null>(null)
     const [autoAssembling, setAutoAssembling] = useState(false)
 
-    // Fetch suggestions on mount
+    // Fetch suggestions and assembled shipments on mount
     useEffect(() => {
         fetchSuggestions()
+        fetchShipments()
         fetchAssemblyMode()
     }, [])
+
+    const fetchShipments = async () => {
+        try {
+            const response = await authFetch(`${API_BASE}/api/shipments?limit=50`)
+            if (response.ok) {
+                const data = await response.json()
+                setShipments(Array.isArray(data) ? data : data.shipments || data.items || [])
+            }
+        } catch {
+            // ignore
+        }
+    }
 
     const fetchSuggestions = async () => {
         setLoading(true)
@@ -178,7 +205,7 @@ export const ShipmentSuggestionsPage = () => {
                     <p className="text-gray-500 mt-1">Review and accept suggested document groupings</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <Button onClick={fetchSuggestions} variant="secondary" disabled={loading}>
+                    <Button onClick={() => { fetchSuggestions(); fetchShipments(); }} variant="secondary" disabled={loading}>
                         <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                         Refresh
                     </Button>
@@ -186,7 +213,7 @@ export const ShipmentSuggestionsPage = () => {
                         <Zap className={`w-4 h-4 mr-2 ${autoAssembling ? 'animate-pulse' : ''}`} />
                         Auto-Assemble
                     </Button>
-                    <Button onClick={() => navigate('/settings')} variant="secondary">
+                    <Button onClick={() => navigate('/settings/platform')} variant="secondary">
                         <Settings className="w-4 h-4 mr-2" />
                         Settings
                     </Button>
@@ -228,8 +255,8 @@ export const ShipmentSuggestionsPage = () => {
                                 <Ship className="w-5 h-5 text-purple-600" />
                             </div>
                             <div>
-                                <p className="text-2xl font-bold">{acceptedSuggestions.filter(s => s.created_shipment_id).length}</p>
-                                <p className="text-sm text-gray-500">Shipments Created</p>
+                                <p className="text-2xl font-bold">{shipments.length || acceptedSuggestions.filter(s => s.created_shipment_id).length}</p>
+                                <p className="text-sm text-gray-500">Assembled Shipments</p>
                             </div>
                         </div>
                     </CardContent>
@@ -467,6 +494,65 @@ export const ShipmentSuggestionsPage = () => {
                     </CardContent>
                 </Card>
             )}
+            {/* Assembled Shipments Table */}
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Ship className="w-5 h-5 text-blue-600" />
+                        Assembled Shipments ({shipments.length})
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    {shipments.length === 0 ? (
+                        <div className="text-center py-8 text-gray-500">
+                            <Ship className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                            <p>No assembled shipments yet</p>
+                        </div>
+                    ) : (
+                        <div className="divide-y border rounded-lg overflow-hidden">
+                            {shipments.map((s) => (
+                                <div
+                                    key={s.id}
+                                    className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                                >
+                                    <div
+                                        className="flex items-center gap-3 cursor-pointer"
+                                        onClick={() => navigate(`/shipments/${s.id}`)}
+                                    >
+                                        <Ship className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                                        <div>
+                                            <p className="font-semibold text-sm text-gray-900">
+                                                {s.name || s.bol_number || s.reference_num || `Shipment ${s.id.slice(0, 8)}`}
+                                            </p>
+                                            <p className="text-xs text-gray-500">
+                                                {s.bol_number ? `B/L: ${s.bol_number} • ` : ''}
+                                                {s.importer_name ? `Importer: ${s.importer_name} • ` : ''}
+                                                {s.document_count || 0} docs • Status: {s.status}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Button
+                                            size="sm"
+                                            variant="secondary"
+                                            onClick={() => navigate(`/entries/prep/${s.id}`)}
+                                        >
+                                            <FileText className="w-3.5 h-3.5 mr-1.5" />
+                                            Prepare 7501
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            onClick={() => navigate(`/shipments/${s.id}`)}
+                                        >
+                                            View Shipment
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
         </div>
     )
 }

@@ -86,8 +86,8 @@ class ISFService:
         return isf
     
     def _generate_isf_number(self) -> str:
-        """Generate unique ISF number."""
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        """Generate unique ISF number (<= 20 chars)."""
+        timestamp = datetime.now().strftime("%y%m%d%H%M")
         return f"ISF-{timestamp}-{str(uuid4())[:4].upper()}"
     
     async def _populate_from_shipment(self, isf: ISFFiling, shipment_id: UUID):
@@ -106,11 +106,38 @@ class ISFService:
         isf.manufacturer_name = shipment.manufacturer_name
         isf.seller_name = shipment.exporter_name
         
-        isf.vessel_name = None  # Would need to query transport info
+        isf.vessel_name = None
         isf.container_numbers = shipment.container_numbers or []
         isf.master_bill_of_lading = shipment.bol_number
         
-        isf.port_of_discharge = shipment.port_of_entry
+        isf.port_of_discharge = (shipment.port_of_entry or "")[:10] if shipment.port_of_entry else None
+
+        # Enrich from EntryPrepService linked document extractions
+        try:
+            from app.services.entry_prep_service import EntryPrepService
+            prep = await EntryPrepService.prepare_from_shipment(self.db, shipment_id)
+            if prep:
+                if not isf.importer_of_record_name and prep.importer_name:
+                    isf.importer_of_record_name = prep.importer_name
+                if not isf.importer_of_record_number and prep.importer_of_record_number:
+                    isf.importer_of_record_number = prep.importer_of_record_number
+                if not isf.consignee_name and prep.consignee_name:
+                    isf.consignee_name = prep.consignee_name
+                if not isf.master_bill_of_lading and prep.master_bill:
+                    isf.master_bill_of_lading = prep.master_bill[:50]
+                if not isf.house_bill_of_lading and prep.house_bill:
+                    isf.house_bill_of_lading = prep.house_bill[:50]
+                if not isf.vessel_name and prep.vessel_name:
+                    isf.vessel_name = prep.vessel_name[:100]
+                if not isf.country_of_origin and prep.country_of_origin:
+                    isf.country_of_origin = prep.country_of_origin[:2]
+                if prep.line_items:
+                    hts_list = [li.get("hts_number") for li in prep.line_items if li.get("hts_number")]
+                    if hts_list:
+                        isf.hts_codes = hts_list[:10]
+                        isf.hts_primary = hts_list[0][:15]
+        except Exception:
+            pass
     
     async def _populate_from_entry(self, isf: ISFFiling, entry_id: UUID):
         """Populate ISF from entry data."""

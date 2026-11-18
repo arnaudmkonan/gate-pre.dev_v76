@@ -128,10 +128,10 @@ export function RegisterPage() {
 
             if (response.ok) {
                 setSuccess(true);
-                // Redirect to login after 2 seconds
+                const needsVerify = Boolean(data.requires_email_verification);
                 setTimeout(() => {
-                    navigate('/login');
-                }, 2000);
+                    navigate(needsVerify ? '/login?verify=sent' : '/login');
+                }, needsVerify ? 4000 : 2000);
             } else {
                 setError(data.detail || 'Registration failed. Please try again.');
             }

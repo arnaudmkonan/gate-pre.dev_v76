@@ -8,6 +8,7 @@ import {
   ChevronRight, Building2, Settings, Upload, LogOut, Menu, X
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import { OnboardingWizard } from './OnboardingWizard'
 
 interface AdminLayoutProps {
   children: React.ReactNode
@@ -250,6 +251,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
           {children}
         </div>
       </main>
+      <OnboardingWizard />
     </div>
   )
 }

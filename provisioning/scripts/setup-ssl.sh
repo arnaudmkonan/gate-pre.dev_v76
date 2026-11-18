@@ -9,8 +9,13 @@
 # - Domain pointing to this server
 # - Ports 80/443 accessible
 # - Docker and Docker Compose installed
+# Run from anywhere; script cd's to repository root.
 
 set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+cd "${REPO_ROOT}"
 
 DOMAIN="${1:-}"
 EMAIL="${2:-admin@$DOMAIN}"

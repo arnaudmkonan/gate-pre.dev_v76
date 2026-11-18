@@ -1,4 +1,5 @@
 import { useState, useEffect, MutableRefObject } from 'react'
+import { authFetch } from '../lib/authFetch'
 import { Card } from './Card'
 import { Button } from './Button'
 import { AlertCircle, Trash2, RefreshCw } from 'lucide-react'
@@ -29,7 +30,7 @@ export const BatchScheduleList: React.FC<BatchScheduleListProps> = ({ refreshCal
     setError(null)
 
     try {
-      const response = await fetch('/api/batch/schedules?is_active=true')
+      const response = await authFetch('/api/batch/schedules?is_active=true')
 
       if (!response.ok) {
         throw new Error('Failed to load schedules')
@@ -57,7 +58,7 @@ export const BatchScheduleList: React.FC<BatchScheduleListProps> = ({ refreshCal
     if (!window.confirm('Are you sure you want to delete this schedule?')) return
 
     try {
-      const response = await fetch(`/api/batch/schedules/${scheduleId}`, {
+      const response = await authFetch(`/api/batch/schedules/${scheduleId}`, {
         method: 'DELETE',
       })
 
@@ -73,7 +74,7 @@ export const BatchScheduleList: React.FC<BatchScheduleListProps> = ({ refreshCal
 
   const toggleActive = async (schedule: BatchSchedule) => {
     try {
-      const response = await fetch(`/api/batch/schedules/${schedule.id}`, {
+      const response = await authFetch(`/api/batch/schedules/${schedule.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_active: !schedule.is_active }),

@@ -1,6 +1,24 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { apiClient } from "../lib/apiClient";
-import { Activity, AlertCircle, BarChart3, Clock } from "lucide-react";
+import { Activity, AlertCircle, BarChart3, Clock, Server } from "lucide-react";
+
+interface PlatformHealth {
+  status: string;
+  celery: {
+    status: string;
+    worker_count: number;
+    workers: string[];
+    active_tasks?: number;
+  };
+  broker: {
+    status: string;
+    celery_queue_depth?: number;
+    error?: string;
+  };
+  ingest_jobs_by_status: Record<string, number>;
+  ingest_dlq_pending_review: number;
+}
 
 interface DashboardData {
   pipeline_status: {
@@ -37,6 +55,7 @@ interface DashboardData {
 
 export default function AdminDashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
+  const [platformHealth, setPlatformHealth] = useState<PlatformHealth | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
@@ -44,8 +63,12 @@ export default function AdminDashboard() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get("/api/admin/dashboard/");
-      setData(response.data);
+      const [dashboardRes, platformRes] = await Promise.all([
+        apiClient.get("/api/admin/dashboard/"),
+        apiClient.get("/api/health/platform").catch(() => ({ data: null })),
+      ]);
+      setData(dashboardRes.data);
+      setPlatformHealth(platformRes.data);
       setLastUpdate(new Date());
       setError(null);
     } catch (err) {
@@ -100,6 +123,59 @@ export default function AdminDashboard() {
       <div className="text-sm text-gray-500">
         Last updated: {lastUpdate.toLocaleTimeString()}
       </div>
+
+      {platformHealth && (
+        <div className="rounded-lg border bg-white p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <Server className="h-5 w-5" />
+              Platform Services
+            </h2>
+            <span
+              className={`px-3 py-1 rounded-full text-xs font-medium ${
+                platformHealth.status === "healthy"
+                  ? "bg-green-100 text-green-700"
+                  : "bg-yellow-100 text-yellow-800"
+              }`}
+            >
+              {platformHealth.status.toUpperCase()}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div>
+              <p className="text-gray-500">Celery workers</p>
+              <p className="text-2xl font-bold">{platformHealth.celery.worker_count}</p>
+              <p className="text-xs text-gray-400 truncate">
+                {platformHealth.celery.workers.join(", ") || "none online"}
+              </p>
+            </div>
+            <div>
+              <p className="text-gray-500">Broker queue depth</p>
+              <p className="text-2xl font-bold">
+                {platformHealth.broker.celery_queue_depth ?? "—"}
+              </p>
+            </div>
+            <div>
+              <p className="text-gray-500">Ingest processing</p>
+              <p className="text-2xl font-bold">
+                {(platformHealth.ingest_jobs_by_status.processing || 0) +
+                  (platformHealth.ingest_jobs_by_status.queued || 0)}
+              </p>
+            </div>
+            <div>
+              <p className="text-gray-500">Ingest DLQ (review)</p>
+              <p className="text-2xl font-bold text-red-600">
+                {platformHealth.ingest_dlq_pending_review}
+              </p>
+              {platformHealth.ingest_dlq_pending_review > 0 && (
+                <Link to="/admin/dlq" className="text-xs text-blue-600 hover:underline">
+                  Open ingest DLQ →
+                </Link>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Pipeline Status Widget */}
       <div className="rounded-lg border bg-white p-6 shadow-sm">

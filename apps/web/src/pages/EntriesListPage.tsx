@@ -175,12 +175,12 @@ export const EntriesListPage = () => {
                 </Card>
                 <Card>
                     <CardContent className="pt-4">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-green-100 rounded-lg">
+                        <div className="flex items-center gap-3 min-w-0">
+                            <div className="p-2 bg-green-100 rounded-lg flex-shrink-0">
                                 <DollarSign className="w-5 h-5 text-green-600" />
                             </div>
-                            <div>
-                                <p className="text-2xl font-bold">{formatCurrency(stats.totalValue)}</p>
+                            <div className="min-w-0">
+                                <p className="text-xl font-bold truncate" title={formatCurrency(stats.totalValue)}>{formatCurrency(stats.totalValue)}</p>
                                 <p className="text-sm text-gray-500">Total Value</p>
                             </div>
                         </div>
@@ -188,12 +188,12 @@ export const EntriesListPage = () => {
                 </Card>
                 <Card>
                     <CardContent className="pt-4">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-purple-100 rounded-lg">
+                        <div className="flex items-center gap-3 min-w-0">
+                            <div className="p-2 bg-purple-100 rounded-lg flex-shrink-0">
                                 <Calculator className="w-5 h-5 text-purple-600" />
                             </div>
-                            <div>
-                                <p className="text-2xl font-bold">{formatCurrency(stats.totalDuty)}</p>
+                            <div className="min-w-0">
+                                <p className="text-xl font-bold truncate" title={formatCurrency(stats.totalDuty)}>{formatCurrency(stats.totalDuty)}</p>
                                 <p className="text-sm text-gray-500">Total Duty</p>
                             </div>
                         </div>

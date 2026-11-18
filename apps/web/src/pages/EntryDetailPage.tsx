@@ -23,7 +23,7 @@ import {
     DollarSign,
     Plus,
     Edit,
-
+    Download,
     Ship,
     Anchor,
     Globe,
@@ -32,6 +32,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '../components/Card'
 import { Button } from '../components/Button'
 import { ACEStatusPanel } from '../components/ACEStatusPanel'
+import { authFetch } from '../lib/authFetch'
 import {
     useEntry,
     useEntryActions,
@@ -195,8 +196,66 @@ export const EntryDetailPage = () => {
     const { updateEntry, addLine, calculateDuties, validateEntry, loading: actionLoading } = useEntryActions()
 
     const [showAddLineModal, setShowAddLineModal] = useState(false)
+    const [showEditEntryModal, setShowEditEntryModal] = useState(
+        typeof window !== 'undefined' && window.location.pathname.endsWith('/edit')
+    )
+    const [editForm, setEditForm] = useState<Record<string, any>>({})
+    const [pgaData, setPgaData] = useState<Record<string, any> | null>(null)
     const [validationResult, setValidationResult] = useState<any>(null)
     const [activeTab, setActiveTab] = useState<'lines' | 'parties' | 'documents' | 'history'>('lines')
+
+    useEffect(() => {
+        if (entry) {
+            setEditForm({
+                entry_number: entry.entry_number || '',
+                entry_type: entry.entry_type || '01',
+                port_of_entry: entry.port_of_entry || '',
+                importer_of_record_name: entry.importer_of_record_name || '',
+                importer_of_record_number: entry.importer_of_record_number || '',
+                ultimate_consignee_name: entry.ultimate_consignee_name || '',
+                bill_of_lading: entry.bill_of_lading || '',
+                vessel_name: entry.vessel_name || '',
+                carrier_code: entry.carrier_code || '',
+                notes: entry.notes || '',
+            })
+        }
+    }, [entry])
+
+    useEffect(() => {
+        if (!entryId) return
+        authFetch(`/api/pga/entry/${entryId}`)
+            .then(r => (r.ok ? r.json() : null))
+            .then(data => {
+                if (data) setPgaData(data)
+            })
+            .catch(() => {})
+    }, [entryId, entry?.lines?.length])
+
+    const handleSaveEntryHeader = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!entryId) return
+        const success = await updateEntry(entryId, editForm as any)
+        if (success) {
+            setShowEditEntryModal(false)
+            refetch()
+        }
+    }
+
+    const handleDownloadDoc = async (docId: string) => {
+        try {
+            const resp = await authFetch(`/api/files/document/${docId}/content?download=true`)
+            if (!resp.ok) return
+            const blob = await resp.blob()
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `document_${docId.slice(0, 8)}`
+            a.click()
+            URL.revokeObjectURL(url)
+        } catch (err) {
+            console.error('Document download failed:', err)
+        }
+    }
 
     const handleCalculate = async () => {
         if (!entryId) return
@@ -226,6 +285,28 @@ export const EntryDetailPage = () => {
         const success = await updateEntry(entryId, { status: newStatus } as any)
         if (success) {
             refetch()
+        }
+    }
+
+    const handleExport = async (format: 'pdf' | 'excel' | 'cargowise') => {
+        if (!entryId) return
+        try {
+            const urlPath =
+                format === 'cargowise'
+                    ? `/api/export/cargowise/${entryId}/download`
+                    : `/api/export/${format}/${entryId}`
+            const resp = await authFetch(urlPath)
+            if (!resp.ok) return
+            const blob = await resp.blob()
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            const ext = format === 'pdf' ? 'pdf' : format === 'excel' ? 'xlsx' : 'xml'
+            a.download = `CBP_7501_${entry?.entry_number || entryId.slice(0, 8)}.${ext}`
+            a.click()
+            URL.revokeObjectURL(url)
+        } catch (err) {
+            console.error('Export failed:', err)
         }
     }
 
@@ -599,13 +680,23 @@ export const EntryDetailPage = () => {
                                                 <div className="flex items-center gap-3">
                                                     <FileText className="w-5 h-5 text-blue-500" />
                                                     <div>
-                                                        <p className="font-medium">{doc.document_type || 'Unknown'}</p>
-                                                        <p className="text-xs text-gray-500">{doc.document_id}</p>
+                                                        <p className="font-medium">{doc.document_type || 'Source Document'}</p>
+                                                        <p className="text-xs text-gray-500 font-mono">{doc.document_id}</p>
                                                     </div>
                                                 </div>
-                                                {doc.is_primary && (
-                                                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">Primary</span>
-                                                )}
+                                                <div className="flex items-center gap-2">
+                                                    {doc.is_primary && (
+                                                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">Primary</span>
+                                                    )}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleDownloadDoc(doc.document_id)}
+                                                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-blue-600 bg-white border border-gray-200 rounded hover:bg-blue-50"
+                                                    >
+                                                        <Download className="w-3.5 h-3.5" />
+                                                        Download
+                                                    </button>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
@@ -689,11 +780,37 @@ export const EntryDetailPage = () => {
                             <Button
                                 variant="secondary"
                                 className="w-full justify-start"
-                                onClick={() => navigate(`/entries/${entryId}/edit`)}
+                                onClick={() => setShowEditEntryModal(true)}
                             >
                                 <Edit className="w-4 h-4 mr-2" />
                                 Edit Entry
                             </Button>
+                            <div className="pt-2 border-t border-gray-100 space-y-2">
+                                <Button
+                                    variant="secondary"
+                                    className="w-full justify-start"
+                                    onClick={() => handleExport('pdf')}
+                                >
+                                    <Download className="w-4 h-4 mr-2" />
+                                    Export Form 7501 (PDF)
+                                </Button>
+                                <Button
+                                    variant="secondary"
+                                    className="w-full justify-start"
+                                    onClick={() => handleExport('excel')}
+                                >
+                                    <Download className="w-4 h-4 mr-2" />
+                                    Export Summary (Excel)
+                                </Button>
+                                <Button
+                                    variant="secondary"
+                                    className="w-full justify-start"
+                                    onClick={() => handleExport('cargowise')}
+                                >
+                                    <Download className="w-4 h-4 mr-2" />
+                                    Export CargoWise (XML)
+                                </Button>
+                            </div>
                         </CardContent>
                     </Card>
 
@@ -757,6 +874,40 @@ export const EntryDetailPage = () => {
                         </CardContent>
                     </Card>
 
+                    {/* PGA Compliance & POA Check */}
+                    {pgaData && (
+                        <Card className={pgaData.pga_required ? 'border-amber-200 bg-amber-50' : 'border-green-200 bg-green-50'}>
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-base flex items-center justify-between">
+                                    <span>PGA & Compliance Check</span>
+                                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                        pgaData.pga_required
+                                            ? 'bg-amber-200 text-amber-900'
+                                            : 'bg-green-200 text-green-900'
+                                    }`}>
+                                        {pgaData.pga_required ? 'PGA Required' : 'Cleared'}
+                                    </span>
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="text-sm space-y-2">
+                                {pgaData.pga_required ? (
+                                    <div>
+                                        <p className="text-amber-800 font-medium">
+                                            Agencies flagged: {(pgaData.agencies || []).join(', ')}
+                                        </p>
+                                        <p className="text-xs text-amber-700 mt-1">
+                                            Ensure PGA Message Set (FDA Prior Notice / EPA TSCA / USDA Lacey) is attached before ACE transmission.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <p className="text-green-800 text-xs">
+                                        ✓ No additional FDA / EPA / USDA PGA message sets required for the current HTS lines.
+                                    </p>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
+
                     {/* Notes */}
                     {entry.notes && (
                         <Card>
@@ -778,6 +929,141 @@ export const EntryDetailPage = () => {
                 onAdd={handleAddLine}
                 nextLineNumber={nextLineNumber}
             />
+
+            {/* Edit Entry Modal */}
+            {showEditEntryModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
+                        <h3 className="text-lg font-semibold mb-4">Edit CBP Form 7501 Entry Header</h3>
+                        <form onSubmit={handleSaveEntryHeader} className="space-y-4">
+                            <div className="grid grid-cols-3 gap-4">
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">Entry Number</label>
+                                    <input
+                                        type="text"
+                                        value={editForm.entry_number || ''}
+                                        onChange={(e) => setEditForm(prev => ({ ...prev, entry_number: e.target.value }))}
+                                        placeholder="e.g. 999-1234567-8"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">Entry Type</label>
+                                    <select
+                                        value={editForm.entry_type || '01'}
+                                        onChange={(e) => setEditForm(prev => ({ ...prev, entry_type: e.target.value }))}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                    >
+                                        <option value="01">01 - Consumption</option>
+                                        <option value="02">02 - Consumption Quota</option>
+                                        <option value="03">03 - AD/CVD</option>
+                                        <option value="06">06 - FTZ Consumption</option>
+                                        <option value="11">11 - Informal</option>
+                                        <option value="21">21 - Warehouse</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">Port of Entry (4-digit)</label>
+                                    <input
+                                        type="text"
+                                        value={editForm.port_of_entry || ''}
+                                        onChange={(e) => setEditForm(prev => ({ ...prev, port_of_entry: e.target.value }))}
+                                        placeholder="2704"
+                                        maxLength={4}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">Importer of Record Name</label>
+                                    <input
+                                        type="text"
+                                        value={editForm.importer_of_record_name || ''}
+                                        onChange={(e) => setEditForm(prev => ({ ...prev, importer_of_record_name: e.target.value }))}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">Importer IOR Number (EIN)</label>
+                                    <input
+                                        type="text"
+                                        value={editForm.importer_of_record_number || ''}
+                                        onChange={(e) => setEditForm(prev => ({ ...prev, importer_of_record_number: e.target.value }))}
+                                        placeholder="12-345678900"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-4">
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">Bill of Lading</label>
+                                    <input
+                                        type="text"
+                                        value={editForm.bill_of_lading || ''}
+                                        onChange={(e) => setEditForm(prev => ({ ...prev, bill_of_lading: e.target.value }))}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">Vessel Name</label>
+                                    <input
+                                        type="text"
+                                        value={editForm.vessel_name || ''}
+                                        onChange={(e) => setEditForm(prev => ({ ...prev, vessel_name: e.target.value }))}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">Carrier SCAC</label>
+                                    <input
+                                        type="text"
+                                        value={editForm.carrier_code || ''}
+                                        onChange={(e) => setEditForm(prev => ({ ...prev, carrier_code: e.target.value.toUpperCase() }))}
+                                        maxLength={4}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono uppercase"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">Ultimate Consignee Name</label>
+                                <input
+                                    type="text"
+                                    value={editForm.ultimate_consignee_name || ''}
+                                    onChange={(e) => setEditForm(prev => ({ ...prev, ultimate_consignee_name: e.target.value }))}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">Broker Notes</label>
+                                <textarea
+                                    value={editForm.notes || ''}
+                                    onChange={(e) => setEditForm(prev => ({ ...prev, notes: e.target.value }))}
+                                    rows={3}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                />
+                            </div>
+
+                            <div className="flex justify-end gap-3 pt-4 border-t">
+                                <Button
+                                    variant="secondary"
+                                    type="button"
+                                    onClick={() => setShowEditEntryModal(false)}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button type="submit" disabled={actionLoading}>
+                                    {actionLoading ? 'Saving...' : 'Save Changes'}
+                                </Button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

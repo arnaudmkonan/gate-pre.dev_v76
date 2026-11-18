@@ -118,6 +118,8 @@ class Client(BaseModel):
     credit_limit = Column(Numeric(15, 2), nullable=True)  # Credit limit for duty payments
     payment_terms = Column(String(50), nullable=True)  # e.g., "Net 30", "COD"
     billing_method = Column(String(30), nullable=True)  # monthly, per_entry, etc.
+    stripe_customer_id = Column(String(100), nullable=True, index=True)
+    stripe_subscription_id = Column(String(100), nullable=True)
     
     # ===== Broker Relationship =====
     onboarding_date = Column(Date, nullable=True)

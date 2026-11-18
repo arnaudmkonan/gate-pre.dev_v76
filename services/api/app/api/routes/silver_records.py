@@ -259,7 +259,12 @@ async def retry_queue_item(
         item.manual_notes = request.notes or item.manual_notes
         await session.commit()
 
-        # TODO: Enqueue to Celery for reprocessing
+        try:
+            from app.workers.ingest_tasks import queue_raw_file
+            if getattr(item, "file_id", None):
+                queue_raw_file.delay(str(item.file_id))
+        except Exception as q_err:
+            logger.warning(f"Could not dispatch Celery retry for item {item_id}: {q_err}")
         logger.info(f"Queued retry for item {item_id}")
 
         return {

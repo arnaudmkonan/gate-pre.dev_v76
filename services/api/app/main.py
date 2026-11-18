@@ -1,7 +1,7 @@
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -20,6 +20,7 @@ from app.api.routes import (
     compliance_integration, entries, duty_calculator, clients, ace_settings, isf, broker_management, client_templates,
     client_preferences, client_reports, client_billing, client_portal, client_dashboard, document_requests,
     entry_lifecycle, analytics, production_ready, email, cargowise_export, leads, landing_analytics, embeddings,
+    stripe_billing,
     shipment_assembly, entry_prep, ace_transmit, webhooks, api_keys, notifications
 )
 
@@ -29,7 +30,8 @@ from app.api.routes.cbp5106 import router as cbp5106_router
 from app.api.routes.pga import router as pga_router
 from app.api.routes.admin import override, queues, errors, organizations, roles, dashboard, file_type_mapping, retry_dlq
 from app.core.config import settings
-from app.core.database import engine
+from app.core.database import engine, get_db
+from app.core.auth import require_admin
 from app.models.base import Base
 from sqlalchemy import text
 
@@ -61,7 +63,10 @@ async def lifespan(app: FastAPI):
             if result.scalar():
                 logger.info("Database tables are ready")
             else:
-                logger.warning("Database tables not found - run init.sh to create them")
+                logger.warning("Database tables not found - run alembic upgrade head")
+        from app.startup.demo_seed import seed_demo_users_if_enabled
+
+        await seed_demo_users_if_enabled()
     except Exception as e:
         logger.error(f"Database connection error: {e}")
         logger.warning("Application starting without database verification")
@@ -214,6 +219,7 @@ app.include_router(client_templates.router)
 app.include_router(client_preferences.router)
 app.include_router(client_reports.router)
 app.include_router(client_billing.router)
+app.include_router(stripe_billing.router)
 app.include_router(client_portal.router)
 app.include_router(client_dashboard.router)
 app.include_router(document_requests.router)
@@ -318,6 +324,20 @@ async def health_info():
         info["table_count"] = "unavailable"
 
     return info
+
+
+@app.get("/api/health/platform")
+async def platform_health(
+    session=Depends(get_db),
+    _user=Depends(require_admin()),
+):
+    """
+    Worker, broker queue, ingest, and DLQ snapshot for admin dashboards.
+    Requires admin role.
+    """
+    from app.services.platform_health_service import PlatformHealthService
+
+    return await PlatformHealthService.get_snapshot(session)
 
 
 @app.get("/api/health/cache")

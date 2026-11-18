@@ -128,9 +128,9 @@ def run_test():
         if isinstance(sug_list, list):
             log(f"Shipment Assembly Suggestions Generated: {len(sug_list)}", "💡")
 
-    # 7. Validate Customs Entries (Form 7501)
+    # 7. Validate Customs Entries (Form 7501) & Exports (PDF / Excel / CargoWise)
     print("\n------------------------------------------------------------------")
-    log("Step 5: Validating Customs Entry Summaries (Form 7501)...", "📋")
+    log("Step 5: Validating Customs Entry Summaries (Form 7501) & Exports...", "📋")
     ent_resp = requests.get(f"{API_BASE}/api/entries?limit=50", headers=headers)
     if ent_resp.status_code == 200:
         ent_data = ent_resp.json()
@@ -138,9 +138,33 @@ def run_test():
         log(f"Total Customs Entries: {len(entries)}", "📝")
         for idx, e in enumerate(entries[:5], 1):
             if isinstance(e, dict):
-                log(f"  Entry #{idx}: Number={e.get('entry_number')} | Importer={e.get('importer_name')} | Port={e.get('port_of_entry')} | Duty=${e.get('total_duty_amount', 0)}")
+                log(f"  Entry #{idx}: Number={e.get('entry_number')} | Importer={e.get('importer_name') or e.get('importer_of_record_name')} | Port={e.get('port_of_entry')} | Duty=${e.get('total_duty_amount', e.get('total_duty', 0))}")
 
-    # 8. Final Test Summary
+        if entries and isinstance(entries[0], dict) and entries[0].get("id"):
+            first_entry_id = entries[0]["id"]
+            pdf_resp = requests.get(f"{API_BASE}/api/export/pdf/{first_entry_id}", headers=headers)
+            if pdf_resp.status_code == 200 and pdf_resp.content.startswith(b"%PDF-"):
+                log(f"  ✓ CBP Form 7501 PDF Export verified ({len(pdf_resp.content)} bytes)", "✅")
+            else:
+                log(f"  ✗ CBP Form 7501 PDF Export failed: HTTP {pdf_resp.status_code}", "❌")
+
+            xlsx_resp = requests.get(f"{API_BASE}/api/export/excel/{first_entry_id}", headers=headers)
+            if xlsx_resp.status_code == 200 and xlsx_resp.content.startswith(b"PK"):
+                log(f"  ✓ CBP Form 7501 Excel (.xlsx) Export verified ({len(xlsx_resp.content)} bytes)", "✅")
+            else:
+                log(f"  ✗ CBP Form 7501 Excel Export failed: HTTP {xlsx_resp.status_code}", "❌")
+
+    # 8. Validate System Health Probe (DB, Queue, Storage)
+    probe_resp = requests.post(
+        f"{API_BASE}/api/monitoring/probe",
+        headers=headers,
+        json={"components": ["database", "queue", "storage"]},
+    )
+    if probe_resp.status_code == 200:
+        probe_data = probe_resp.json()
+        log(f"System Health Probe: overall_healthy={probe_data.get('overall_healthy')}", "🩺")
+
+    # 9. Final Test Summary
     print("\n==================================================================")
     log("🎉 Scenario 1 E2E Test Execution Finished!", "✅")
     print("==================================================================")

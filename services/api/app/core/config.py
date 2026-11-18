@@ -87,6 +87,10 @@ class Settings(BaseSettings):
     smtp_from_email: str = Field(default="noreply@example.com", alias="SMTP_FROM_EMAIL")
     smtp_tls: bool = Field(default=True, alias="SMTP_TLS")
 
+    # Public URL of the React app (password reset links, invitations)
+    frontend_url: str = Field(default="http://localhost:3000", alias="FRONTEND_URL")
+    instance_url: str = Field(default="", alias="INSTANCE_URL")
+
     # Email Ingestion
     email_imap_host: Optional[str] = Field(default=None, alias="EMAIL_IMAP_HOST")
     email_imap_port: int = Field(default=993, alias="EMAIL_IMAP_PORT")
@@ -108,6 +112,9 @@ class Settings(BaseSettings):
 
     # Environment
     environment: str = Field(default="development", alias="ENVIRONMENT")
+
+    # Seed demo login users (admin@example.com / demo@example.com) on API startup
+    seed_demo_users: bool = Field(default=False, alias="SEED_DEMO_USERS")
 
     # CORS Configuration
     cors_origins: str = Field(
@@ -145,6 +152,22 @@ class Settings(BaseSettings):
     ace_known_hosts_path: str = Field(default="", alias="ACE_KNOWN_HOSTS_PATH")
     ace_upload_path: str = Field(default="/incoming", alias="ACE_UPLOAD_PATH")
     ace_response_path: str = Field(default="/outgoing", alias="ACE_RESPONSE_PATH")
+    # When false, production blocks simulated ACE filing (requires live SFTP).
+    ace_allow_simulation: bool = Field(default=True, alias="ACE_ALLOW_SIMULATION")
+
+    # Portal onboarding — when true, new users must verify email before login
+    require_email_verification: bool = Field(
+        default=False,
+        alias="REQUIRE_EMAIL_VERIFICATION",
+    )
+
+    # Stripe (optional — pilot checkout + subscription webhooks)
+    stripe_secret_key: Optional[str] = Field(default=None, alias="STRIPE_SECRET_KEY")
+    stripe_webhook_secret: Optional[str] = Field(default=None, alias="STRIPE_WEBHOOK_SECRET")
+    stripe_price_id_pilot: Optional[str] = Field(default=None, alias="STRIPE_PRICE_ID_PILOT")
+
+    # Bind Redis on host loopback only (override for remote dev)
+    redis_publish_host: str = Field(default="127.0.0.1", alias="REDIS_PUBLISH_HOST")
 
     # -------------------------------------------------------------------------
     # Computed / derived properties
@@ -166,6 +189,12 @@ class Settings(BaseSettings):
     def is_production(self) -> bool:
         return self.environment.lower() == "production"
 
+    @property
+    def public_app_url(self) -> str:
+        """Base URL for links in outbound email."""
+        base = (self.instance_url or self.frontend_url).strip()
+        return base.rstrip("/") if base else "http://localhost:3000"
+
     # -------------------------------------------------------------------------
     # Production-only startup validators
     # Raise ValueError at import time so the container fails fast rather than
@@ -175,6 +204,11 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def _validate_production_secrets(self) -> "Settings":
         """Refuse to start in production with insecure defaults."""
+        if self.is_production and self.seed_demo_users:
+            logger.warning(
+                "SEED_DEMO_USERS is enabled in production — disable for real deployments."
+            )
+
         if not self.is_production:
             return self
 
@@ -203,6 +237,12 @@ class Settings(BaseSettings):
             logger.warning(
                 "⚠️  CORS_ALLOW_ALL=true in production — all origins are permitted. "
                 "Set CORS_ORIGINS to your production domain(s) instead."
+            )
+
+        if self.is_production and not self.ace_sftp_enabled and self.ace_allow_simulation:
+            logger.warning(
+                "ACE_ALLOW_SIMULATION is enabled in production without ACE_SFTP — "
+                "filings are simulated only (not sent to CBP)."
             )
 
         if errors:

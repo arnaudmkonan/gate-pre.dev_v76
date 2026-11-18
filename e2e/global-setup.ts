@@ -53,6 +53,10 @@ async function saveAuthState(
   }
   await page.getByRole('button', { name: 'Sign in' }).click();
   await page.waitForURL(/\/(ingest-ui|admin\/dashboard)/, { timeout: 30_000 });
+  const gotItBtn = page.getByRole('button', { name: 'Got it' });
+  if (await gotItBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
+    await gotItBtn.click();
+  }
   fs.mkdirSync(authDir, { recursive: true });
   await context.storageState({ path: outfile });
   await browser.close();
@@ -66,34 +70,35 @@ export default async function globalSetup(config: FullConfig) {
   await waitForHealth(`${baseURL}/login`, 'Web app');
 
   const landingURL = process.env.E2E_LANDING_URL || 'http://localhost:8080';
+  let landingReady = false;
   try {
-    execSync('docker compose build landing && docker compose up -d landing', {
-      cwd: repoRoot,
-      stdio: 'inherit',
-    });
-    await waitForHealth(`${landingURL}/health`, 'Landing page');
-  } catch (e) {
-    console.warn('Landing rebuild skipped or failed; landing API proxy tests may fail:', e);
+    const res = await fetch(`${landingURL}/health`);
+    landingReady = res.ok;
+  } catch {
+    landingReady = false;
+  }
+  if (!landingReady) {
+    try {
+      execSync('docker compose up -d landing', { cwd: repoRoot, stdio: 'inherit' });
+      await waitForHealth(`${landingURL}/health`, 'Landing page');
+    } catch (e) {
+      console.warn('Landing start failed; landing tests may fail:', e);
+    }
   }
 
   try {
-    const marketingTables = fs.readFileSync(
-      path.join(__dirname, 'scripts', 'ensure_marketing_tables.py'),
-      'utf8',
-    );
-    execSync('docker compose exec -T api python -', {
+    execSync('docker compose exec -T api alembic upgrade head', {
       cwd: repoRoot,
-      input: marketingTables,
-      stdio: ['pipe', 'inherit', 'inherit'],
+      stdio: 'inherit',
     });
   } catch (e) {
-    console.warn('Marketing table ensure failed (continuing):', e);
+    console.warn('Alembic upgrade in API container failed (continuing):', e);
   }
 
   try {
     seedDemoUsers();
   } catch (e) {
-    console.warn('User seed via docker failed (continuing if users already exist):', e);
+    console.warn('User seed fallback failed (API SEED_DEMO_USERS may have already run):', e);
   }
 
   await saveAuthState(

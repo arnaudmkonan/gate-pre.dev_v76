@@ -11,7 +11,7 @@
  * Task 4.2 from ROADMAP_FULL_WORKFLOW.md
  */
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import {
     ArrowLeft,
     Building2,
@@ -92,6 +92,8 @@ const BondStatusBadge = ({ bond }: { bond: ClientBond }) => {
 export const ClientDetailPage = () => {
     const { clientId } = useParams<{ clientId: string }>()
     const navigate = useNavigate()
+    const [searchParams, setSearchParams] = useSearchParams()
+    const docJobId = searchParams.get('doc_job')
     const [activeTab, setActiveTab] = useState<TabType>('profile')
     const [isEditing, setIsEditing] = useState(false)
     const [showAddContact, setShowAddContact] = useState(false)
@@ -219,6 +221,36 @@ export const ClientDetailPage = () => {
 
     return (
         <div className="space-y-6">
+            {docJobId && (
+                <div className="flex items-center justify-between gap-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-center gap-2 text-sm text-green-800">
+                        <CheckCircle className="w-5 h-5 flex-shrink-0" />
+                        <span>
+                            Onboarding PDF queued for ingestion (job{' '}
+                            <span className="font-mono text-xs">{docJobId.slice(0, 8)}…</span>).
+                            Track progress in{' '}
+                            <button
+                                type="button"
+                                className="underline font-medium"
+                                onClick={() => navigate('/ingest-ui')}
+                            >
+                                Ingest
+                            </button>
+                            .
+                        </span>
+                    </div>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                            searchParams.delete('doc_job')
+                            setSearchParams(searchParams, { replace: true })
+                        }}
+                    >
+                        Dismiss
+                    </Button>
+                </div>
+            )}
             {/* Header */}
             <div className="flex items-start justify-between">
                 <div className="flex items-start gap-4">

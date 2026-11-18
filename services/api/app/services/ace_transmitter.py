@@ -162,6 +162,23 @@ class ACETransmitter:
             abi_content = abi_result.get("abi_content", "")
             filename = abi_result.get("filename", f"{entry.entry_number}.abi")
             
+            if (
+                self.mode == TransmissionMode.SIMULATION
+                and settings.is_production
+                and not settings.ace_allow_simulation
+            ):
+                return TransmissionResult(
+                    success=False,
+                    entry_id=entry_id,
+                    entry_number=entry.entry_number or "",
+                    status=TransmissionStatus.FAILED,
+                    error=(
+                        "ACE live SFTP is required in production. "
+                        "Configure ACE_SFTP_* or set ACE_ALLOW_SIMULATION=true for demo filing only."
+                    ),
+                    mode=TransmissionMode.SIMULATION,
+                )
+
             # Transmit based on mode
             if self.mode == TransmissionMode.LIVE:
                 transmission_result = await self._transmit_sftp(entry, abi_content, filename)
@@ -170,6 +187,24 @@ class ACETransmitter:
             
             # Update entry status
             await self._update_entry_status(entry, transmission_result)
+
+            if transmission_result.success:
+                from app.services.usage_metering_service import (
+                    UsageMeteringService,
+                    EVENT_ACE_TRANSMIT,
+                )
+
+                await UsageMeteringService.record(
+                    self.db,
+                    EVENT_ACE_TRANSMIT,
+                    client_id=entry.client_id,
+                    resource_id=str(entry.id),
+                    metadata={
+                        "mode": transmission_result.mode.value,
+                        "entry_number": entry.entry_number,
+                        "simulated": transmission_result.mode == TransmissionMode.SIMULATION,
+                    },
+                )
             
             return transmission_result
             
@@ -591,6 +626,8 @@ class ACETransmitter:
         """Get ACE connection status and configuration."""
         return {
             "mode": self.mode.value,
+            "simulation_allowed": settings.ace_allow_simulation or not settings.is_production,
+            "production_requires_live_or_flag": settings.is_production,
             "sftp_enabled": settings.ace_sftp_enabled,
             "sftp_host": self.sftp_host or "Not configured",
             "sftp_port": self.sftp_port,

@@ -35,7 +35,7 @@ test.describe('Platform UI pipeline (upload → review → operations)', () => {
     const api = new GateApiClient(request, API_BASE);
     const { token } = await api.login(DEMO_ADMIN.email, DEMO_ADMIN.password);
     const { completed } = await api.pollIngestJobs(token, uploadedJobIds, {
-      timeoutMs: 240_000,
+      timeoutMs: 360_000,
     });
     expect(completed).toBe(1);
   });

@@ -39,6 +39,14 @@ class AcceptInvitationRequest(BaseModel):
     job_title: Optional[str] = None
 
 
+class ResendVerificationRequest(BaseModel):
+    email: str
+
+
+class VerifyEmailRequest(BaseModel):
+    token: str
+
+
 class LoginRequest(BaseModel):
     """Login request."""
     email: str  # Email address
@@ -234,6 +242,8 @@ async def accept_invitation(
     service = ClientPortalAuthService(db)
     
     try:
+        from app.core.config import settings
+
         user = await service.accept_invitation(
             token=request.token,
             password=request.password,
@@ -242,20 +252,55 @@ async def accept_invitation(
             phone=request.phone,
             job_title=request.job_title,
         )
-        
-        # Auto-login after registration
+
+        if settings.require_email_verification and not user.is_email_verified:
+            return {
+                "user": user.to_dict(),
+                "session_token": None,
+                "message": "Account created. Check your email to verify before signing in.",
+                "requires_email_verification": True,
+            }
+
         user, session = await service.login(
             email=user.email,
             password=request.password,
         )
-        
+
         return {
             "user": user.to_dict(),
             "session_token": session.token,
             "message": "Account created successfully",
+            "requires_email_verification": False,
         }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/verify-email")
+async def verify_email(
+    request: VerifyEmailRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    from app.services.client_portal_auth_service import ClientPortalAuthService
+
+    service = ClientPortalAuthService(db)
+    try:
+        user = await service.verify_email(request.token)
+        return {"message": "Email verified", "user": user.to_dict()}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/resend-verification")
+async def resend_verification(
+    request: ResendVerificationRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    from app.services.client_portal_auth_service import ClientPortalAuthService
+
+    service = ClientPortalAuthService(db)
+    await service.resend_verification_email(request.email)
+    return {"message": "If an unverified account exists, a verification email was sent"}
 
 
 # ==================== Authentication Endpoints ====================
@@ -328,18 +373,29 @@ async def forgot_password(
     db: AsyncSession = Depends(get_db),
 ):
     """Request password reset."""
+    from app.core.config import settings
     from app.services.client_portal_auth_service import ClientPortalAuthService
-    
+    from app.services.email_service import EmailService
+
     service = ClientPortalAuthService(db)
     token = await service.request_password_reset(request.email)
-    
-    # In production, send email with reset link
+
+    reset_url = None
+    if token:
+        reset_url = f"{settings.public_app_url}/reset-password?token={token}"
+        await EmailService().send_password_reset(
+            to_email=request.email.lower().strip(),
+            reset_token=token,
+            reset_url=reset_url,
+        )
+
     # Always return success to not reveal if user exists
-    return {
+    payload: dict = {
         "message": "If an account exists with that email, a reset link has been sent",
-        # For testing only - remove in production:
-        "_reset_link": f"/portal/reset-password?token={token}" if token else None,
     }
+    if settings.environment == "development" and reset_url:
+        payload["_dev_reset_link"] = reset_url
+    return payload
 
 
 @router.post("/password/reset")

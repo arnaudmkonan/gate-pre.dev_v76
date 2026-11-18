@@ -8,11 +8,13 @@ import { ExtractionsList } from '../components/review/ExtractionsList'
 import { ReviewActions } from '../components/review/ReviewActions'
 import { ConfidenceBadge } from '../components/review/ConfidenceBadge'
 import { useReviewItem, useReviewActions } from '../hooks/useReview'
+import { useAuth } from '../contexts/AuthContext'
 
 export const ReviewItemDetailPage = () => {
   const { itemId } = useParams<{ itemId: string }>()
   const navigate = useNavigate()
-  const [currentReviewer] = useState('reviewer') // In production, get from auth
+  const { user } = useAuth()
+  const currentReviewer = user?.email || 'reviewer'
   const [notes, setNotes] = useState('')
   const [rejectReason, setRejectReason] = useState('')
   const [showRejectModal, setShowRejectModal] = useState(false)
@@ -143,6 +145,7 @@ export const ReviewItemDetailPage = () => {
           </CardHeader>
           <CardContent>
             <DocumentViewer
+              documentId={item.document?.id || item.document_id}
               content={item.document?.extracted_text_snippet}
               filename={item.document?.filename}
               fileType={item.document?.file_type}

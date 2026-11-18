@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { authFetch } from '../lib/authFetch'
 import { AlertCircle, CheckCircle, RefreshCw, Edit2 } from 'lucide-react'
 
 interface RetryQueueItem {
@@ -34,7 +35,7 @@ export const RetryQueue = () => {
       if (selectedStatus) {
         url.searchParams.append('status_filter', selectedStatus)
       }
-      const response = await fetch(url.toString())
+      const response = await authFetch(url.toString())
       if (!response.ok) throw new Error('Failed to fetch retry queue')
       const data = await response.json()
       setItems(data.items)
@@ -48,7 +49,7 @@ export const RetryQueue = () => {
 
   const handleRetry = async (itemId: string) => {
     try {
-      const response = await fetch(`/api/metadata/retry-queue/${itemId}/retry`, {
+      const response = await authFetch(`/api/metadata/retry-queue/${itemId}/retry`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notes: editNotes })

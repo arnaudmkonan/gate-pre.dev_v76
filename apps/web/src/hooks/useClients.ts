@@ -308,7 +308,16 @@ export function useClientActions() {
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}))
-                throw new Error(errorData.detail || 'Failed to create client')
+                const detail = errorData.detail
+                let message = 'Failed to create client'
+                if (typeof detail === 'string') {
+                    message = detail
+                } else if (Array.isArray(detail)) {
+                    message = detail.map((d: { msg?: string }) => d.msg || '').filter(Boolean).join('; ')
+                } else if (errorData.error?.message) {
+                    message = errorData.error.message
+                }
+                throw new Error(message || 'Failed to create client')
             }
 
             return await response.json()

@@ -75,6 +75,10 @@ class ClientUser(BaseModel):
     # Password reset
     reset_token = Column(String(100), nullable=True)
     reset_token_expires = Column(DateTime(timezone=True), nullable=True)
+
+    # Email verification (pilot self-serve onboarding)
+    email_verified_at = Column(DateTime(timezone=True), nullable=True)
+    email_verify_token = Column(String(100), nullable=True, index=True)
     
     # Notification preferences
     notification_prefs = Column(JSONB, default={
@@ -129,6 +133,15 @@ class ClientUser(BaseModel):
         self.reset_token = token
         self.reset_token_expires = datetime.now(timezone.utc) + timedelta(hours=24)
         return token
+
+    def generate_email_verify_token(self) -> str:
+        token = secrets.token_urlsafe(32)
+        self.email_verify_token = token
+        return token
+
+    @property
+    def is_email_verified(self) -> bool:
+        return self.email_verified_at is not None
     
     def can_view_entry(self, entry_client_id) -> bool:
         """Check if user can view an entry."""
@@ -160,6 +173,7 @@ class ClientUser(BaseModel):
             "status": self.status,
             "activated_at": self.activated_at.isoformat() if self.activated_at else None,
             "last_login_at": self.last_login_at.isoformat() if self.last_login_at else None,
+            "email_verified": self.is_email_verified,
             "notification_prefs": self.notification_prefs,
             "timezone": self.timezone,
         }

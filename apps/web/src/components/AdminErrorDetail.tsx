@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Toast } from "./Toast";
 import { Button } from "./Button";
 import { Card } from "./Card";
+import { authFetch } from "../lib/authFetch";
 
 interface ErrorDetail {
   id: string;
@@ -41,7 +42,7 @@ export const AdminErrorDetail: React.FC<AdminErrorDetailProps> = ({
     const fetchError = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch(`/api/admin/errors/${errorId}`);
+        const response = await authFetch(`/api/admin/errors/${errorId}`);
         if (!response.ok) throw new Error("Failed to load error details");
         const data = await response.json();
         setError(data);
@@ -62,7 +63,7 @@ export const AdminErrorDetail: React.FC<AdminErrorDetailProps> = ({
   const handleRetry = async () => {
     setIsRetrying(true);
     try {
-      const response = await fetch(`/api/admin/errors/${errorId}/retry`, {
+      const response = await authFetch(`/api/admin/errors/${errorId}/retry`, {
         method: "POST",
       });
 
@@ -77,7 +78,7 @@ export const AdminErrorDetail: React.FC<AdminErrorDetailProps> = ({
       onRetry?.(errorId);
 
       // Refresh error details
-      const refreshResponse = await fetch(`/api/admin/errors/${errorId}`);
+      const refreshResponse = await authFetch(`/api/admin/errors/${errorId}`);
       if (refreshResponse.ok) {
         const data = await refreshResponse.json();
         setError(data);

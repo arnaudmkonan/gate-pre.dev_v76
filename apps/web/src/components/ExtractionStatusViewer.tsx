@@ -11,6 +11,7 @@ import { Card } from './Card'
 import { Input } from './Input'
 import { Button } from './Button'
 import { API_URL } from '../config/api'
+import { authFetch } from '../lib/authFetch'
 
 interface ExtractionResult {
   id: string
@@ -65,7 +66,7 @@ export const ExtractionStatusViewer = () => {
       params.append('page', page.toString())
       params.append('page_size', pageSize.toString())
 
-      const response = await fetch(
+      const response = await authFetch(
         `${API_URL}/api/extractions?${params.toString()}`
       )
 

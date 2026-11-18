@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { authFetch } from '../lib/authFetch'
 import { AlertCircle, FileText, Clock, User, Globe } from 'lucide-react'
 
 interface SilverRecord {
@@ -46,7 +47,7 @@ export const SilverRecordViewer = ({ fileId }: SilverRecordViewerProps) => {
 
   const fetchSilverRecord = async () => {
     try {
-      const response = await fetch(`/api/metadata/silver/${fileId}`)
+      const response = await authFetch(`/api/metadata/silver/${fileId}`)
       if (response.status === 204) {
         setError('Record is still processing...')
         return

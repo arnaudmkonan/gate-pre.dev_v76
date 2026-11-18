@@ -23,6 +23,7 @@ from app.models.client_portal import (
     ClientUser, PortalInvitation, ClientUserSession,
     ClientUserRole, ClientUserStatus, InvitationStatus
 )
+from app.core.config import settings
 from app.models.client import Client
 
 
@@ -176,17 +177,34 @@ class ClientPortalAuthService:
             activated_at=datetime.now(timezone.utc),
         )
         user.set_password(password)
-        
+
+        if settings.require_email_verification:
+            verify_token = user.generate_email_verify_token()
+            user.email_verified_at = None
+        else:
+            verify_token = None
+            user.email_verified_at = datetime.now(timezone.utc)
+
         self.db.add(user)
-        
+
         # Update invitation
         invitation.status = InvitationStatus.ACCEPTED.value
         invitation.accepted_at = datetime.now(timezone.utc)
         invitation.user_id = user.id
-        
+
         await self.db.commit()
         await self.db.refresh(user)
-        
+
+        if verify_token:
+            from app.services.email_service import EmailService
+
+            email_svc = EmailService()
+            await email_svc.send_email_verification(
+                to_email=user.email,
+                verify_token=verify_token,
+                user_name=user.first_name,
+            )
+
         return user
     
     # ==================== Authentication ====================
@@ -210,7 +228,10 @@ class ClientPortalAuthService:
         
         if user.status != ClientUserStatus.ACTIVE.value:
             raise ValueError(f"Account is {user.status}")
-        
+
+        if settings.require_email_verification and not user.is_email_verified:
+            raise ValueError("Please verify your email before signing in")
+
         if not user.verify_password(password):
             raise ValueError("Invalid email or password")
         
@@ -444,8 +465,35 @@ class ClientPortalAuthService:
         user.status = ClientUserStatus.ACTIVE.value
         await self.db.commit()
     
+    async def verify_email(self, token: str) -> ClientUser:
+        """Mark email verified from signup verification link."""
+        query = select(ClientUser).where(ClientUser.email_verify_token == token)
+        result = await self.db.execute(query)
+        user = result.scalar_one_or_none()
+        if not user:
+            raise ValueError("Invalid or expired verification link")
+        user.email_verified_at = datetime.now(timezone.utc)
+        user.email_verify_token = None
+        await self.db.commit()
+        await self.db.refresh(user)
+        return user
+
+    async def resend_verification_email(self, email: str) -> None:
+        user = await self.get_user_by_email(email)
+        if not user or user.is_email_verified:
+            return
+        token = user.generate_email_verify_token()
+        await self.db.commit()
+        from app.services.email_service import EmailService
+
+        await EmailService().send_email_verification(
+            to_email=user.email,
+            verify_token=token,
+            user_name=user.first_name,
+        )
+
     # ==================== Helpers ====================
-    
+
     async def _get_client(self, client_id: UUID) -> Optional[Client]:
         """Get client by ID."""
         query = select(Client).where(Client.id == client_id)

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { authFetch } from '../lib/authFetch'
 import { Card } from './Card'
 import { Button } from './Button'
 import { AlertCircle, Trash2, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react'
@@ -35,7 +36,7 @@ export const DLQPanel: React.FC = () => {
         params.append('status', statusFilter)
       }
 
-      const response = await fetch(`/api/ingest/dlq?${params}`)
+      const response = await authFetch(`/api/ingest/dlq?${params}`)
 
       if (!response.ok) {
         throw new Error('Failed to load DLQ items')
@@ -57,7 +58,7 @@ export const DLQPanel: React.FC = () => {
 
   const handleReprocess = async (dlqId: string) => {
     try {
-      const response = await fetch(`/api/ingest/dlq/${dlqId}/reprocess`, {
+      const response = await authFetch(`/api/ingest/dlq/${dlqId}/reprocess`, {
         method: 'POST',
       })
 
@@ -75,7 +76,7 @@ export const DLQPanel: React.FC = () => {
     if (!window.confirm('Are you sure you want to delete this DLQ item?')) return
 
     try {
-      const response = await fetch(`/api/ingest/dlq/${dlqId}`, {
+      const response = await authFetch(`/api/ingest/dlq/${dlqId}`, {
         method: 'DELETE',
       })
 

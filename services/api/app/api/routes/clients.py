@@ -9,12 +9,13 @@ from typing import Optional, List
 from uuid import UUID
 from datetime import datetime, timezone, date
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field, EmailStr
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from pydantic import BaseModel, Field, EmailStr, model_validator
 from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.config import settings as config_settings
 from app.core.database import get_db
 from app.models.client import (
     Client, ClientContact, ClientBond, ClientSettings,
@@ -29,6 +30,8 @@ router = APIRouter(prefix="/api/clients", tags=["Clients"], dependencies=[Depend
 
 class ClientCreate(BaseModel):
     """Create a new client."""
+    model_config = {"str_strip_whitespace": True}
+
     name: str = Field(..., min_length=1, max_length=500)
     legal_name: Optional[str] = None
     dba_name: Optional[str] = None
@@ -45,7 +48,7 @@ class ClientCreate(BaseModel):
     city: Optional[str] = None
     state_province: Optional[str] = None
     postal_code: Optional[str] = None
-    country: str = Field(default="US")
+    country: str = Field(default="US", max_length=2)
     
     # Contact
     phone: Optional[str] = None
@@ -60,6 +63,15 @@ class ClientCreate(BaseModel):
     
     notes: Optional[str] = None
     internal_code: Optional[str] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_identifiers(cls, data: object) -> object:
+        if isinstance(data, dict):
+            from app.services.client_field_normalization import normalize_client_payload
+
+            return normalize_client_payload(data)
+        return data
 
 
 class ClientUpdate(BaseModel):
@@ -293,6 +305,35 @@ async def list_clients(
             for c in clients
         ],
     }
+
+
+@router.post("/extract-from-pdf")
+async def extract_client_fields_from_pdf(
+    file: UploadFile = File(...),
+):
+    """
+    Parse an onboarding PDF and suggest client form fields (does not create a client or ingest job).
+    Uses pattern matching; merges with OpenAI when OPENAI_API_KEY is configured.
+    """
+    if not file.filename or not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail="Only PDF files are supported",
+        )
+
+    content = await file.read()
+    max_bytes = config_settings.max_upload_size_mb * 1024 * 1024
+    if len(content) > max_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"PDF exceeds {config_settings.max_upload_size_mb}MB limit",
+        )
+
+    from app.services.client_onboarding_extract_service import ClientOnboardingExtractService
+
+    service = ClientOnboardingExtractService()
+    result = await service.extract_from_pdf(content, file.filename)
+    return result
 
 
 @router.get("/{client_id}")

@@ -75,8 +75,8 @@ const EmbeddingsManagementPage: React.FC = () => {
         setError(null);
         try {
             const [statsRes, missingRes] = await Promise.all([
-                fetch(`${API_BASE}/api/embeddings/stats`),
-                fetch(`${API_BASE}/api/embeddings/missing?limit=100`),
+                authFetch(`${API_BASE}/api/embeddings/stats`),
+                authFetch(`${API_BASE}/api/embeddings/missing?limit=100`),
             ]);
 
             if (!statsRes.ok || !missingRes.ok) {

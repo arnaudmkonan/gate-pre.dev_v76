@@ -3,6 +3,7 @@ import { RefreshCw, AlertCircle, CheckCircle, Clock, Loader } from 'lucide-react
 import { Card, CardContent, CardHeader, CardTitle } from './Card'
 import { Button } from './Button'
 import { API_URL } from '../config/api'
+import { authFetch } from '../lib/authFetch'
 
 interface RoutingStats {
   total_files: number
@@ -40,7 +41,7 @@ export const RoutingDashboard = () => {
     setError(null)
 
     try {
-      const response = await fetch(`${API_URL}/api/routing/stats`)
+      const response = await authFetch(`${API_URL}/api/routing/stats`)
       if (!response.ok) {
         throw new Error('Failed to fetch routing stats')
       }
@@ -69,7 +70,7 @@ export const RoutingDashboard = () => {
     }))
 
     try {
-      const response = await fetch(`${API_URL}${endpoint}`, {
+      const response = await authFetch(`${API_URL}${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

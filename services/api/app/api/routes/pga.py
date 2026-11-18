@@ -75,6 +75,7 @@ async def get_pga_for_hts(
 
 
 @router.get("/entry/{entry_id}")
+@router.post("/entry/{entry_id}")
 async def get_pga_for_entry(
     entry_id: UUID,
     db: AsyncSession = Depends(get_db),
@@ -85,7 +86,13 @@ async def get_pga_for_entry(
     Looks up the entry's HTS codes and returns PGA determinations
     for each line item.
     """
-    result = await db.execute(select(Entry).where(Entry.id == entry_id))
+    from sqlalchemy.orm import selectinload
+
+    result = await db.execute(
+        select(Entry)
+        .options(selectinload(Entry.lines))
+        .where(Entry.id == entry_id)
+    )
     entry = result.scalar_one_or_none()
     if not entry:
         raise HTTPException(status_code=404, detail=f"Entry {entry_id} not found")
@@ -222,12 +229,23 @@ def _extract_line_items(entry: Entry) -> List[Dict[str, Any]]:
     """
     Extract HTS line items from an Entry ORM object.
 
-    Handles both JSON line_items and structured relationships.
+    Handles both Entry.lines (EntryLine relationship) and JSON line_items.
     """
     items = []
 
-    # Try JSON line_items field first (most common pattern)
-    if hasattr(entry, "line_items") and entry.line_items:
+    # 1. Check Entry.lines (EntryLine ORM relationship)
+    if hasattr(entry, "lines") and entry.lines:
+        for line in entry.lines:
+            hts_code = getattr(line, "hts_code", None)
+            if hts_code:
+                items.append({
+                    "hts_code": hts_code,
+                    "description": getattr(line, "product_description", None) or getattr(line, "hts_description", None),
+                    "country_of_origin": getattr(line, "country_of_origin", None),
+                })
+
+    # 2. Try JSON line_items field
+    if not items and hasattr(entry, "line_items") and entry.line_items:
         raw = entry.line_items
         if isinstance(raw, list):
             for item in raw:
@@ -238,7 +256,7 @@ def _extract_line_items(entry: Entry) -> List[Dict[str, Any]]:
                         "country_of_origin": item.get("country_of_origin"),
                     })
 
-    # Fallback: single HTS code on the entry header
+    # 3. Fallback: single HTS code on the entry header
     if not items and hasattr(entry, "hts_code") and entry.hts_code:
         items.append({
             "hts_code": entry.hts_code,

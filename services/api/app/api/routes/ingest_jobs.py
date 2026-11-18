@@ -8,7 +8,6 @@ from fastapi import status as http_status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.models.ingest_job import IngestJob
 from app.schemas.ingest_jobs import (
     IngestJobResponse,
     IngestJobListResponse,
@@ -18,6 +17,7 @@ from app.schemas.ingest_jobs import (
 )
 from app.services.ingest_service import IngestService
 from app.core.auth import get_current_user
+from app.startup.ingest_access import assert_can_access_job, uploader_scope_for_list
 
 logger = logging.getLogger(__name__)
 
@@ -32,59 +32,26 @@ async def list_jobs(
     created_after: Optional[datetime] = None,
     source: Optional[str] = None,
     session: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Get paginated list of ingestion jobs with optional filters.
 
-    Query Parameters:
-    - page: Page number (1-indexed), default 1
-    - page_size: Items per page (1-100), default 50
-    - status: Filter by job status (pending, queued, processing, completed, failed)
-    - created_after: Filter by creation date (ISO format)
-    - source: Filter by source (optional)
-
-    Returns:
-        IngestJobListResponse with paginated jobs and metadata
+    Non-admin users only see jobs they uploaded.
     """
+    del source, created_after  # reserved for future filters
     try:
-        from sqlalchemy import text
+        uploader_id = uploader_scope_for_list(current_user)
+        jobs, total_count = await IngestService.list_jobs(
+            session,
+            status=status,
+            uploader_id=uploader_id,
+            page=page,
+            page_size=page_size,
+        )
 
-        # Build filters for SQL
-        where_clause_parts = []
-        if status:
-            where_clause_parts.append(f"status = '{status}'")
-        if created_after:
-            where_clause_parts.append(f"created_at >= '{created_after.isoformat()}'")
-
-        where_clause = " AND ".join(where_clause_parts)
-        where_sql = f" WHERE {where_clause}" if where_clause else ""
-
-        # Get total count
-        count_sql = f"SELECT COUNT(*) as total FROM ingest_jobs{where_sql}"
-        count_result = await session.execute(text(count_sql))
-        total_count = count_result.scalar() or 0
-
-        # Get paginated results
-        offset = (page - 1) * page_size
-        jobs_sql = f"""
-            SELECT * FROM ingest_jobs{where_sql}
-            ORDER BY created_at DESC
-            LIMIT {page_size} OFFSET {offset}
-        """
-
-        result = await session.execute(text(jobs_sql))
-        rows = result.fetchall()
-
-        # Convert rows to job objects
-        job_responses = []
-        for row in rows:
-            job_dict = dict(row._mapping)
-            # Convert UUID to string
-            if 'id' in job_dict and hasattr(job_dict['id'], '__str__'):
-                job_dict['id'] = str(job_dict['id'])
-            job_responses.append(IngestJobResponse(**job_dict))
-
-        total_pages = (total_count + page_size - 1) // page_size
+        job_responses = [IngestJobResponse.model_validate(job) for job in jobs]
+        total_pages = (total_count + page_size - 1) // page_size if total_count else 0
 
         return IngestJobListResponse(
             jobs=job_responses,
@@ -105,16 +72,9 @@ async def list_jobs(
 async def get_job_detail(
     job_id: str,
     session: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
-    """
-    Get detailed information about a specific ingestion job.
-
-    Args:
-        job_id: The job ID
-
-    Returns:
-        IngestJobResponse with full job details
-    """
+    """Get detailed information about a specific ingestion job."""
     try:
         job = await IngestService.get_job_detail(session, job_id)
         if not job:
@@ -122,7 +82,8 @@ async def get_job_detail(
                 status_code=http_status.HTTP_404_NOT_FOUND,
                 detail=f"Job {job_id} not found",
             )
-        return IngestJobResponse.from_orm(job)
+        assert_can_access_job(job, current_user)
+        return IngestJobResponse.model_validate(job)
     except HTTPException:
         raise
     except Exception as e:
@@ -138,18 +99,18 @@ async def select_mode(
     job_id: str,
     request: ModeSelectorRequest,
     session: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
-    """
-    Select or update ingestion mode for a job (Story 4).
-
-    Args:
-        job_id: The job ID
-        request: Mode selection request with mode, batch_size, schedule_time, mapping_config
-
-    Returns:
-        Updated IngestJobResponse
-    """
+    """Select or update ingestion mode for a job (Story 4)."""
     try:
+        existing = await IngestService.get_job_detail(session, job_id)
+        if not existing:
+            raise HTTPException(
+                status_code=http_status.HTTP_404_NOT_FOUND,
+                detail=f"Job {job_id} not found",
+            )
+        assert_can_access_job(existing, current_user)
+
         job = await IngestService.update_job_mode(
             session=session,
             job_id=job_id,
@@ -165,7 +126,7 @@ async def select_mode(
                 detail=f"Job {job_id} not found",
             )
 
-        return IngestJobResponse.from_orm(job)
+        return IngestJobResponse.model_validate(job)
     except ValueError as e:
         raise HTTPException(
             status_code=http_status.HTTP_400_BAD_REQUEST,
@@ -186,27 +147,18 @@ async def preview_mapping(
     job_id: str,
     request: MappingPreviewRequest,
     session: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
-    """
-    Preview mapping configuration for a sample document (Story 4 - Guided Mapping).
-
-    Args:
-        job_id: The job ID
-        request: Mapping preview request with mapping_config and optional sample_content
-
-    Returns:
-        MappingPreviewResponse with validation results and extracted fields
-    """
+    """Preview mapping configuration for a sample document (Story 4 - Guided Mapping)."""
     try:
-        # Verify job exists
         job = await IngestService.get_job_detail(session, job_id)
         if not job:
             raise HTTPException(
                 status_code=http_status.HTTP_404_NOT_FOUND,
                 detail=f"Job {job_id} not found",
             )
+        assert_can_access_job(job, current_user)
 
-        # Validate mapping configuration
         preview_response = await IngestService.validate_mapping_for_sample(
             mapping_config=request.mapping_config,
             sample_content=request.sample_content,
