@@ -155,19 +155,21 @@ class EntryPrepData:
 class EntryPrepService:
     """Service for preparing customs entry data from shipments"""
     
-    # Standard duty rates by HTS chapter (simplified)
-    DEFAULT_DUTY_RATES = {
+    # Advisory fallback duty rates by HTS chapter ONLY when tariff table has no match;
+    # lines without a verified DB rate are explicitly flagged in validation_warnings.
+    ADVISORY_CHAPTER_RATES = {
         "61": 0.12,  # Apparel, knitted
         "62": 0.12,  # Apparel, not knitted
         "64": 0.08,  # Footwear
-        "85": 0.0,   # Electronics (often duty-free)
-        "94": 0.0,   # Furniture
         "84": 0.0,   # Machinery
+        "85": 0.0,   # Electronics
+        "94": 0.0,   # Furniture
     }
     
-    MPF_RATE = 0.003464  # 0.3464% of value
-    MPF_MIN = Decimal("27.75")
-    MPF_MAX = Decimal("538.40")
+    # FY2026 CBP Merchandise Processing Fee (19 CFR 24.23)
+    MPF_RATE = 0.003464  # 0.3464% ad valorem
+    MPF_MIN = Decimal("33.58")
+    MPF_MAX = Decimal("651.50")
     
     HMF_RATE = 0.00125  # 0.125% of value (ocean shipments only)
     
@@ -179,19 +181,17 @@ class EntryPrepService:
     ) -> EntryPrepData:
         """
         Prepare entry data from a shipment and its linked documents.
-        
-        Args:
-            session: Database session
-            shipment_id: UUID of the shipment to prepare from
-            
-        Returns:
-            EntryPrepData with pre-filled fields
+        Never fabricates synthetic IOR EINs, HTS codes, origins, or customs values.
         """
         from sqlalchemy.orm import selectinload
+        from app.core.config import settings
+        from app.models.client import Client
 
         entry = EntryPrepData()
         entry.source_shipment_id = str(shipment_id)
-        entry.filer_code = "G76"
+        configured_filer = (settings.broker_filer_code or "").strip().upper()[:3] or None
+        configured_port = (settings.broker_default_port or "").strip()[:4] or None
+        entry.filer_code = configured_filer
         entry.entry_date = datetime.now(timezone.utc)
         
         # Fetch shipment with linked_documents
@@ -206,17 +206,32 @@ class EntryPrepService:
             entry.validation_warnings.append(f"Shipment {shipment_id} not found")
             return entry
         
-        # Populate from shipment
+        # Populate from shipment without inventing unverified filer/port codes
         id_digits = str(shipment.id.int)
-        entry.entry_number = shipment.entry_number or f"G76-{id_digits[:7]}-{id_digits[7]}"
-        entry.port_code = shipment.port_of_entry or "2704"
+        if shipment.entry_number:
+            entry.entry_number = shipment.entry_number
+            if not entry.filer_code and "-" in shipment.entry_number:
+                prefix = shipment.entry_number.split("-", 1)[0].strip().upper()
+                if len(prefix) == 3:
+                    entry.filer_code = prefix
+        elif configured_filer:
+            entry.entry_number = f"{configured_filer}-{id_digits[:7]}-{id_digits[7]}"
+        else:
+            entry.entry_number = None
+
+        raw_dest_port = (
+            shipment.port_of_entry
+            if shipment.port_of_entry and shipment.port_of_entry.isdigit() and len(shipment.port_of_entry) == 4
+            else None
+        )
+        entry.port_code = raw_dest_port or configured_port
         entry.master_bill = shipment.bol_number or (
             shipment.primary_key_value if shipment.primary_key_type == "BOL_NUM" else None
         )
         entry.importer_name = shipment.importer_name
         entry.consignee_name = shipment.importer_name
         entry.foreign_port = shipment.origin
-        entry.port_of_entry = shipment.destination or shipment.port_of_entry or "2704"
+        entry.port_of_entry = raw_dest_port or configured_port
         entry.import_date = shipment.arrival_date or datetime.now(timezone.utc)
         entry.export_date = shipment.ship_date
         entry.total_entered_value = shipment.total_declared_value or Decimal("0.00")
@@ -231,7 +246,28 @@ class EntryPrepService:
         # Fetch extraction results for linked documents
         if entry.source_documents:
             extractions = await cls._get_document_extractions(session, entry.source_documents)
-            cls._merge_extraction_data(entry, extractions)
+            hts_rates = await cls._lookup_hts_rates(session, extractions)
+            cls._merge_extraction_data(entry, extractions, hts_rates=hts_rates)
+
+        # Resolve Importer of Record EIN/IOR from Client master record if missing from PDF
+        if entry.importer_name and not entry.importer_of_record_number:
+            client_res = await session.execute(
+                select(Client).where(Client.name.ilike(entry.importer_name.strip())).limit(1)
+            )
+            matched_client = client_res.scalar_one_or_none()
+            if matched_client:
+                entry.importer_of_record_number = matched_client.ior_number or matched_client.ein
+                if not entry.importer_address and matched_client.address_line1:
+                    entry.importer_address = matched_client.address_line1
+                if not entry.importer_city and matched_client.city:
+                    entry.importer_city = matched_client.city
+                if not entry.importer_state and matched_client.state_province:
+                    entry.importer_state = matched_client.state_province
+                if not entry.importer_zip and matched_client.postal_code:
+                    entry.importer_zip = matched_client.postal_code
+                if not entry.port_code and matched_client.primary_port:
+                    entry.port_code = matched_client.primary_port[:4]
+                    entry.port_of_entry = entry.port_code
         
         # Calculate duties
         cls._calculate_duties(entry)
@@ -279,8 +315,63 @@ class EntryPrepService:
             return []
     
     @classmethod
-    def _merge_extraction_data(cls, entry: EntryPrepData, extractions: list[ExtractionResult]) -> None:
-        """Merge individual field ExtractionResult records into EntryPrepData"""
+    async def _lookup_hts_rates(
+        cls,
+        session: AsyncSession,
+        extractions: list[ExtractionResult],
+    ) -> dict[str, float]:
+        """Look up authoritative base duty rates (as decimal fraction, e.g. 0.065) from hts_codes."""
+        from app.models.reference_data import HTSCode
+
+        candidate_codes: set[str] = set()
+        for ext in extractions:
+            if not (ext.field_name or "").lower().strip().startswith("cargo_item"):
+                continue
+            meta = ext.extraction_metadata or {}
+            raw = ""
+            if isinstance(meta, dict):
+                raw = str(meta.get("hts_code") or meta.get("hs_code") or "").strip()
+            val_str = str(ext.final_value or "").strip()
+            if not raw and "HTS" in val_str:
+                parts = val_str.split("HTS")[-1].strip().split()
+                if parts:
+                    raw = parts[0].strip()
+            if raw:
+                candidate_codes.add(raw)
+                digits = "".join(c for c in raw if c.isdigit())
+                if len(digits) >= 6:
+                    candidate_codes.add(digits)
+                    if len(digits) == 10:
+                        candidate_codes.add(f"{digits[:4]}.{digits[4:6]}.{digits[6:]}")
+                    elif len(digits) == 8:
+                        candidate_codes.add(f"{digits[:4]}.{digits[4:6]}.{digits[6:]}")
+
+        if not candidate_codes:
+            return {}
+
+        try:
+            res = await session.execute(
+                select(HTSCode).where(HTSCode.hts_code.in_(list(candidate_codes)))
+            )
+            rates: dict[str, float] = {}
+            for row in res.scalars().all():
+                if row.duty_rate_percent is not None:
+                    frac = float(row.duty_rate_percent) / 100.0
+                    rates[row.hts_code] = frac
+                    rates["".join(c for c in row.hts_code if c.isdigit())] = frac
+            return rates
+        except Exception:
+            return {}
+
+    @classmethod
+    def _merge_extraction_data(
+        cls,
+        entry: EntryPrepData,
+        extractions: list[ExtractionResult],
+        hts_rates: Optional[dict[str, float]] = None,
+    ) -> None:
+        """Merge individual field ExtractionResult records into EntryPrepData without synthetic fallbacks."""
+        hts_rates = hts_rates or {}
         line_items = []
         invoice_values: list[Decimal] = []
         seen_cargo = set()
@@ -354,13 +445,13 @@ class EntryPrepService:
                     continue
                 seen_cargo.add(dedup_key)
 
-                qty = float(meta.get("quantity") or 100) if isinstance(meta, dict) else 100.0
+                qty = float(meta["quantity"]) if isinstance(meta, dict) and meta.get("quantity") is not None else 0.0
                 unit = str(meta.get("unit") or "PCS") if isinstance(meta, dict) else "PCS"
-                weight = float(meta.get("gross_weight_kg") or meta.get("weight") or 500) if isinstance(meta, dict) else 500.0
+                raw_wt = (meta.get("gross_weight_kg") or meta.get("weight")) if isinstance(meta, dict) else None
+                weight = float(raw_wt) if raw_wt is not None else 0.0
                 origin = (
                     (str(meta.get("country_of_origin"))[:2].upper() if isinstance(meta, dict) and meta.get("country_of_origin") else None)
                     or entry.country_of_origin
-                    or "CN"
                 )
                 item_val = Decimal("0.00")
                 if isinstance(meta, dict) and meta.get("total_value"):
@@ -369,10 +460,14 @@ class EntryPrepService:
                     except Exception:
                         item_val = Decimal("0.00")
 
-                rate = cls._get_duty_rate(hts_code)
+                digits = "".join(c for c in hts_code if c.isdigit())
+                verified_rate = hts_rates.get(hts_code) if hts_code in hts_rates else hts_rates.get(digits)
+                rate_verified = verified_rate is not None
+                rate = verified_rate if verified_rate is not None else cls._get_duty_rate(hts_code)
+
                 line_items.append({
                     "line_number": len(line_items) + 1,
-                    "hts_number": hts_code or "8471.30.0100",
+                    "hts_number": hts_code or None,
                     "description": val_str,
                     "quantity": qty,
                     "unit": unit,
@@ -380,27 +475,23 @@ class EntryPrepService:
                     "country_of_origin": origin,
                     "entered_value": item_val,
                     "duty_rate": rate,
-                    "duty_amount": item_val * Decimal(str(rate)),
+                    "rate_verified": rate_verified,
+                    "duty_amount": (item_val * Decimal(str(rate))).quantize(Decimal("0.01")),
                 })
 
-        if not entry.country_of_origin:
-            entry.country_of_origin = "CN"
-            entry.exporting_country = "CN"
-        if not entry.importer_of_record_number:
-            entry.importer_of_record_number = "94-3281940-00"
-
-        # If invoice total was extracted and line items don't have individual values, distribute invoice total across lines
+        # Only distribute extracted invoice total across lines when a real positive invoice value was extracted
         total_inv = max(invoice_values) if invoice_values else entry.total_entered_value
-        if total_inv <= Decimal("0.00"):
-            total_inv = Decimal("48500.00")
 
         if line_items:
             current_sum = sum(item["entered_value"] for item in line_items)
-            if current_sum <= Decimal("0.00"):
+            if current_sum <= Decimal("0.00") and total_inv > Decimal("0.00"):
                 per_line = (total_inv / Decimal(len(line_items))).quantize(Decimal("0.01"))
                 for item in line_items:
                     item["entered_value"] = per_line
                     item["duty_amount"] = (per_line * Decimal(str(item["duty_rate"]))).quantize(Decimal("0.01"))
+                entry.validation_warnings.append(
+                    "Line-item values were apportioned evenly from total invoice value — verify individual line values"
+                )
 
             entry.line_items = line_items
             entry.total_entered_value = sum(item["entered_value"] for item in line_items)
@@ -410,25 +501,30 @@ class EntryPrepService:
     
     @classmethod
     def _get_duty_rate(cls, hts_code: str) -> float:
-        """Get duty rate for HTS code (simplified)"""
+        """Fallback advisory chapter duty rate when HTS code is not in hts_codes DB table."""
         if not hts_code:
             return 0.0
         
-        # Get chapter (first 2 digits)
         chapter = hts_code[:2] if len(hts_code) >= 2 else ""
-        return cls.DEFAULT_DUTY_RATES.get(chapter, 0.05)  # Default 5%
+        return cls.ADVISORY_CHAPTER_RATES.get(chapter, 0.0)
     
     @classmethod
     def _calculate_duties(cls, entry: EntryPrepData) -> None:
-        """Calculate MPF, HMF, and total duties"""
+        """Calculate MPF, HMF, and total duties (only when entered value > 0)."""
+        if entry.total_entered_value <= Decimal("0.00"):
+            entry.total_mpf = Decimal("0.00")
+            entry.total_hmf = Decimal("0.00")
+            entry.grand_total = Decimal("0.00")
+            return
+
         value = float(entry.total_entered_value)
         
-        # Merchandise Processing Fee
-        mpf = Decimal(str(value * cls.MPF_RATE))
+        # Merchandise Processing Fee (FY2026 CBP caps)
+        mpf = Decimal(str(value * cls.MPF_RATE)).quantize(Decimal("0.01"))
         entry.total_mpf = max(cls.MPF_MIN, min(cls.MPF_MAX, mpf))
         
         # Harbor Maintenance Fee (ocean shipments)
-        entry.total_hmf = Decimal(str(value * cls.HMF_RATE))
+        entry.total_hmf = Decimal(str(value * cls.HMF_RATE)).quantize(Decimal("0.01"))
         
         # Grand total
         entry.grand_total = (
@@ -473,25 +569,38 @@ class EntryPrepService:
     
     @classmethod
     def _validate_entry(cls, entry: EntryPrepData) -> None:
-        """Add validation warnings"""
+        """Add validation warnings under 19 USC 1641 broker reasonable care."""
+        if not entry.filer_code:
+            entry.validation_warnings.append("Missing CBP 3-character broker filer code (configure BROKER_FILER_CODE)")
         if not entry.importer_name:
             entry.validation_warnings.append("Missing importer name")
+        if not entry.importer_of_record_number:
+            entry.validation_warnings.append("Missing Importer of Record EIN / CBP number")
         if not entry.master_bill:
             entry.validation_warnings.append("Missing bill of lading")
         if not entry.port_of_entry and not entry.port_code:
-            entry.validation_warnings.append("Missing port of entry")
+            entry.validation_warnings.append("Missing 4-digit CBP port of entry")
         if not entry.country_of_origin and not entry.foreign_port:
             entry.validation_warnings.append("Missing country of origin")
         if entry.total_entered_value <= 0:
-            entry.validation_warnings.append("No declared value - duty calculation may be incorrect")
+            entry.validation_warnings.append("No declared value extracted — enter verified commercial invoice value")
         if len(entry.line_items) == 0:
-            entry.validation_warnings.append("No line items - add commercial invoice details")
+            entry.validation_warnings.append("No line items — add commercial invoice lines and HTS classifications")
         
         # Check line items
         for item in entry.line_items:
+            ln = item.get("line_number", "?")
             if not item.get("hts_number"):
                 entry.validation_warnings.append(
-                    f"Line {item.get('line_number', '?')}: Missing HTS code"
+                    f"Line {ln}: Missing 10-digit HTS classification"
+                )
+            elif not item.get("rate_verified"):
+                entry.validation_warnings.append(
+                    f"Line {ln}: HTS {item.get('hts_number')} duty rate not verified against USITC tariff table"
+                )
+            if not item.get("country_of_origin"):
+                entry.validation_warnings.append(
+                    f"Line {ln}: Missing ISO 2-letter country of origin"
                 )
     
     @classmethod

@@ -10,8 +10,11 @@ test.describe('Document ingestion golden path', () => {
   test.use({ storageState: adminAuth });
 
   test('uploads a sample document from ingest UI', async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem('gates_onboarding_complete', 'true');
+    });
     await page.goto('/ingest-ui');
-    await expect(page.getByText('Story 1: Upload Documents')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Upload Trade Documents' })).toBeVisible();
 
     await page.locator('input[type="file"]').setInputFiles(sampleDoc);
     await page.getByRole('button', { name: 'Upload' }).click();

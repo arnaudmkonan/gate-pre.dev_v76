@@ -28,6 +28,14 @@ from app.core.auth import get_current_user
 from app.core.database import get_db
 from app.models.power_of_attorney import PowerOfAttorney, POAStatus, POAType
 from app.services.poa_service import POAService
+from app.startup.client_access import (
+    assert_user_can_access_client,
+    portal_user_client_id,
+)
+from app.startup.client_access import (
+    assert_user_can_access_client,
+    portal_user_client_id,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -89,9 +97,11 @@ class POAValidityResponse(BaseModel):
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_poa(
     req: POACreateRequest,
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Create a new POA record in DRAFT status."""
+    """Create a new POA record in DRAFT status (tenant-scoped)."""
+    await assert_user_can_access_client(current_user, req.client_id)
     svc = POAService(db)
     try:
         record = svc.build_poa_record(req.dict(exclude_none=False))
@@ -111,6 +121,15 @@ async def create_poa(
         status=POAStatus.DRAFT.value,
     )
     db.add(poa)
+    from app.services.audit_service import audit
+    await audit(
+        db,
+        action="create_poa",
+        resource_type="power_of_attorney",
+        resource_id=str(poa.id or req.client_id),
+        actor_id=str(current_user.get("id") or current_user.get("email") or "broker"),
+        after={"client_id": str(req.client_id), "poa_type": req.poa_type, "grantor_name": req.grantor_name},
+    )
     await db.commit()
     await db.refresh(poa)
     logger.info("POA created: %s for client %s", poa.id, req.client_id)
@@ -123,11 +142,15 @@ async def list_poas(
     status_filter: Optional[str] = Query(None, alias="status"),
     limit: int = Query(50, le=200),
     offset: int = Query(0, ge=0),
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """List all POAs, optionally filtered by client or status."""
+    """List POAs (scoped for external importer users)."""
     q = select(PowerOfAttorney)
-    if client_id:
+    scoped_client_id = portal_user_client_id(current_user)
+    if scoped_client_id is not None:
+        q = q.where(PowerOfAttorney.client_id == scoped_client_id)
+    elif client_id:
         q = q.where(PowerOfAttorney.client_id == client_id)
     if status_filter:
         q = q.where(PowerOfAttorney.status == status_filter)
@@ -140,17 +163,20 @@ async def list_poas(
 @router.get("/expiring")
 async def list_expiring_poas(
     days: int = Query(30, description="Warn if expiry within N days"),
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """List active POAs expiring within `days` days."""
+    """List active POAs expiring within `days` days (tenant-scoped)."""
     warn_date = date.today() + timedelta(days=days)
-    result = await db.execute(
-        select(PowerOfAttorney).where(
-            PowerOfAttorney.status == POAStatus.ACTIVE.value,
-            PowerOfAttorney.expiry_date is not None,
-            PowerOfAttorney.expiry_date <= warn_date,
-        ).order_by(PowerOfAttorney.expiry_date)
+    q = select(PowerOfAttorney).where(
+        PowerOfAttorney.status == POAStatus.ACTIVE.value,
+        PowerOfAttorney.expiry_date.is_not(None),
+        PowerOfAttorney.expiry_date <= warn_date,
     )
+    scoped_client_id = portal_user_client_id(current_user)
+    if scoped_client_id is not None:
+        q = q.where(PowerOfAttorney.client_id == scoped_client_id)
+    result = await db.execute(q.order_by(PowerOfAttorney.expiry_date))
     poas = result.scalars().all()
     return {
         "expiring_within_days": days,
@@ -162,9 +188,11 @@ async def list_expiring_poas(
 @router.get("/client/{client_id}/valid", response_model=POAValidityResponse)
 async def check_client_poa_validity(
     client_id: UUID,
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Check whether a client has a currently valid POA on file."""
+    await assert_user_can_access_client(current_user, client_id)
     result = await db.execute(
         select(PowerOfAttorney).where(PowerOfAttorney.client_id == client_id)
     )
@@ -200,9 +228,11 @@ async def check_client_poa_validity(
 @router.get("/client/{client_id}")
 async def get_client_poas(
     client_id: UUID,
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get all POAs for a specific client."""
+    """Get all POAs for a specific client (tenant-scoped)."""
+    await assert_user_can_access_client(current_user, client_id)
     result = await db.execute(
         select(PowerOfAttorney)
         .where(PowerOfAttorney.client_id == client_id)
@@ -215,10 +245,12 @@ async def get_client_poas(
 @router.get("/{poa_id}")
 async def get_poa(
     poa_id: UUID,
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get a single POA by ID."""
+    """Get a single POA by ID (tenant-scoped)."""
     poa = await _get_or_404(db, poa_id)
+    await assert_user_can_access_client(current_user, poa.client_id)
     return poa.to_dict()
 
 
@@ -226,10 +258,12 @@ async def get_poa(
 async def update_poa(
     poa_id: UUID,
     req: POAUpdateRequest,
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Update non-status POA fields (effective/expiry dates, document URL, notes)."""
     poa = await _get_or_404(db, poa_id)
+    await assert_user_can_access_client(current_user, poa.client_id)
     if poa.status in (POAStatus.REVOKED.value, POAStatus.EXPIRED.value):
         raise HTTPException(
             status_code=422,
@@ -247,6 +281,7 @@ async def update_poa(
 async def activate_poa(
     poa_id: UUID,
     req: POAActivateRequest,
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -255,6 +290,7 @@ async def activate_poa(
     Call this after the importer has signed (DocuSign callback, etc.).
     """
     poa = await _get_or_404(db, poa_id)
+    await assert_user_can_access_client(current_user, poa.client_id)
     if poa.status not in (POAStatus.DRAFT.value, POAStatus.PENDING_SIGNATURE.value):
         raise HTTPException(
             status_code=422,
@@ -273,6 +309,15 @@ async def activate_poa(
     if not poa.effective_date:
         poa.effective_date = date.today()
     poa.updated_at = datetime.now(timezone.utc)
+    from app.services.audit_service import audit
+    await audit(
+        db,
+        action="activate_poa",
+        resource_type="power_of_attorney",
+        resource_id=str(poa_id),
+        actor_id=str(current_user.get("id") or current_user.get("email") or "broker"),
+        after={"status": poa.status, "client_id": str(poa.client_id)},
+    )
     await db.commit()
     await db.refresh(poa)
     logger.info("POA %s activated for client %s", poa_id, poa.client_id)
@@ -282,6 +327,7 @@ async def activate_poa(
 @router.post("/{poa_id}/send-for-signature")
 async def send_for_signature(
     poa_id: UUID,
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -291,6 +337,7 @@ async def send_for_signature(
     For now it transitions the status so brokers can track pending POAs.
     """
     poa = await _get_or_404(db, poa_id)
+    await assert_user_can_access_client(current_user, poa.client_id)
     if poa.status != POAStatus.DRAFT.value:
         raise HTTPException(
             status_code=422,
@@ -310,16 +357,27 @@ async def send_for_signature(
 async def revoke_poa(
     poa_id: UUID,
     req: POARevokeRequest,
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Revoke an active POA."""
     poa = await _get_or_404(db, poa_id)
+    await assert_user_can_access_client(current_user, poa.client_id)
     if poa.status == POAStatus.REVOKED.value:
         raise HTTPException(status_code=422, detail="POA is already revoked")
     poa.status = POAStatus.REVOKED.value
     poa.revoked_at = datetime.now(timezone.utc)
     poa.revocation_reason = req.reason
     poa.updated_at = datetime.now(timezone.utc)
+    from app.services.audit_service import audit
+    await audit(
+        db,
+        action="revoke_poa",
+        resource_type="power_of_attorney",
+        resource_id=str(poa_id),
+        actor_id=str(current_user.get("id") or current_user.get("email") or "broker"),
+        after={"status": poa.status, "reason": req.reason},
+    )
     await db.commit()
     await db.refresh(poa)
     logger.info("POA %s revoked: %s", poa_id, req.reason)

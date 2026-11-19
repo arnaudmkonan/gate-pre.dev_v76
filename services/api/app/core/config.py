@@ -165,9 +165,21 @@ class Settings(BaseSettings):
     stripe_secret_key: Optional[str] = Field(default=None, alias="STRIPE_SECRET_KEY")
     stripe_webhook_secret: Optional[str] = Field(default=None, alias="STRIPE_WEBHOOK_SECRET")
     stripe_price_id_pilot: Optional[str] = Field(default=None, alias="STRIPE_PRICE_ID_PILOT")
+    storage_callback_secret: Optional[str] = Field(default=None, alias="STORAGE_CALLBACK_SECRET")
 
     # Bind Redis on host loopback only (override for remote dev)
     redis_publish_host: str = Field(default="127.0.0.1", alias="REDIS_PUBLISH_HOST")
+
+    # -------------------------------------------------------------------------
+    # Customs Broker Instance Configuration (White-Label / Single-Tenant Copy)
+    # -------------------------------------------------------------------------
+    broker_name: str = Field(default="Customs Brokerage", alias="BROKER_NAME")
+    broker_filer_code: str = Field(default="", alias="BROKER_FILER_CODE")
+    broker_default_port: str = Field(default="", alias="BROKER_DEFAULT_PORT")
+    cargowise_company_code: str = Field(default="BROKER", alias="CARGOWISE_COMPANY_CODE")
+    cargowise_enterprise_id: str = Field(default="BROKER-CW1", alias="CARGOWISE_ENTERPRISE_ID")
+    # CBP 19 CFR Part 163 requires >= 5 years (1,825 days) of entry recordkeeping; default 7 years.
+    audit_log_retention_days: int = Field(default=2555, alias="AUDIT_LOG_RETENTION_DAYS")
 
     # -------------------------------------------------------------------------
     # Computed / derived properties
@@ -243,6 +255,17 @@ class Settings(BaseSettings):
             logger.warning(
                 "ACE_ALLOW_SIMULATION is enabled in production without ACE_SFTP — "
                 "filings are simulated only (not sent to CBP)."
+            )
+
+        if self.is_production and not self.broker_filer_code.strip():
+            logger.warning(
+                "BROKER_FILER_CODE is not set — configure the broker's 3-character CBP filer code."
+            )
+
+        if self.audit_log_retention_days < 1825:
+            errors.append(
+                f"AUDIT_LOG_RETENTION_DAYS ({self.audit_log_retention_days}) violates CBP 19 CFR Part 163 "
+                "5-year recordkeeping minimum (must be >= 1825)."
             )
 
         if errors:

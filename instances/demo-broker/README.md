@@ -28,9 +28,9 @@
 ## Initial Admin Credentials
 
 - **Email:** admin@demo-broker.com
-- **Password:** f+2ZerzNIb22TpnH
+- **Password:** `<generated-at-provision-time — see secure password vault / .env>`
 
-⚠️ **IMPORTANT:** Change this password after first login!
+⚠️ **IMPORTANT:** Rotate the initial password immediately upon first login!
 
 ## Port Mappings
 

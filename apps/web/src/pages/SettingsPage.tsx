@@ -47,7 +47,7 @@ interface WebhookDelivery {
     delivered_at: string | null
 }
 
-type SettingsTab = 'api-keys' | 'webhooks'
+type SettingsTab = 'broker-profile' | 'api-keys' | 'webhooks'
 
 // ============================================================================
 // Utility
@@ -655,10 +655,143 @@ function WebhooksTab() {
 // Settings Page (Main)
 // ============================================================================
 
+function BrokerProfileTab() {
+    const [profile, setProfile] = useState<Record<string, any> | null>(null)
+    const [loading, setLoading] = useState(true)
+
+    useEffect(() => {
+        apiGet<Record<string, any>>('/api/reference-data/broker-profile')
+            .then((data) => setProfile(data))
+            .catch(() => setProfile(null))
+            .finally(() => setLoading(false))
+    }, [])
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center py-12 text-slate-400">
+                <Loader2 className="w-6 h-6 animate-spin mr-2" />
+                Loading brokerage instance profile...
+            </div>
+        )
+    }
+
+    if (!profile) {
+        return (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
+                Unable to load broker instance profile.
+            </div>
+        )
+    }
+
+    return (
+        <div className="space-y-6">
+            <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                    <div>
+                        <h3 className="text-base font-semibold text-slate-900">Customs Brokerage Identity &amp; Filing Identifiers</h3>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                            Configured via instance `.env` (`BROKER_NAME`, `BROKER_FILER_CODE`, `BROKER_DEFAULT_PORT`, `CARGOWISE_*`)
+                        </p>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200">
+                        Single-Tenant Dedicated Instance
+                    </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-100">
+                        <p className="text-xs text-slate-500">Brokerage Name</p>
+                        <p className="font-semibold text-slate-900 mt-1">{profile.broker_name}</p>
+                    </div>
+                    <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-100">
+                        <p className="text-xs text-slate-500">CBP 3-Character Filer Code</p>
+                        {profile.broker_filer_code ? (
+                            <p className="font-mono font-semibold text-slate-900 mt-1">{profile.broker_filer_code}</p>
+                        ) : (
+                            <p className="text-xs font-medium text-amber-700 mt-1">
+                                Unset — set `BROKER_FILER_CODE` in `.env`
+                            </p>
+                        )}
+                    </div>
+                    <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-100">
+                        <p className="text-xs text-slate-500">Default CBP Port of Entry</p>
+                        <p className="font-mono font-semibold text-slate-900 mt-1">
+                            {profile.broker_default_port || 'Per-Shipment / Per-Client'}
+                        </p>
+                    </div>
+                    <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-100">
+                        <p className="text-xs text-slate-500">CargoWise Company Code</p>
+                        <p className="font-mono font-semibold text-slate-900 mt-1">{profile.cargowise_company_code}</p>
+                    </div>
+                    <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-100">
+                        <p className="text-xs text-slate-500">CargoWise Enterprise ID</p>
+                        <p className="font-mono font-semibold text-slate-900 mt-1">{profile.cargowise_enterprise_id}</p>
+                    </div>
+                    <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-100">
+                        <p className="text-xs text-slate-500">USITC HTS Schedule Loaded</p>
+                        <p className="font-semibold text-slate-900 mt-1">{profile.hts_code_count} subheadings</p>
+                    </div>
+                </div>
+            </div>
+
+            <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-4">
+                <h3 className="text-base font-semibold text-slate-900">Regulatory &amp; Channel Readiness</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div className="flex items-center justify-between p-3.5 rounded-lg bg-slate-50 border border-slate-100">
+                        <div>
+                            <p className="font-medium text-slate-900">19 CFR Part 163 Audit Retention</p>
+                            <p className="text-xs text-slate-500">{profile.audit_log_retention_days} days (~{Math.round(profile.audit_log_retention_days / 365)} years)</p>
+                        </div>
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            {profile.cbp_19_cfr_163_compliant ? 'Compliant (>=5 yrs)' : 'Action Needed'}
+                        </span>
+                    </div>
+                    <div className="flex items-center justify-between p-3.5 rounded-lg bg-slate-50 border border-slate-100">
+                        <div>
+                            <p className="font-medium text-slate-900">CBP ACE Transmission Channel</p>
+                            <p className="text-xs text-slate-500">7501 PDF + CargoWise XML always active</p>
+                        </div>
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200 uppercase">
+                            {String(profile.ace_mode || '').replace('_', ' ')}
+                        </span>
+                    </div>
+                    <div className="flex items-center justify-between p-3.5 rounded-lg bg-slate-50 border border-slate-100">
+                        <div>
+                            <p className="font-medium text-slate-900">Outbound SMTP Notifications</p>
+                            <p className="text-xs text-slate-500">Password resets, invites, missing-doc requests</p>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${
+                            profile.smtp_configured
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : 'bg-amber-50 text-amber-700 border-amber-200'
+                        }`}>
+                            {profile.smtp_configured ? 'Configured' : 'Console Log Mode'}
+                        </span>
+                    </div>
+                    <div className="flex items-center justify-between p-3.5 rounded-lg bg-slate-50 border border-slate-100">
+                        <div>
+                            <p className="font-medium text-slate-900">Shared Broker Inbox (IMAP)</p>
+                            <p className="text-xs text-slate-500">Celery Beat auto-ingest of trade attachments</p>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${
+                            profile.email_imap_configured
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : 'bg-slate-100 text-slate-600 border-slate-200'
+                        }`}>
+                            {profile.email_imap_configured ? 'Active' : 'Optional / Unset'}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    )
+}
+
 export function SettingsPage() {
-    const [activeTab, setActiveTab] = useState<SettingsTab>('api-keys')
+    const [activeTab, setActiveTab] = useState<SettingsTab>('broker-profile')
 
     const tabs: { id: SettingsTab; label: string; icon: React.ElementType; description: string }[] = [
+        { id: 'broker-profile', label: 'Broker Profile', icon: Shield, description: 'Filer code, CargoWise IDs, and 19 CFR 163 posture' },
         { id: 'api-keys', label: 'API Keys', icon: Key, description: 'Manage programmatic access keys for integrations' },
         { id: 'webhooks', label: 'Webhooks', icon: Webhook, description: 'Configure event notifications to external systems' },
     ]
@@ -699,6 +832,7 @@ export function SettingsPage() {
             </div>
 
             {/* Tab content */}
+            {activeTab === 'broker-profile' && <BrokerProfileTab />}
             {activeTab === 'api-keys' && <ApiKeysTab />}
             {activeTab === 'webhooks' && <WebhooksTab />}
         </div>

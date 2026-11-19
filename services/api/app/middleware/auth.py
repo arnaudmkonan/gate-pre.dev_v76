@@ -36,9 +36,9 @@ AUTH_EXEMPT_ROUTES = [
     ("POST", r"^/api/portal/verify-email$"),
     ("POST", r"^/api/portal/resend-verification$"),
     ("POST", r"^/api/billing/stripe/webhook$"),
+    ("POST", r"^/api/callbacks/storage$"),
 
-    # Landing analytics — public
-    ("GET", r"^/api/analytics/landing"),
+    # Landing analytics — POST event ingest is public; GET analytics requires auth
     ("POST", r"^/api/analytics/landing"),
 
     # Lead capture — public
@@ -107,6 +107,24 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                 },
             )
 
+        # Enforce fine-grained scope checks when caller authenticates via X-API-Key
+        if user.get("role") == "api_key":
+            missing_scope = check_api_key_permission(
+                method=method,
+                path=path,
+                permissions=user.get("permissions") or [],
+            )
+            if missing_scope:
+                return JSONResponse(
+                    status_code=403,
+                    content={
+                        "error": {
+                            "code": "INSUFFICIENT_API_KEY_SCOPE",
+                            "message": f"API key lacks required permission: {missing_scope}",
+                        }
+                    },
+                )
+
         # Attach user to request state so route handlers can access it
         request.state.user = user
         return await call_next(request)
@@ -147,3 +165,47 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             logger.error(f"API key validation error: {e}")
 
         return None
+
+
+def check_api_key_permission(method: str, path: str, permissions: list[str]) -> Optional[str]:
+    """
+    Verify an API key's granted permission scopes cover the requested HTTP method and route prefix.
+    Returns None if permitted, or the missing scope name when forbidden.
+    """
+    perms = set(permissions or [])
+    is_read = method.upper() in ("GET", "HEAD", "OPTIONS")
+
+    if path.startswith(("/api/admin", "/api/portal", "/api/leads", "/api/api-keys")):
+        return "broker_session_required"
+
+    if path.startswith("/api/webhooks"):
+        return None if "webhooks:manage" in perms else "webhooks:manage"
+
+    if path.startswith("/api/export"):
+        return None if ("entries:read" in perms or "entries:write" in perms) else "entries:read"
+
+    if path.startswith(("/api/entries", "/api/entry-prep", "/api/isf", "/api/ace")):
+        needed = "entries:read" if is_read else "entries:write"
+        return None if (needed in perms or "entries:write" in perms) else needed
+
+    if path.startswith("/api/shipments"):
+        needed = "shipments:read" if is_read else "shipments:write"
+        return None if (needed in perms or "shipments:write" in perms) else needed
+
+    if path.startswith(("/api/upload", "/api/ingest", "/api/files", "/api/storage", "/api/review")):
+        needed = "documents:read" if is_read else "documents:write"
+        return None if (needed in perms or "documents:write" in perms) else needed
+
+    if path.startswith(("/api/clients", "/api/poa", "/api/billing")):
+        if not is_read:
+            return "broker_session_required"
+        return None if "clients:read" in perms else "clients:read"
+
+    if path.startswith(("/api/compliance", "/api/trade-compliance", "/api/pga", "/api/duty-calculator")):
+        return None if "compliance:read" in perms else "compliance:read"
+
+    if path.startswith("/api/reference-data"):
+        return None if "reference:read" in perms else "reference:read"
+
+    return None if is_read else "broker_session_required"
+

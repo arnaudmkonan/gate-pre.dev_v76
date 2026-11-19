@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { OnboardingWizard } from './OnboardingWizard'
+import { BRAND_NAME, BRAND_SHORT_NAME, BRAND_SUBTITLE } from '../config/brand'
 
 interface AdminLayoutProps {
   children: React.ReactNode
@@ -127,7 +128,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
     <div className="flex h-screen bg-gray-50 flex-col md:flex-row">
       {/* Mobile Top Bar */}
       <div className="md:hidden flex items-center justify-between bg-white border-b border-gray-200 px-4 py-3 shrink-0">
-        <h1 className="text-xl font-bold text-gray-900">GATE</h1>
+        <h1 className="text-xl font-bold text-gray-900">{BRAND_SHORT_NAME}</h1>
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           className="p-2 text-gray-500 hover:text-gray-700 bg-gray-100 rounded-lg"
@@ -143,8 +144,8 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
         absolute md:relative z-20 h-[calc(100vh-60px)] md:h-full top-[60px] md:top-0
       `}>
         <div className="p-6 hidden md:block">
-          <h1 className="text-xl font-bold text-gray-900">GATE Platform</h1>
-          <p className="text-sm text-gray-500 mt-1">Customs Brokerage</p>
+          <h1 className="text-xl font-bold text-gray-900">{BRAND_NAME}</h1>
+          <p className="text-sm text-gray-500 mt-1">{BRAND_SUBTITLE}</p>
         </div>
 
         <nav className="px-4 py-6 md:pb-6 space-y-4">

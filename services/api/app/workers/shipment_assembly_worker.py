@@ -19,6 +19,28 @@ from app.services.shipment_assembly_service import ShipmentAssemblyServiceSync
 logger = logging.getLogger(__name__)
 
 
+def _client_auto_mode(session, client_id: str = "default") -> bool:
+    """Return True when client prefers AUTO assembly; default MANUAL on any prefs failure."""
+    try:
+        pref = session.execute(
+            select(ClientAssemblyPreference).where(
+                ClientAssemblyPreference.client_id == client_id
+            )
+        ).scalar_one_or_none()
+        return bool(pref and pref.assembly_mode == AssemblyMode.AUTO)
+    except Exception as exc:
+        logger.warning(
+            "client_assembly_preferences unavailable for %s (%s); defaulting to manual",
+            client_id,
+            exc,
+        )
+        try:
+            session.rollback()
+        except Exception:
+            pass
+        return False
+
+
 @celery_app.task(bind=True, max_retries=2)
 def process_shipment_assembly(self, document_id: str) -> Dict[str, Any]:
     """
@@ -37,6 +59,15 @@ def process_shipment_assembly(self, document_id: str) -> Dict[str, Any]:
         logger.info(f"Processing shipment assembly for document {document_id}")
         return _run_assembly_sync(document_id)
     except Exception as e:
+        # Missing schema / undefined tables should not endlessly retry and starve ingest.
+        err = str(e).lower()
+        if "does not exist" in err or "undefinedtable" in err:
+            logger.error(
+                "Shipment assembly skipped for %s due to missing schema: %s",
+                document_id,
+                e,
+            )
+            return {"status": "skipped", "error": str(e), "document_id": document_id}
         logger.error(f"Shipment assembly failed for {document_id}: {e}")
         raise self.retry(exc=e, countdown=60)
 
@@ -59,14 +90,7 @@ def process_batch_assembly(self, document_ids: List[str]) -> Dict[str, Any]:
             doc_uuids = [UUID(d) for d in document_ids]
             
             # Get client assembly mode (default to manual)
-            client_id = "default"
-            pref = session.execute(
-                select(ClientAssemblyPreference).where(
-                    ClientAssemblyPreference.client_id == client_id
-                )
-            ).scalar_one_or_none()
-            
-            auto_mode = pref and pref.assembly_mode == AssemblyMode.AUTO
+            auto_mode = _client_auto_mode(session, "default")
             
             # Run assembly
             suggestions = ShipmentAssemblyServiceSync.analyze_and_create_suggestions(
@@ -112,15 +136,8 @@ def _run_assembly_sync(document_id: str) -> Dict[str, Any]:
         if not doc:
             return {"status": "error", "error": "Document not found"}
         
-        # Get client assembly mode
-        client_id = "default"  # Would get from document context
-        pref = session.execute(
-            select(ClientAssemblyPreference).where(
-                ClientAssemblyPreference.client_id == client_id
-            )
-        ).scalar_one_or_none()
-        
-        auto_mode = pref and pref.assembly_mode == AssemblyMode.AUTO
+        # Get client assembly mode (default MANUAL when prefs table/row missing)
+        auto_mode = _client_auto_mode(session, "default")
         
         # Find related documents (within last 30 days, same tenant)
         from datetime import datetime, timedelta, timezone

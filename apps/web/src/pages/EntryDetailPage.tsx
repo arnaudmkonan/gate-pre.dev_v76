@@ -23,6 +23,8 @@ import {
     DollarSign,
     Plus,
     Edit,
+    Trash2,
+    Eye,
     Download,
     Ship,
     Anchor,
@@ -32,6 +34,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '../components/Card'
 import { Button } from '../components/Button'
 import { ACEStatusPanel } from '../components/ACEStatusPanel'
+import { DocumentViewer } from '../components/review/DocumentViewer'
+import { HTSAutocompleteInput } from '../components/HTSAutocompleteInput'
 import { authFetch } from '../lib/authFetch'
 import {
     useEntry,
@@ -63,17 +67,19 @@ const SectionHeader = ({ icon: Icon, title, children }: { icon: any; title: stri
     </div>
 )
 
-// Add Line Modal
+// Add / Edit Line Modal
 const AddLineModal = ({
     isOpen,
     onClose,
-    onAdd,
-    nextLineNumber
+    onSave,
+    nextLineNumber,
+    initialLine,
 }: {
     isOpen: boolean
     onClose: () => void
-    onAdd: (line: AddLineRequest) => void
+    onSave: (line: AddLineRequest) => void
     nextLineNumber: number
+    initialLine?: any | null
 }) => {
     const [formData, setFormData] = useState<AddLineRequest>({
         line_number: nextLineNumber,
@@ -85,28 +91,40 @@ const AddLineModal = ({
     })
 
     useEffect(() => {
-        setFormData(prev => ({ ...prev, line_number: nextLineNumber }))
-    }, [nextLineNumber])
+        if (initialLine) {
+            setFormData({
+                line_number: initialLine.line_number || nextLineNumber,
+                hts_code: initialLine.hts_code || '',
+                product_description: initialLine.product_description || '',
+                country_of_origin: initialLine.country_of_origin || '',
+                entered_value: Number(initialLine.entered_value || 0),
+                quantity_1: Number(initialLine.quantity_1 || 1),
+            })
+        } else {
+            setFormData({
+                line_number: nextLineNumber,
+                hts_code: '',
+                product_description: '',
+                country_of_origin: '',
+                entered_value: 0,
+                quantity_1: 1,
+            })
+        }
+    }, [nextLineNumber, initialLine, isOpen])
 
     if (!isOpen) return null
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
-        onAdd(formData)
-        setFormData({
-            line_number: nextLineNumber + 1,
-            hts_code: '',
-            product_description: '',
-            country_of_origin: '',
-            entered_value: 0,
-            quantity_1: 1,
-        })
+        onSave(formData)
     }
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
-                <h3 className="text-lg font-semibold mb-4">Add Line Item</h3>
+                <h3 className="text-lg font-semibold mb-4">
+                    {initialLine ? `Edit Line #${initialLine.line_number}` : 'Add Line Item'}
+                </h3>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                         <div>
@@ -122,12 +140,17 @@ const AddLineModal = ({
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">HTS Code</label>
-                            <input
-                                type="text"
-                                value={formData.hts_code}
-                                onChange={(e) => setFormData(prev => ({ ...prev, hts_code: e.target.value }))}
-                                placeholder="8471.30.0100"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                            <HTSAutocompleteInput
+                                value={formData.hts_code || ''}
+                                onChange={(code, suggestion) =>
+                                    setFormData(prev => ({
+                                        ...prev,
+                                        hts_code: code,
+                                        product_description:
+                                            prev.product_description || suggestion?.description || '',
+                                    }))
+                                }
+                                placeholder="Search HTS or keyword..."
                             />
                         </div>
                     </div>
@@ -179,8 +202,17 @@ const AddLineModal = ({
                     <div className="flex justify-end gap-3 pt-4 border-t">
                         <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>
                         <Button type="submit">
-                            <Plus className="w-4 h-4 mr-2" />
-                            Add Line
+                            {initialLine ? (
+                                <>
+                                    <Edit className="w-4 h-4 mr-2" />
+                                    Save Line Changes
+                                </>
+                            ) : (
+                                <>
+                                    <Plus className="w-4 h-4 mr-2" />
+                                    Add Line
+                                </>
+                            )}
                         </Button>
                     </div>
                 </form>
@@ -193,9 +225,11 @@ export const EntryDetailPage = () => {
     const { entryId } = useParams<{ entryId: string }>()
     const navigate = useNavigate()
     const { entry, loading, error, refetch } = useEntry(entryId)
-    const { updateEntry, addLine, calculateDuties, validateEntry, loading: actionLoading } = useEntryActions()
+    const { updateEntry, addLine, updateLine, deleteLine, calculateDuties, validateEntry, loading: actionLoading } = useEntryActions()
 
     const [showAddLineModal, setShowAddLineModal] = useState(false)
+    const [editingLine, setEditingLine] = useState<any | null>(null)
+    const [selectedPreviewDocId, setSelectedPreviewDocId] = useState<string | null>(null)
     const [showEditEntryModal, setShowEditEntryModal] = useState(
         typeof window !== 'undefined' && window.location.pathname.endsWith('/edit')
     )
@@ -271,11 +305,28 @@ export const EntryDetailPage = () => {
         setValidationResult(result)
     }
 
-    const handleAddLine = async (lineData: AddLineRequest) => {
+    const handleSaveLine = async (lineData: AddLineRequest) => {
         if (!entryId) return
+        if (editingLine?.id) {
+            const updated = await updateLine(entryId, editingLine.id, lineData)
+            if (updated) {
+                setEditingLine(null)
+                setShowAddLineModal(false)
+                refetch()
+            }
+            return
+        }
         const result = await addLine(entryId, lineData)
         if (result) {
             setShowAddLineModal(false)
+            refetch()
+        }
+    }
+
+    const handleDeleteLine = async (lineId: string) => {
+        if (!entryId) return
+        const ok = await deleteLine(entryId, lineId)
+        if (ok) {
             refetch()
         }
     }
@@ -568,7 +619,13 @@ export const EntryDetailPage = () => {
                             <CardHeader>
                                 <div className="flex items-center justify-between">
                                     <CardTitle>Line Items</CardTitle>
-                                    <Button size="sm" onClick={() => setShowAddLineModal(true)}>
+                                    <Button
+                                        size="sm"
+                                        onClick={() => {
+                                            setEditingLine(null)
+                                            setShowAddLineModal(true)
+                                        }}
+                                    >
                                         <Plus className="w-4 h-4 mr-2" />
                                         Add Line
                                     </Button>
@@ -579,7 +636,13 @@ export const EntryDetailPage = () => {
                                     <div className="text-center py-8">
                                         <Package className="w-10 h-10 text-gray-300 mx-auto mb-3" />
                                         <p className="text-gray-500 mb-3">No line items yet</p>
-                                        <Button size="sm" onClick={() => setShowAddLineModal(true)}>
+                                        <Button
+                                            size="sm"
+                                            onClick={() => {
+                                                setEditingLine(null)
+                                                setShowAddLineModal(true)
+                                            }}
+                                        >
                                             <Plus className="w-4 h-4 mr-2" />
                                             Add First Line
                                         </Button>
@@ -594,13 +657,18 @@ export const EntryDetailPage = () => {
                                                 <th className="py-2 text-sm font-medium text-gray-500">Origin</th>
                                                 <th className="py-2 text-sm font-medium text-gray-500 text-right">Value</th>
                                                 <th className="py-2 text-sm font-medium text-gray-500 text-right">Duty</th>
+                                                <th className="py-2 text-sm font-medium text-gray-500 text-right">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {entry.lines.map(line => (
                                                 <tr key={line.id} className="border-b border-gray-100">
                                                     <td className="py-3">{line.line_number}</td>
-                                                    <td className="py-3 font-mono text-sm">{line.hts_code || '-'}</td>
+                                                    <td className="py-3 font-mono text-sm">
+                                                        {line.hts_code || (
+                                                            <span className="text-amber-600 text-xs font-sans font-medium">Unclassified</span>
+                                                        )}
+                                                    </td>
                                                     <td className="py-3">
                                                         <p className="text-sm truncate max-w-[200px]">{line.product_description || '-'}</p>
                                                         {line.hts_description && (
@@ -622,6 +690,29 @@ export const EntryDetailPage = () => {
                                                             <span className="ml-2 text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">FTA</span>
                                                         )}
                                                     </td>
+                                                    <td className="py-3 text-right">
+                                                        <div className="inline-flex items-center gap-1">
+                                                            <button
+                                                                type="button"
+                                                                title="Edit line item"
+                                                                onClick={() => {
+                                                                    setEditingLine(line)
+                                                                    setShowAddLineModal(true)
+                                                                }}
+                                                                className="p-1.5 text-gray-500 hover:text-blue-600 rounded hover:bg-blue-50"
+                                                            >
+                                                                <Edit className="w-3.5 h-3.5" />
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                title="Delete line item"
+                                                                onClick={() => handleDeleteLine(line.id)}
+                                                                className="p-1.5 text-gray-400 hover:text-red-600 rounded hover:bg-red-50"
+                                                            >
+                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        </div>
+                                                    </td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -630,6 +721,7 @@ export const EntryDetailPage = () => {
                                                 <td colSpan={4} className="py-3 text-right">Total</td>
                                                 <td className="py-3 text-right">{formatCurrency(entry.total_entered_value)}</td>
                                                 <td className="py-3 text-right text-blue-600">{formatCurrency(entry.total_amount_due)}</td>
+                                                <td />
                                             </tr>
                                         </tfoot>
                                     </table>
@@ -674,31 +766,56 @@ export const EntryDetailPage = () => {
                                         <p className="text-gray-500">No documents linked</p>
                                     </div>
                                 ) : (
-                                    <div className="space-y-3">
-                                        {entry.documents.map(doc => (
-                                            <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                                <div className="flex items-center gap-3">
-                                                    <FileText className="w-5 h-5 text-blue-500" />
-                                                    <div>
-                                                        <p className="font-medium">{doc.document_type || 'Source Document'}</p>
-                                                        <p className="text-xs text-gray-500 font-mono">{doc.document_id}</p>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    {doc.is_primary && (
-                                                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">Primary</span>
-                                                    )}
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleDownloadDoc(doc.document_id)}
-                                                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-blue-600 bg-white border border-gray-200 rounded hover:bg-blue-50"
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            {entry.documents.map(doc => {
+                                                const activeDocId = selectedPreviewDocId || entry.documents[0]?.document_id
+                                                const isSelected = activeDocId === doc.document_id
+                                                return (
+                                                    <div
+                                                        key={doc.id}
+                                                        className={`flex items-center justify-between p-3 rounded-lg border ${
+                                                            isSelected ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-transparent'
+                                                        }`}
                                                     >
-                                                        <Download className="w-3.5 h-3.5" />
-                                                        Download
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))}
+                                                        <div className="flex items-center gap-3">
+                                                            <FileText className="w-5 h-5 text-blue-500" />
+                                                            <div>
+                                                                <p className="font-medium">{doc.document_type || 'Source Document'}</p>
+                                                                <p className="text-xs text-gray-500 font-mono">{doc.document_id}</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            {doc.is_primary && (
+                                                                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">Primary</span>
+                                                            )}
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setSelectedPreviewDocId(doc.document_id)}
+                                                                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded hover:bg-gray-100"
+                                                            >
+                                                                <Eye className="w-3.5 h-3.5" />
+                                                                Preview
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleDownloadDoc(doc.document_id)}
+                                                                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-blue-600 bg-white border border-gray-200 rounded hover:bg-blue-50"
+                                                            >
+                                                                <Download className="w-3.5 h-3.5" />
+                                                                Download
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+
+                                        <DocumentViewer
+                                            documentId={selectedPreviewDocId || entry.documents[0]?.document_id}
+                                            filename={`entry_doc_${(selectedPreviewDocId || entry.documents[0]?.document_id || '').slice(0, 8)}.pdf`}
+                                            fileType="pdf"
+                                        />
                                     </div>
                                 )}
                             </CardContent>
@@ -922,12 +1039,16 @@ export const EntryDetailPage = () => {
                 </div>
             </div>
 
-            {/* Add Line Modal */}
+            {/* Add / Edit Line Modal */}
             <AddLineModal
                 isOpen={showAddLineModal}
-                onClose={() => setShowAddLineModal(false)}
-                onAdd={handleAddLine}
+                onClose={() => {
+                    setEditingLine(null)
+                    setShowAddLineModal(false)
+                }}
+                onSave={handleSaveLine}
                 nextLineNumber={nextLineNumber}
+                initialLine={editingLine}
             />
 
             {/* Edit Entry Modal */}

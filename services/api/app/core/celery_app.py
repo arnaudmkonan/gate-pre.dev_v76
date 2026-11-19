@@ -91,6 +91,10 @@ celery_app.conf.update(
             "task": "app.workers.deadline_worker.check_overdue_invoices",
             "schedule": crontab(hour=9, minute=0),  # Daily at 09:00 UTC
         },
+        "monitor-email-inbox": {
+            "task": "email.monitor_inbox",
+            "schedule": float(max(1, settings.email_poll_interval_minutes) * 60),
+        },
     },
 )
 

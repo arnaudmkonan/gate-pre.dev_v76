@@ -44,9 +44,9 @@ import {
     isValidSuretyCode,
 } from '../hooks/useACESettings'
 import { API_BASE } from '../config/api'
+import { useAuth } from '../contexts/AuthContext'
 
-// Hardcoded org ID for demo - in production this would come from auth context
-const DEFAULT_ORG_ID = 'c2a0e8c4-d6b0-4f5e-a8c2-e4f6b0d8c2a4'
+const FALLBACK_INSTANCE_ORG_ID = '00000000-0000-0000-0000-000000000001'
 
 // Add Filer Code Modal
 const AddFilerCodeModal = ({
@@ -259,7 +259,8 @@ const AddFilerCodeModal = ({
 
 export const ACESettingsPage = () => {
     const navigate = useNavigate()
-    const [orgId] = useState(DEFAULT_ORG_ID)
+    const { user } = useAuth()
+    const orgId = user?.client_id || FALLBACK_INSTANCE_ORG_ID
     const { settings, loading, error, refetch } = useACESettings(orgId)
     const {
         loading: actionLoading,

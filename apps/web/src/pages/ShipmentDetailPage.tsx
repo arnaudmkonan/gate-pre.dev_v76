@@ -163,10 +163,79 @@ export const ShipmentDetailPage = () => {
         }
     }
 
+    const handleDownloadIsfAbi = async () => {
+        const isfId = isfData?.id || isfData?.isf_id
+        if (!isfId) return
+        try {
+            const resp = await authFetch(`${API_BASE}/api/isf/${isfId}/abi-message`)
+            if (!resp.ok) throw new Error('Failed to generate ISF-10 ABI file')
+            const data = await resp.json()
+            const abiText = typeof data.abi_message === 'string' ? data.abi_message : JSON.stringify(data, null, 2)
+            const blob = new Blob([abiText], { type: 'text/plain;charset=utf-8' })
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `ISF10_${shipment?.bol_number || String(isfId).slice(0, 8)}.abi`
+            a.click()
+            URL.revokeObjectURL(url)
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to export ISF ABI draft')
+        }
+    }
+
+    const handleDeleteShipment = async () => {
+        if (!shipmentId) return
+        if (!window.confirm('Delete this shipment record? Linked source documents will remain in storage.')) {
+            return
+        }
+        try {
+            const resp = await authFetch(`${API_BASE}/api/shipments/${shipmentId}`, {
+                method: 'DELETE',
+            })
+            if (!resp.ok) {
+                const err = await resp.json().catch(() => ({}))
+                throw new Error(err.detail || 'Failed to delete shipment')
+            }
+            navigate('/shipments/assembly')
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to delete shipment')
+        }
+    }
+
     const handleRequestMissingDocument = async () => {
-        setDocRequestSent(`Requested ${docRequestType.replace(/_/g, ' ')} from importer (${shipment?.importer_name || 'Client'})`)
-        setShowDocRequestModal(false)
-        setDocRequestNote('')
+        if (!shipmentId) return
+        try {
+            const resp = await authFetch(`${API_BASE}/api/shipments/${shipmentId}/request-document`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    doc_type: docRequestType,
+                    note: docRequestNote || undefined,
+                }),
+            })
+            if (resp.ok) {
+                const data = await resp.json()
+                setDocRequestSent(
+                    data.message ||
+                    (data.email_dispatched
+                        ? `Requested ${docRequestType.replace(/_/g, ' ')} from importer (${shipment?.importer_name || 'Client'})`
+                        : `Request recorded but email was not sent — check SMTP / client contact.`)
+                )
+            } else {
+                const err = await resp.json().catch(() => ({}))
+                setDocRequestSent(
+                    err.detail ||
+                    `Failed to request ${docRequestType.replace(/_/g, ' ')} — try again or email the importer manually.`
+                )
+            }
+        } catch {
+            setDocRequestSent(
+                `Failed to request ${docRequestType.replace(/_/g, ' ')} — network error. Email the importer manually.`
+            )
+        } finally {
+            setShowDocRequestModal(false)
+            setDocRequestNote('')
+        }
     }
 
     const getStatusBadge = (status: string) => {
@@ -279,9 +348,21 @@ export const ShipmentDetailPage = () => {
                                 <ShieldCheck className="w-5 h-5 text-blue-600" />
                                 ISF (10+2 Importer Security Filing) Prepared
                             </span>
-                            <span className="text-xs px-2.5 py-0.5 bg-blue-100 text-blue-800 rounded-full uppercase">
-                                {isfData.status || 'Draft'}
-                            </span>
+                            <div className="flex items-center gap-2">
+                                {(isfData.id || isfData.isf_id) && (
+                                    <button
+                                        type="button"
+                                        onClick={handleDownloadIsfAbi}
+                                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-blue-700 bg-white border border-blue-200 rounded hover:bg-blue-100"
+                                    >
+                                        <Download className="w-3.5 h-3.5" />
+                                        Download ISF-10 ABI Draft
+                                    </button>
+                                )}
+                                <span className="text-xs px-2.5 py-0.5 bg-blue-100 text-blue-800 rounded-full uppercase">
+                                    {isfData.status || 'Draft'}
+                                </span>
+                            </div>
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="text-sm text-blue-900 grid grid-cols-4 gap-4">
@@ -602,7 +683,7 @@ export const ShipmentDetailPage = () => {
                                 <CheckCircle className="w-4 h-4 mr-2" />
                                 {creatingEntry ? 'Creating...' : 'Create Official Entry'}
                             </Button>
-                            <Button variant="secondary">
+                            <Button variant="secondary" onClick={handleDeleteShipment}>
                                 <Trash2 className="w-4 h-4 mr-2" />
                                 Delete Shipment
                             </Button>

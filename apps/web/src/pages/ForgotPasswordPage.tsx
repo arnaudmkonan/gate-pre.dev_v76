@@ -6,6 +6,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { API_BASE } from '../config/api';
+import { BRAND_NAME, BRAND_SUBTITLE } from '../config/brand';
 
 export function ForgotPasswordPage() {
     const [email, setEmail] = useState('');
@@ -162,7 +163,7 @@ export function ForgotPasswordPage() {
 
                 {/* Footer */}
                 <p className="mt-8 text-center text-xs text-gray-400">
-                    © 2026 GATE Platform. Customs Brokerage Intelligence.
+                    © 2026 {BRAND_NAME}. {BRAND_SUBTITLE}.
                 </p>
             </div>
         </div>

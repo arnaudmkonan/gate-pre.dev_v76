@@ -32,6 +32,40 @@ from app.schemas.entries import (
     AmendmentChangeRequest, CreateAmendmentRequest, PreviewAmendmentRequest,
 )
 from app.core.auth import get_current_user
+from app.startup.client_access import (
+    assert_user_can_access_client,
+    is_broker_staff,
+    portal_user_client_id,
+)
+
+
+class EntryLineUpdate(BaseModel):
+    line_number: Optional[int] = None
+    hts_code: Optional[str] = None
+    product_description: Optional[str] = None
+    country_of_origin: Optional[str] = None
+    manufacturer_name: Optional[str] = None
+    quantity_1: Optional[float] = None
+    uom_1: Optional[str] = None
+    entered_value: Optional[float] = None
+    fta_code: Optional[str] = None
+from app.startup.client_access import (
+    assert_user_can_access_client,
+    is_broker_staff,
+    portal_user_client_id,
+)
+
+
+class EntryLineUpdate(BaseModel):
+    line_number: Optional[int] = None
+    hts_code: Optional[str] = None
+    product_description: Optional[str] = None
+    country_of_origin: Optional[str] = None
+    manufacturer_name: Optional[str] = None
+    quantity_1: Optional[float] = None
+    uom_1: Optional[str] = None
+    entered_value: Optional[float] = None
+    fta_code: Optional[str] = None
 
 router = APIRouter(prefix="/api/entries", tags=["Entries"], dependencies=[Depends(get_current_user)])
 
@@ -132,13 +166,19 @@ async def list_entries(
     date_to: Optional[datetime] = Query(None, description="End date"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> EntryListResponse:
     """
-    List entries with filtering and pagination.
+    List entries with filtering and pagination (tenant-scoped for external portal users).
     """
     query = select(Entry)
     count_query = select(func.count(Entry.id))
+
+    scoped_client_id = portal_user_client_id(current_user)
+    if scoped_client_id is not None:
+        query = query.where(Entry.client_id == scoped_client_id)
+        count_query = count_query.where(Entry.client_id == scoped_client_id)
     
     # Apply filters
     if status:
@@ -215,10 +255,11 @@ async def list_entries(
 @router.get("/{entry_id}")
 async def get_entry(
     entry_id: str,
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Get entry with all details including lines, parties, and documents.
+    Get entry with all details including lines, parties, and documents (tenant-scoped).
     """
     try:
         entry_uuid = UUID(entry_id)
@@ -239,6 +280,11 @@ async def get_entry(
     
     if not entry:
         raise HTTPException(status_code=404, detail="Entry not found")
+
+    if not is_broker_staff(current_user):
+        if not entry.client_id:
+            raise HTTPException(status_code=403, detail="You do not have access to this entry")
+        await assert_user_can_access_client(current_user, entry.client_id)
     
     return {
         "id": str(entry.id),
@@ -585,6 +631,290 @@ async def get_entry_lines(
             for line in lines
         ],
     }
+
+
+@router.patch("/{entry_id}/lines/{line_id}")
+async def update_entry_line(
+    entry_id: str,
+    line_id: str,
+    request: EntryLineUpdate,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update an existing CBP 7501 line item and recalculate duties + entry totals."""
+    from decimal import Decimal
+    from app.services.entry_prep_service import EntryPrepService
+
+    try:
+        entry_uuid = UUID(entry_id)
+        line_uuid = UUID(line_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid entry or line ID")
+
+    entry_res = await db.execute(
+        select(Entry).options(selectinload(Entry.lines)).where(Entry.id == entry_uuid)
+    )
+    entry = entry_res.scalar_one_or_none()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Entry not found")
+
+    if not is_broker_staff(current_user):
+        if not entry.client_id:
+            raise HTTPException(status_code=403, detail="You do not have access to this entry")
+        await assert_user_can_access_client(current_user, entry.client_id)
+
+    line = next((l for l in entry.lines if l.id == line_uuid), None)
+    if not line:
+        raise HTTPException(status_code=404, detail="Entry line item not found")
+
+    updates = request.model_dump(exclude_unset=True)
+    for field, val in updates.items():
+        if field == "country_of_origin" and val:
+            val = val.strip().upper()[:2]
+        setattr(line, field, val)
+
+    if line.entered_value is not None:
+        line.dutiable_value = line.entered_value
+
+    if line.hts_code and line.entered_value:
+        from app.services.duty_calculator_service import DutyCalculatorService
+        calc = DutyCalculatorService(db)
+        duty_result = await calc.calculate_line_duty(
+            hts_code=line.hts_code,
+            entered_value=float(line.entered_value),
+            quantity=float(line.quantity_1 or 1),
+            country_of_origin=line.country_of_origin or "",
+            fta_code=line.fta_code,
+        )
+        line.duty_rate = float(duty_result.base_duty_rate) if duty_result.base_duty_rate is not None else 0.0
+        line.duty_amount = float(duty_result.base_duty_amount)
+        line.section_301_rate = float(duty_result.section_301_rate) if duty_result.section_301_rate else None
+        line.section_301_duty = float(duty_result.section_301_amount)
+        line.total_line_duty = float(duty_result.total_duty)
+        line.hts_description = duty_result.hts_description
+        line.fta_eligible = duty_result.fta_eligible
+
+    # Recompute header totals + FY2026 MPF/HMF
+    total_val = sum(Decimal(str(l.entered_value or 0)) for l in entry.lines)
+    if total_val > Decimal("0"):
+        mpf = (total_val * Decimal(str(EntryPrepService.MPF_RATE))).quantize(Decimal("0.01"))
+        entry.mpf_amount = max(EntryPrepService.MPF_MIN, min(EntryPrepService.MPF_MAX, mpf))
+        entry.hmf_amount = (total_val * Decimal(str(EntryPrepService.HMF_RATE))).quantize(Decimal("0.01"))
+    else:
+        entry.mpf_amount = Decimal("0")
+        entry.hmf_amount = Decimal("0")
+    entry.calculate_totals()
+
+    await db.commit()
+    await db.refresh(line)
+
+    return {
+        "id": str(line.id),
+        "line_number": line.line_number,
+        "hts_code": line.hts_code,
+        "product_description": line.product_description,
+        "country_of_origin": line.country_of_origin,
+        "quantity_1": float(line.quantity_1) if line.quantity_1 is not None else None,
+        "uom_1": line.uom_1,
+        "entered_value": float(line.entered_value or 0),
+        "duty_amount": float(line.duty_amount or 0),
+        "total_line_duty": float(line.total_line_duty or 0),
+    }
+
+
+@router.delete("/{entry_id}/lines/{line_id}")
+async def delete_entry_line(
+    entry_id: str,
+    line_id: str,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete an entry line item, renumber remaining lines, and recalculate totals."""
+    from decimal import Decimal
+    from app.services.entry_prep_service import EntryPrepService
+
+    try:
+        entry_uuid = UUID(entry_id)
+        line_uuid = UUID(line_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid entry or line ID")
+
+    entry_res = await db.execute(
+        select(Entry).options(selectinload(Entry.lines)).where(Entry.id == entry_uuid)
+    )
+    entry = entry_res.scalar_one_or_none()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Entry not found")
+
+    if not is_broker_staff(current_user):
+        if not entry.client_id:
+            raise HTTPException(status_code=403, detail="You do not have access to this entry")
+        await assert_user_can_access_client(current_user, entry.client_id)
+
+    line = next((l for l in entry.lines if l.id == line_uuid), None)
+    if not line:
+        raise HTTPException(status_code=404, detail="Entry line item not found")
+
+    entry.lines.remove(line)
+    await db.delete(line)
+
+    for idx, remaining in enumerate(sorted(entry.lines, key=lambda x: x.line_number), 1):
+        remaining.line_number = idx
+
+    total_val = sum(Decimal(str(l.entered_value or 0)) for l in entry.lines)
+    if total_val > Decimal("0"):
+        mpf = (total_val * Decimal(str(EntryPrepService.MPF_RATE))).quantize(Decimal("0.01"))
+        entry.mpf_amount = max(EntryPrepService.MPF_MIN, min(EntryPrepService.MPF_MAX, mpf))
+        entry.hmf_amount = (total_val * Decimal(str(EntryPrepService.HMF_RATE))).quantize(Decimal("0.01"))
+    else:
+        entry.mpf_amount = Decimal("0")
+        entry.hmf_amount = Decimal("0")
+    entry.calculate_totals()
+
+    await db.commit()
+    return {"message": "Line item deleted", "entry_id": entry_id, "line_count": entry.line_count}
+
+
+@router.patch("/{entry_id}/lines/{line_id}")
+async def update_entry_line(
+    entry_id: str,
+    line_id: str,
+    request: EntryLineUpdate,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update an existing CBP 7501 line item and recalculate duties + entry totals."""
+    from decimal import Decimal
+    from app.services.entry_prep_service import EntryPrepService
+
+    try:
+        entry_uuid = UUID(entry_id)
+        line_uuid = UUID(line_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid entry or line ID")
+
+    entry_res = await db.execute(
+        select(Entry).options(selectinload(Entry.lines)).where(Entry.id == entry_uuid)
+    )
+    entry = entry_res.scalar_one_or_none()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Entry not found")
+
+    if not is_broker_staff(current_user):
+        if not entry.client_id:
+            raise HTTPException(status_code=403, detail="You do not have access to this entry")
+        await assert_user_can_access_client(current_user, entry.client_id)
+
+    line = next((l for l in entry.lines if l.id == line_uuid), None)
+    if not line:
+        raise HTTPException(status_code=404, detail="Entry line item not found")
+
+    updates = request.model_dump(exclude_unset=True)
+    for field, val in updates.items():
+        if field == "country_of_origin" and val:
+            val = val.strip().upper()[:2]
+        setattr(line, field, val)
+
+    if line.entered_value is not None:
+        line.dutiable_value = line.entered_value
+
+    if line.hts_code and line.entered_value:
+        from app.services.duty_calculator_service import DutyCalculatorService
+        calc = DutyCalculatorService(db)
+        duty_result = await calc.calculate_line_duty(
+            hts_code=line.hts_code,
+            entered_value=float(line.entered_value),
+            quantity=float(line.quantity_1 or 1),
+            country_of_origin=line.country_of_origin or "",
+            fta_code=line.fta_code,
+        )
+        line.duty_rate = float(duty_result.base_duty_rate) if duty_result.base_duty_rate is not None else 0.0
+        line.duty_amount = float(duty_result.base_duty_amount)
+        line.section_301_rate = float(duty_result.section_301_rate) if duty_result.section_301_rate else None
+        line.section_301_duty = float(duty_result.section_301_amount)
+        line.total_line_duty = float(duty_result.total_duty)
+        line.hts_description = duty_result.hts_description
+        line.fta_eligible = duty_result.fta_eligible
+
+    # Recompute header totals + FY2026 MPF/HMF
+    total_val = sum(Decimal(str(l.entered_value or 0)) for l in entry.lines)
+    if total_val > Decimal("0"):
+        mpf = (total_val * Decimal(str(EntryPrepService.MPF_RATE))).quantize(Decimal("0.01"))
+        entry.mpf_amount = max(EntryPrepService.MPF_MIN, min(EntryPrepService.MPF_MAX, mpf))
+        entry.hmf_amount = (total_val * Decimal(str(EntryPrepService.HMF_RATE))).quantize(Decimal("0.01"))
+    else:
+        entry.mpf_amount = Decimal("0")
+        entry.hmf_amount = Decimal("0")
+    entry.calculate_totals()
+
+    await db.commit()
+    await db.refresh(line)
+
+    return {
+        "id": str(line.id),
+        "line_number": line.line_number,
+        "hts_code": line.hts_code,
+        "product_description": line.product_description,
+        "country_of_origin": line.country_of_origin,
+        "quantity_1": float(line.quantity_1) if line.quantity_1 is not None else None,
+        "uom_1": line.uom_1,
+        "entered_value": float(line.entered_value or 0),
+        "duty_amount": float(line.duty_amount or 0),
+        "total_line_duty": float(line.total_line_duty or 0),
+    }
+
+
+@router.delete("/{entry_id}/lines/{line_id}")
+async def delete_entry_line(
+    entry_id: str,
+    line_id: str,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete an entry line item, renumber remaining lines, and recalculate totals."""
+    from decimal import Decimal
+    from app.services.entry_prep_service import EntryPrepService
+
+    try:
+        entry_uuid = UUID(entry_id)
+        line_uuid = UUID(line_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid entry or line ID")
+
+    entry_res = await db.execute(
+        select(Entry).options(selectinload(Entry.lines)).where(Entry.id == entry_uuid)
+    )
+    entry = entry_res.scalar_one_or_none()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Entry not found")
+
+    if not is_broker_staff(current_user):
+        if not entry.client_id:
+            raise HTTPException(status_code=403, detail="You do not have access to this entry")
+        await assert_user_can_access_client(current_user, entry.client_id)
+
+    line = next((l for l in entry.lines if l.id == line_uuid), None)
+    if not line:
+        raise HTTPException(status_code=404, detail="Entry line item not found")
+
+    entry.lines.remove(line)
+    await db.delete(line)
+
+    for idx, remaining in enumerate(sorted(entry.lines, key=lambda x: x.line_number), 1):
+        remaining.line_number = idx
+
+    total_val = sum(Decimal(str(l.entered_value or 0)) for l in entry.lines)
+    if total_val > Decimal("0"):
+        mpf = (total_val * Decimal(str(EntryPrepService.MPF_RATE))).quantize(Decimal("0.01"))
+        entry.mpf_amount = max(EntryPrepService.MPF_MIN, min(EntryPrepService.MPF_MAX, mpf))
+        entry.hmf_amount = (total_val * Decimal(str(EntryPrepService.HMF_RATE))).quantize(Decimal("0.01"))
+    else:
+        entry.mpf_amount = Decimal("0")
+        entry.hmf_amount = Decimal("0")
+    entry.calculate_totals()
+
+    await db.commit()
+    return {"message": "Line item deleted", "entry_id": entry_id, "line_count": entry.line_count}
 
 
 # ==================== Documents ====================
@@ -1785,11 +2115,11 @@ async def file_entry_to_ace(
 ):
     """
     Submit entry to ACE/CBP.
-    
-    Marks entry as filed and generates ACE entry ID.
-    In production, this would transmit to ACE.
+
+    Live SFTP transmits when configured; otherwise marks filed only when
+    ACE_ALLOW_SIMULATION is enabled (demo). Production without either is blocked.
     """
-    from app.services.ace_status_service import ACEStatusService
+    from app.services.ace_status_service import ACEStatusService, ace_live_configured
     
     try:
         entry_uuid = UUID(entry_id)
@@ -1815,14 +2145,27 @@ async def file_entry_to_ace(
     
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
-    
+
+    live = ace_live_configured()
     return {
         **result,
-        "message": "Entry submitted to CBP/ACE",
-        "next_steps": [
-            "Monitor entry status for CBP response",
-            "Entry will be accepted or rejected within 24-48 hours",
-        ],
+        "mode": "live" if live else "simulation",
+        "message": (
+            "Entry submitted to CBP/ACE via live SFTP"
+            if live
+            else "Entry marked filed in SIMULATION mode (not transmitted to CBP)"
+        ),
+        "next_steps": (
+            [
+                "Monitor entry status for CBP response",
+                "Entry will be accepted or rejected within 24-48 hours",
+            ]
+            if live
+            else [
+                "Export ABI/7501 and transmit via your certified ABI software",
+                "Enable ACE_SFTP_* for live filing, or keep ACE_ALLOW_SIMULATION=true for demos only",
+            ]
+        ),
     }
 
 
@@ -1834,8 +2177,7 @@ async def poll_ace_status(
     """
     Poll ACE for status update (simulated).
     
-    In production, this would call the ACE API to check status.
-    For demo purposes, simulates status progression.
+    Blocked in production when ACE_ALLOW_SIMULATION=false and live SFTP is off.
     """
     from app.services.ace_status_service import ACEStatusService
     
@@ -1919,10 +2261,17 @@ async def simulate_ace_response(
     - hold: CBP hold for examination
     - released: Cargo released
     - liquidated: Entry liquidated
+
+    Blocked in production when ACE_ALLOW_SIMULATION=false and live SFTP is off.
     """
     from app.services.ace_status_service import (
-        ACEStatusService, ACEStatus, ACEStatusMessage, ACEMessageType
+        ACEStatusService, ACEStatus, ACEStatusMessage, ACEMessageType,
+        ace_simulation_blocked,
     )
+
+    blocked = ace_simulation_blocked()
+    if blocked:
+        raise HTTPException(status_code=400, detail=blocked)
     
     try:
         entry_uuid = UUID(entry_id)

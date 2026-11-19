@@ -44,20 +44,25 @@ BASE_TEMPLATE = """
 <body>
   <div class="container">
     <div class="header">
-      <h1>GATE Platform</h1>
-      <p>Global Automated Trade Entry</p>
+      <h1>{brand_name}</h1>
+      <p>Customs Brokerage &amp; Trade Compliance</p>
     </div>
     <div class="body">
       {content}
     </div>
     <div class="footer">
-      <p>This email was sent by GATE Platform. Do not reply to this email.</p>
-      <p>&copy; 2026 GATE Platform. All rights reserved.</p>
+      <p>This email was sent by {brand_name}. Do not reply to this email.</p>
+      <p>&copy; 2026 {brand_name}. All rights reserved.</p>
     </div>
   </div>
 </body>
 </html>
 """
+
+
+def _render_email_html(content: str) -> str:
+    brand = (settings.broker_name or "Customs Brokerage").strip()
+    return BASE_TEMPLATE.format(content=content, brand_name=brand)
 
 
 class EmailService:
@@ -156,10 +161,11 @@ class EmailService:
             f"This link expires in 1 hour."
         )
 
+        brand = (settings.broker_name or "Customs Brokerage").strip()
         return await self.send_email(
             to_email=to_email,
-            subject="GATE Platform — Password Reset",
-            html_content=BASE_TEMPLATE.format(content=content),
+            subject=f"{brand} — Password Reset",
+            html_content=_render_email_html(content),
             text_content=text,
         )
 
@@ -169,22 +175,23 @@ class EmailService:
         verify_token: str,
         user_name: Optional[str] = None,
     ) -> bool:
+        brand = (settings.broker_name or "Customs Brokerage").strip()
         verify_url = f"{settings.public_app_url}/verify-email?token={verify_token}"
         greeting = f"Hello {user_name}," if user_name else "Hello,"
         content = f"""
         <p>{greeting}</p>
-        <p>Confirm your email to activate your GATE Platform account:</p>
+        <p>Confirm your email to activate your {brand} account:</p>
         <p style="text-align: center;">
             <a href="{verify_url}" class="btn">Verify Email</a>
         </p>
         <p>Or copy this link:</p>
         <p class="code">{verify_url}</p>
         """
-        text = f"Verify your GATE account:\n{verify_url}\n"
+        text = f"Verify your {brand} account:\n{verify_url}\n"
         return await self.send_email(
             to_email=to_email,
-            subject="GATE Platform — Verify your email",
-            html_content=BASE_TEMPLATE.format(content=content),
+            subject=f"{brand} — Verify your email",
+            html_content=_render_email_html(content),
             text_content=text,
         )
 
@@ -197,15 +204,15 @@ class EmailService:
         invitation_url: Optional[str] = None,
     ) -> bool:
         """Send user invitation email."""
+        brand = (settings.broker_name or "Customs Brokerage").strip()
         if not invitation_url:
-            invitation_url = f"{settings.public_app_url}/accept-invitation?token={invitation_token}"
+            invitation_url = f"{settings.public_app_url}/register?token={invitation_token}"
 
         content = f"""
         <p>Hello,</p>
-        <p><strong>{inviter_name}</strong> has invited you to join <strong>{client_name}</strong> on the GATE Platform.</p>
+        <p><strong>{inviter_name}</strong> has invited you to join <strong>{client_name}</strong> on {brand}.</p>
         <div class="info-box">
-            <strong>GATE Platform</strong> is a trade compliance and customs entry management system
-            that streamlines document processing, duty calculation, and CBP filing.
+            <strong>{brand}</strong> streamlines trade document intake, duty calculation, and customs entry preparation.
         </div>
         <p style="text-align: center;">
             <a href="{invitation_url}" class="btn">Accept Invitation</a>
@@ -215,7 +222,7 @@ class EmailService:
         """
 
         text = (
-            f"You've been invited to GATE Platform\n\n"
+            f"You've been invited to {brand}\n\n"
             f"{inviter_name} has invited you to join {client_name}.\n"
             f"Accept here: {invitation_url}\n\n"
             f"This invitation expires in 7 days."
@@ -223,8 +230,8 @@ class EmailService:
 
         return await self.send_email(
             to_email=to_email,
-            subject=f"GATE Platform — Invitation from {client_name}",
-            html_content=BASE_TEMPLATE.format(content=content),
+            subject=f"{brand} — Invitation from {client_name}",
+            html_content=_render_email_html(content),
             text_content=text,
         )
 
@@ -265,10 +272,11 @@ class EmailService:
             f"{f'Notes: {notes}' if notes else ''}"
         )
 
+        brand = (settings.broker_name or "Customs Brokerage").strip()
         return await self.send_email(
             to_email=to_email,
-            subject=f"GATE — Entry {entry_number}: {new_status.upper()}",
-            html_content=BASE_TEMPLATE.format(content=content),
+            subject=f"{brand} — Entry {entry_number}: {new_status.upper()}",
+            html_content=_render_email_html(content),
             text_content=text,
         )
 
@@ -282,12 +290,13 @@ class EmailService:
         upload_url: Optional[str] = None,
     ) -> bool:
         """Send document request to client."""
+        brand = (settings.broker_name or "Customs Brokerage").strip()
         doc_list = "".join(f"<li>{dt}</li>" for dt in document_types)
 
         content = f"""
         <p>Hello,</p>
         <p><strong>{requester_name}</strong> has requested the following documents
-        {f'for entry <strong>{entry_number}</strong>' if entry_number else ''}:</p>
+        {f'for shipment/entry <strong>{entry_number}</strong>' if entry_number else ''}:</p>
         <ul>{doc_list}</ul>
         {f'<div class="info-box"><p>{message}</p></div>' if message else ''}
         {f'<p style="text-align:center;"><a href="{upload_url}" class="btn">Upload Documents</a></p>' if upload_url else ''}
@@ -296,14 +305,14 @@ class EmailService:
         text = (
             f"Document Request from {requester_name}\n\n"
             f"Documents needed: {', '.join(document_types)}\n"
-            f"{f'For entry: {entry_number}' if entry_number else ''}\n"
+            f"{f'For shipment/entry: {entry_number}' if entry_number else ''}\n"
             f"{f'Message: {message}' if message else ''}"
         )
 
         return await self.send_email(
             to_email=to_email,
-            subject=f"GATE — Document Request{f' for {entry_number}' if entry_number else ''}",
-            html_content=BASE_TEMPLATE.format(content=content),
+            subject=f"{brand} — Document Request{f' for {entry_number}' if entry_number else ''}",
+            html_content=_render_email_html(content),
             text_content=text,
         )
 
@@ -315,6 +324,7 @@ class EmailService:
         details: Optional[str] = None,
     ) -> bool:
         """Send compliance alert notification."""
+        brand = (settings.broker_name or "Customs Brokerage").strip()
         content = f"""
         <p>Hello,</p>
         <p>A compliance alert has been triggered:</p>
@@ -334,8 +344,8 @@ class EmailService:
 
         return await self.send_email(
             to_email=to_email,
-            subject=f"⚠️ GATE — Compliance Alert: {alert_type}",
-            html_content=BASE_TEMPLATE.format(content=content),
+            subject=f"{brand} — Compliance Alert: {alert_type}",
+            html_content=_render_email_html(content),
             text_content=text,
         )
 

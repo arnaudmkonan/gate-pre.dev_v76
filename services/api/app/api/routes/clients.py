@@ -22,6 +22,11 @@ from app.models.client import (
     ClientStatus, ClientType, BondType, ContactType
 )
 from app.core.auth import get_current_user
+from app.startup.client_access import (
+    is_broker_staff,
+    portal_user_client_id,
+    require_client_scope,
+)
 
 router = APIRouter(prefix="/api/clients", tags=["Clients"], dependencies=[Depends(get_current_user)])
 
@@ -172,18 +177,17 @@ class ClientSettingsUpdate(BaseModel):
 @router.post("", status_code=201)
 async def create_client(
     client_data: ClientCreate,
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Create a new importer client.
-    
-    Required:
-    - name: Company name
-    
-    Important fields:
-    - ior_number: Importer of Record number (XX-XXXXXXX format)
-    - ein: Employer ID Number
+    Create a new importer client (brokerage staff only).
     """
+    if not is_broker_staff(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only brokerage staff may onboard new importer clients",
+        )
     # Check for duplicate IOR/EIN
     if client_data.ior_number:
         existing = await db.execute(
@@ -250,12 +254,16 @@ async def list_clients(
     search: Optional[str] = Query(None, description="Search by name, IOR, or EIN"),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    List all clients with optional filtering.
+    List importer clients (brokerage staff see all; external portal users see only their own client).
     """
     query = select(Client)
+    scoped_client_id = portal_user_client_id(current_user)
+    if scoped_client_id is not None:
+        query = query.where(Client.id == scoped_client_id)
     
     if status:
         query = query.where(Client.status == status)
@@ -338,19 +346,14 @@ async def extract_client_fields_from_pdf(
 
 @router.get("/{client_id}")
 async def get_client(
-    client_id: str,
+    client_uuid: UUID = Depends(require_client_scope),
     include_contacts: bool = Query(True, description="Include contacts"),
     include_bonds: bool = Query(True, description="Include bonds"),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Get detailed client information.
+    Get detailed client information (tenant-scoped).
     """
-    try:
-        client_uuid = UUID(client_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid client ID format")
-    
     query = select(Client).where(Client.id == client_uuid)
     
     if include_contacts:
@@ -484,18 +487,13 @@ async def get_client(
 
 @router.patch("/{client_id}")
 async def update_client(
-    client_id: str,
     updates: ClientUpdate,
+    client_uuid: UUID = Depends(require_client_scope),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Update client information.
+    Update client information (tenant-scoped).
     """
-    try:
-        client_uuid = UUID(client_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid client ID format")
-    
     result = await db.execute(select(Client).where(Client.id == client_uuid))
     client = result.scalar_one_or_none()
     
@@ -524,17 +522,15 @@ async def update_client(
 
 @router.delete("/{client_id}")
 async def delete_client(
-    client_id: str,
+    client_uuid: UUID = Depends(require_client_scope),
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Delete a client (soft delete by setting status to terminated).
+    Delete a client (brokerage staff only; soft delete by setting status to terminated).
     """
-    try:
-        client_uuid = UUID(client_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid client ID format")
-    
+    if not is_broker_staff(current_user):
+        raise HTTPException(status_code=403, detail="Only brokerage staff may terminate client accounts")
     result = await db.execute(select(Client).where(Client.id == client_uuid))
     client = result.scalar_one_or_none()
     
@@ -554,18 +550,13 @@ async def delete_client(
 
 @router.post("/{client_id}/contacts", status_code=201)
 async def add_contact(
-    client_id: str,
     contact_data: ContactCreate,
+    client_uuid: UUID = Depends(require_client_scope),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Add a contact to a client.
+    Add a contact to a client (tenant-scoped).
     """
-    try:
-        client_uuid = UUID(client_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid client ID format")
-    
     # Verify client exists
     result = await db.execute(select(Client).where(Client.id == client_uuid))
     if not result.scalar_one_or_none():
@@ -590,17 +581,12 @@ async def add_contact(
 
 @router.get("/{client_id}/contacts")
 async def list_contacts(
-    client_id: str,
+    client_uuid: UUID = Depends(require_client_scope),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    List all contacts for a client.
+    List all contacts for a client (tenant-scoped).
     """
-    try:
-        client_uuid = UUID(client_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid client ID format")
-    
     result = await db.execute(
         select(ClientContact)
         .where(ClientContact.client_id == client_uuid)
@@ -633,18 +619,13 @@ async def list_contacts(
 
 @router.post("/{client_id}/bonds", status_code=201)
 async def add_bond(
-    client_id: str,
     bond_data: BondCreate,
+    client_uuid: UUID = Depends(require_client_scope),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Add a customs bond to a client.
+    Add a customs bond to a client (tenant-scoped).
     """
-    try:
-        client_uuid = UUID(client_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid client ID format")
-    
     # Verify client exists
     result = await db.execute(select(Client).where(Client.id == client_uuid))
     if not result.scalar_one_or_none():
@@ -670,18 +651,13 @@ async def add_bond(
 
 @router.get("/{client_id}/bonds")
 async def list_bonds(
-    client_id: str,
+    client_uuid: UUID = Depends(require_client_scope),
     active_only: bool = Query(False, description="Show only active bonds"),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    List all bonds for a client.
+    List all bonds for a client (tenant-scoped).
     """
-    try:
-        client_uuid = UUID(client_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid client ID format")
-    
     query = select(ClientBond).where(ClientBond.client_id == client_uuid)
     
     if active_only:
@@ -720,17 +696,12 @@ async def list_bonds(
 
 @router.get("/{client_id}/settings")
 async def get_settings(
-    client_id: str,
+    client_uuid: UUID = Depends(require_client_scope),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Get client settings.
+    Get client settings (tenant-scoped).
     """
-    try:
-        client_uuid = UUID(client_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid client ID format")
-    
     result = await db.execute(
         select(ClientSettings).where(ClientSettings.client_id == client_uuid)
     )
@@ -772,18 +743,13 @@ async def get_settings(
 
 @router.patch("/{client_id}/settings")
 async def update_settings(
-    client_id: str,
     updates: ClientSettingsUpdate,
+    client_uuid: UUID = Depends(require_client_scope),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Update client settings.
+    Update client settings (tenant-scoped).
     """
-    try:
-        client_uuid = UUID(client_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid client ID format")
-    
     result = await db.execute(
         select(ClientSettings).where(ClientSettings.client_id == client_uuid)
     )
@@ -808,17 +774,12 @@ async def update_settings(
 
 @router.get("/{client_id}/stats")
 async def get_client_stats(
-    client_id: str,
+    client_uuid: UUID = Depends(require_client_scope),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Get statistics for a client's entries.
+    Get statistics for a client's entries (tenant-scoped).
     """
-    try:
-        client_uuid = UUID(client_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid client ID format")
-    
     # Verify client exists
     result = await db.execute(select(Client).where(Client.id == client_uuid))
     client = result.scalar_one_or_none()

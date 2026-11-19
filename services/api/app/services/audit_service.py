@@ -13,15 +13,14 @@ from app.models.audit_log import AuditLog, ResourceType, AuditAction
 logger = logging.getLogger(__name__)
 
 # ============================================================================
-# AUDIT LOG RETENTION POLICY
+# AUDIT LOG RETENTION POLICY (19 CFR Part 163 — CBP 5-Year Recordkeeping)
 # ============================================================================
-# 180-day retention: Audit logs are automatically cleaned up after 180 days.
-# This policy balances compliance requirements with storage efficiency.
-# Logs older than 180 days are deleted to maintain database performance and
-# reduce storage costs while preserving recent audit trails for investigations.
-# The cleanup_old_logs() function should be called daily via a scheduled task.
+# Customs brokers must retain entry-related records and audit trails for at
+# least 5 years (1,825 days) from date of entry (19 CFR 163.4). Default is
+# 2,555 days (~7 years), configurable via AUDIT_LOG_RETENTION_DAYS (>= 1825).
 # ============================================================================
-AUDIT_LOG_RETENTION_DAYS = 180
+from app.core.config import settings as _audit_settings
+AUDIT_LOG_RETENTION_DAYS = max(1825, getattr(_audit_settings, "audit_log_retention_days", 2555))
 
 
 class AuditService:

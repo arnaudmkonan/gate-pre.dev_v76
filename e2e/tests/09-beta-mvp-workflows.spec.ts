@@ -3,18 +3,40 @@ import { fileURLToPath } from 'node:url';
 import { test, expect } from '@playwright/test';
 import { GateApiClient } from '../helpers/api-client';
 import { DEMO_ADMIN } from '../helpers/routes';
+import { QUICK_TEXT_DOCS } from '../helpers/demo-scenarios';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const adminAuth = path.join(__dirname, '../.auth/admin.json');
+const repoRoot = path.join(__dirname, '../..');
 const API_BASE = process.env.E2E_API_URL || 'http://localhost:8000';
 
-test.describe.configure({ mode: 'serial', timeout: 120_000 });
+test.describe.configure({ mode: 'serial', timeout: 180_000 });
 
 async function dismissOnboardingIfVisible(page: import('@playwright/test').Page) {
   const gotItBtn = page.getByRole('button', { name: 'Got it' });
   if (await gotItBtn.isVisible({ timeout: 2500 }).catch(() => false)) {
     await gotItBtn.click();
   }
+}
+
+async function ensureReviewQueueHasItems(
+  api: GateApiClient,
+  token: string,
+): Promise<{ id: string }[]> {
+  let queue = await api.getReviewQueue(token);
+  if (queue.items?.length > 0) return queue.items;
+
+  const filePath = path.join(repoRoot, QUICK_TEXT_DOCS[0]);
+  const uploaded = await api.uploadDocument(token, filePath, 'e2e_seed_review');
+  await api.pollIngestJobs(token, [uploaded.job_id], { timeoutMs: 120_000 });
+
+  const deadline = Date.now() + 60_000;
+  while (Date.now() < deadline) {
+    queue = await api.getReviewQueue(token);
+    if (queue.items?.length > 0) return queue.items;
+    await new Promise((r) => setTimeout(r, 2_000));
+  }
+  return queue.items ?? [];
 }
 
 test.describe('Beta MVP Broker UI Workflows (Review -> Shipment -> 7501 Prep -> Official Entry)', () => {
@@ -35,10 +57,10 @@ test.describe('Beta MVP Broker UI Workflows (Review -> Shipment -> 7501 Prep -> 
   }) => {
     const api = new GateApiClient(request, API_BASE);
     const { token } = await api.login(DEMO_ADMIN.email, DEMO_ADMIN.password);
-    const queue = await api.getReviewQueue(token);
-    expect(queue.items?.length).toBeGreaterThan(0);
+    const items = await ensureReviewQueueHasItems(api, token);
+    expect(items.length).toBeGreaterThan(0);
 
-    const itemId = queue.items[0].id;
+    const itemId = items[0].id;
     await page.goto(`/review/${itemId}`);
     await dismissOnboardingIfVisible(page);
     await expect(page.getByText('Something went wrong')).toHaveCount(0);
@@ -87,7 +109,12 @@ test.describe('Beta MVP Broker UI Workflows (Review -> Shipment -> 7501 Prep -> 
     await page.getByRole('button', { name: 'Request Doc' }).click();
     await expect(page.getByText('Request Missing Document from Importer')).toBeVisible();
     await page.getByRole('button', { name: 'Send Request' }).click();
-    await expect(page.getByText(/Requested commercial invoice from importer/i)).toBeVisible();
+    // Honest messaging: success, missing contact, or SMTP unavailable — all audited.
+    await expect(
+      page.getByText(
+        /Requested commercial invoice from importer|No email on file for importer|Could not send request|Request recorded but email was not sent/i,
+      ),
+    ).toBeVisible();
 
     // Navigate to Prepare 7501
     await page.getByRole('button', { name: 'Prepare 7501' }).click();

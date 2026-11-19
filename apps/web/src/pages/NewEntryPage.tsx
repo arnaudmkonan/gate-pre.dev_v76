@@ -30,6 +30,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '../components/Card'
 import { Button } from '../components/Button'
 import { Input } from '../components/Input'
+import { HTSAutocompleteInput } from '../components/HTSAutocompleteInput'
 import { useEntryActions, ENTRY_TYPES } from '../hooks/useEntries'
 import { useClients, ClientListItem } from '../hooks/useClients'
 
@@ -697,10 +698,15 @@ export const NewEntryPage = () => {
                                         <div className="grid grid-cols-4 gap-3">
                                             <div>
                                                 <label className="block text-xs font-medium text-gray-500 mb-1">HTS Code *</label>
-                                                <Input
+                                                <HTSAutocompleteInput
                                                     value={item.hts_code}
-                                                    onChange={(e) => updateLineItem(item.id, 'hts_code', e.target.value)}
-                                                    placeholder="0000.00.0000"
+                                                    onChange={(code, suggestion) => {
+                                                        updateLineItem(item.id, 'hts_code', code)
+                                                        if (suggestion && !item.description) {
+                                                            updateLineItem(item.id, 'description', suggestion.description)
+                                                        }
+                                                    }}
+                                                    placeholder="Search HTS..."
                                                 />
                                             </div>
                                             <div className="col-span-2">

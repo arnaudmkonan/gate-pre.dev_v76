@@ -17,7 +17,11 @@ from app.core.database import get_db
 from app.core.auth import get_current_user
 
 
-router = APIRouter(prefix="/api/isf", tags=["ISF (10+2, dependencies=[Depends(get_current_user)])"])
+router = APIRouter(
+    prefix="/api/isf",
+    tags=["ISF (10+2)"],
+    dependencies=[Depends(get_current_user)],
+)
 
 
 # ==================== Request/Response Models ====================

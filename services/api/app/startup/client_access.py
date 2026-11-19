@@ -13,12 +13,17 @@ from app.models.client_portal import ClientUserRole
 
 
 def is_broker_admin(user: dict) -> bool:
-    return user.get("role") == ClientUserRole.ADMIN.value
+    return user.get("role") in (ClientUserRole.ADMIN.value, "broker_admin")
+
+
+def is_broker_staff(user: dict) -> bool:
+    """True for brokerage admins and entry writers (cross-importer access)."""
+    return is_broker_admin(user) or user.get("role") == ClientUserRole.BROKER_STAFF.value
 
 
 def portal_user_client_id(user: dict) -> Optional[UUID]:
-    """Client UUID for non-admin portal users, or None for broker admins."""
-    if is_broker_admin(user):
+    """Client UUID for importer-scoped portal users, or None for brokerage staff."""
+    if is_broker_staff(user):
         return None
     raw = user.get("client_id")
     if not raw:
@@ -36,8 +41,8 @@ async def assert_user_can_access_client(
     user: dict,
     client_id: UUID,
 ) -> None:
-    """Portal admins may access any client; others only their own client_id."""
-    if is_broker_admin(user):
+    """Brokerage staff may access any client; importer portal users only their own client_id."""
+    if is_broker_staff(user):
         return
     user_client = user.get("client_id")
     if not user_client or str(client_id) != str(user_client):

@@ -18,6 +18,31 @@ from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from app.models.entry import Entry, EntryStatus, EntryStatusHistory
 
 
+def ace_live_configured() -> bool:
+    """True when ACE SFTP host is enabled for live CBP transmission."""
+    from app.core.config import settings
+
+    return bool(settings.ace_sftp_enabled and (settings.ace_sftp_host or "").strip())
+
+
+def ace_simulation_blocked() -> Optional[str]:
+    """
+    Return an error message when simulated ACE filing/status must be blocked.
+
+    Production instances without live ACE SFTP and with ACE_ALLOW_SIMULATION=false
+    must not mark entries filed or advance fake CBP statuses.
+    """
+    from app.core.config import settings
+
+    if settings.is_production and not ace_live_configured() and not settings.ace_allow_simulation:
+        return (
+            "Direct CBP ACE transmission is not configured on this instance "
+            "(ACE_SFTP_ENABLED=false and ACE_ALLOW_SIMULATION=false). "
+            "Export the ABI/7501 draft and transmit via your certified ABI software."
+        )
+    return None
+
+
 class ACEStatus(str, Enum):
     """Status values from ACE/CBP."""
     PENDING = "pending"  # Transmission pending
@@ -285,6 +310,10 @@ class ACEStatusService:
         In production, this would call the actual ACE API.
         For demo, simulates status progression.
         """
+        blocked = ace_simulation_blocked()
+        if blocked:
+            return {"error": blocked, "mode": "blocked"}
+
         query = select(Entry).where(Entry.id == entry_id)
         result = await self.db.execute(query)
         entry = result.scalar_one_or_none()
@@ -319,7 +348,11 @@ class ACEStatusService:
         }
     
     async def mark_filed(self, entry_id: UUID, ace_entry_id: str = None) -> Dict[str, Any]:
-        """Mark entry as filed to CBP."""
+        """Mark entry as filed to CBP (live or explicitly allowed simulation)."""
+        blocked = ace_simulation_blocked()
+        if blocked and not ace_entry_id:
+            return {"error": blocked, "mode": "blocked"}
+
         query = select(Entry).where(Entry.id == entry_id)
         result = await self.db.execute(query)
         entry = result.scalar_one_or_none()
@@ -328,6 +361,7 @@ class ACEStatusService:
             return {"error": "Entry not found"}
         
         previous_status = entry.status
+        live = ace_live_configured()
         
         # Update entry
         entry.status = EntryStatus.FILED.value
@@ -337,16 +371,18 @@ class ACEStatusService:
         if ace_entry_id:
             entry.ace_entry_id = ace_entry_id
         else:
-            # Generate simulated ACE entry ID
-            entry.ace_entry_id = f"ACE-{entry.entry_number or ''}-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+            # Prefix simulated IDs so brokers never confuse them with live ACE refs
+            prefix = "ACE" if live else "SIM-ACE"
+            entry.ace_entry_id = f"{prefix}-{entry.entry_number or ''}-{datetime.now().strftime('%Y%m%d%H%M%S')}"
         
+        filing_mode = "live" if live else "simulation"
         # Create history record
         history = EntryStatusHistory(
             entry_id=entry_id,
             from_status=previous_status,
             to_status=EntryStatus.FILED.value,
             changed_by="System",
-            reason=f"Entry filed to CBP with ACE ID: {entry.ace_entry_id}",
+            reason=f"Entry filed ({filing_mode}) with ACE ID: {entry.ace_entry_id}",
         )
         self.db.add(history)
         

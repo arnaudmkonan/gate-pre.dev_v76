@@ -38,6 +38,7 @@ import {
     formatRelativeTime,
     ACE_STATUS_CONFIG,
 } from '../hooks/useACEStatus'
+import { ENABLE_ACE_SIMULATION } from '../config/brand'
 
 interface ACEStatusPanelProps {
     entryId: string
@@ -327,20 +328,22 @@ export const ACEStatusPanel = ({ entryId, onStatusChange }: ACEStatusPanelProps)
                         </Button>
                     )}
 
-                    {/* Simulate button for testing */}
-                    <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => setShowSimulate(!showSimulate)}
-                        className="ml-auto"
-                    >
-                        <Zap className="w-4 h-4 mr-1" />
-                        Simulate
-                    </Button>
+                    {/* Simulate button gated for dev/sandbox only */}
+                    {ENABLE_ACE_SIMULATION && (
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => setShowSimulate(!showSimulate)}
+                            className="ml-auto"
+                        >
+                            <Zap className="w-4 h-4 mr-1" />
+                            Simulate
+                        </Button>
+                    )}
                 </div>
 
                 {/* Simulate Panel */}
-                {showSimulate && (
+                {ENABLE_ACE_SIMULATION && showSimulate && (
                     <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                         <p className="text-sm font-medium text-gray-700 mb-3">Simulate ACE Response:</p>
                         <div className="flex flex-wrap gap-2">

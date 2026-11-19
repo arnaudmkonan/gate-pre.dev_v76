@@ -1,0 +1,25 @@
+PROPRIETARY COMMERCIAL SOFTWARE LICENSE (SINGLE-INSTANCE DEPLOYMENT)
+
+Copyright (c) 2026 GATE Platform / Licensor. All Rights Reserved.
+
+1. GRANT OF LICENSE
+Subject to payment of applicable license/implementation fees and execution of a
+written Order Form or Pilot Agreement, Licensor grants Customer (a licensed
+customs brokerage) a non-exclusive, non-transferable, non-sublicensable license
+to deploy and operate one (1) dedicated instance of the Software solely for
+Customer's internal customs brokerage operations.
+
+2. RESTRICTIONS
+Customer shall NOT:
+  (a) sell, lease, sublicense, redistribute, host as a multi-broker SaaS, or
+      otherwise transfer copies of the Software or container images to any
+      third party;
+  (b) remove or alter proprietary notices; or
+  (c) use the Software to transmit live regulatory filings without Customer's
+      independent licensed customs broker review and "reasonable care"
+      verification under 19 U.S.C. § 1641 and 19 CFR Part 111.
+
+3. COMPLIANCE DISCLAIMER
+All extracted trade fields, advisory HTS duty calculations, PGA flags, CBP Form
+7501/3461 drafts, and CargoWise XML exports are decision-support work products
+subject to verification by a licensed customs broker prior to CBP submission.

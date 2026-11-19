@@ -6,6 +6,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { BRAND_NAME, BRAND_SHORT_NAME, BRAND_SUBTITLE, ENABLE_DEMO_LOGIN } from '../config/brand';
 
 export function LoginPage() {
     const [email, setEmail] = useState('');
@@ -59,10 +60,10 @@ export function LoginPage() {
                 </div>
 
                 <h2 className="mt-6 text-center text-3xl font-extrabold text-white">
-                    GATE Platform
+                    {BRAND_NAME}
                 </h2>
                 <p className="mt-2 text-center text-sm text-gray-300">
-                    Global Automated Trade Entry
+                    {BRAND_SUBTITLE}
                 </p>
             </div>
 
@@ -76,32 +77,34 @@ export function LoginPage() {
                             </div>
                         )}
 
-                        {/* Demo Accounts */}
-                        <div className="bg-blue-900/40 border border-blue-500/30 rounded-lg p-3 mb-2">
-                            <p className="text-xs text-blue-200 mb-2 font-medium uppercase tracking-wider">Demo Accounts</p>
-                            <div className="flex gap-2">
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setEmail('admin@example.com');
-                                        setPassword('adminpassword');
-                                    }}
-                                    className="text-xs px-3 py-1.5 bg-blue-500/20 hover:bg-blue-500/40 text-blue-100 rounded transition-colors"
-                                >
-                                    Admin User
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setEmail('demo@example.com');
-                                        setPassword('demopassword');
-                                    }}
-                                    className="text-xs px-3 py-1.5 bg-blue-500/20 hover:bg-blue-500/40 text-blue-100 rounded transition-colors"
-                                >
-                                    Standard User
-                                </button>
+                        {/* Demo Accounts (only rendered when ENABLE_DEMO_LOGIN is active) */}
+                        {ENABLE_DEMO_LOGIN && (
+                            <div className="bg-blue-900/40 border border-blue-500/30 rounded-lg p-3 mb-2">
+                                <p className="text-xs text-blue-200 mb-2 font-medium uppercase tracking-wider">Demo Accounts</p>
+                                <div className="flex gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setEmail('admin@example.com');
+                                            setPassword('adminpassword');
+                                        }}
+                                        className="text-xs px-3 py-1.5 bg-blue-500/20 hover:bg-blue-500/40 text-blue-100 rounded transition-colors"
+                                    >
+                                        Admin User
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setEmail('demo@example.com');
+                                            setPassword('demopassword');
+                                        }}
+                                        className="text-xs px-3 py-1.5 bg-blue-500/20 hover:bg-blue-500/40 text-blue-100 rounded transition-colors"
+                                    >
+                                        Standard User
+                                    </button>
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         {/* Email field */}
                         <div>
@@ -212,7 +215,7 @@ export function LoginPage() {
                                 <div className="w-full border-t border-white/20"></div>
                             </div>
                             <div className="relative flex justify-center text-sm">
-                                <span className="px-2 bg-transparent text-gray-400">New to GATE?</span>
+                                <span className="px-2 bg-transparent text-gray-400">New to {BRAND_SHORT_NAME}?</span>
                             </div>
                         </div>
 
@@ -229,7 +232,7 @@ export function LoginPage() {
 
                 {/* Footer */}
                 <p className="mt-8 text-center text-xs text-gray-400">
-                    © 2026 GATE Platform. Customs Brokerage Intelligence.
+                    © 2026 {BRAND_NAME}. {BRAND_SUBTITLE}.
                 </p>
             </div>
         </div>

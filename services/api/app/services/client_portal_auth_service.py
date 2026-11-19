@@ -164,6 +164,9 @@ class ClientPortalAuthService:
             else:
                 raise ValueError("Invitation is no longer valid")
         
+        if len(password) < 8:
+            raise ValueError("Password must be at least 8 characters long")
+
         # Create user
         user = ClientUser(
             email=invitation.email,
@@ -234,6 +237,10 @@ class ClientPortalAuthService:
 
         if not user.verify_password(password):
             raise ValueError("Invalid email or password")
+
+        # Transparently upgrade legacy SHA-256 password hash to scrypt
+        if user.needs_password_rehash:
+            user.set_password(password)
         
         # Update login stats
         user.last_login_at = datetime.now(timezone.utc)
@@ -341,6 +348,8 @@ class ClientPortalAuthService:
     
     async def reset_password(self, token: str, new_password: str) -> ClientUser:
         """Reset password using token."""
+        if len(new_password) < 8:
+            raise ValueError("Password must be at least 8 characters long")
         query = select(ClientUser).where(
             and_(
                 ClientUser.reset_token == token,
@@ -372,6 +381,8 @@ class ClientPortalAuthService:
         new_password: str,
     ) -> ClientUser:
         """Change password (requires current password)."""
+        if len(new_password) < 8:
+            raise ValueError("New password must be at least 8 characters long")
         user = await self.get_user(user_id)
         
         if not user:
@@ -426,16 +437,20 @@ class ClientPortalAuthService:
         self,
         user_id: UUID,
         data: Dict[str, Any],
+        *,
+        allow_privileged_fields: bool = False,
     ) -> ClientUser:
-        """Update user profile."""
+        """Update user profile (role/status require allow_privileged_fields=True)."""
         user = await self.get_user(user_id)
         if not user:
             raise ValueError(f"User {user_id} not found")
         
         updatable = [
             'first_name', 'last_name', 'phone', 'job_title',
-            'role', 'status', 'notification_prefs', 'timezone', 'language'
+            'notification_prefs', 'timezone', 'language'
         ]
+        if allow_privileged_fields:
+            updatable.extend(['role', 'status'])
         
         for field in updatable:
             if field in data:

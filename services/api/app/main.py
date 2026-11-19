@@ -65,8 +65,10 @@ async def lifespan(app: FastAPI):
             else:
                 logger.warning("Database tables not found - run alembic upgrade head")
         from app.startup.demo_seed import seed_demo_users_if_enabled
+        from app.startup.hts_seed import seed_starter_hts_codes_if_empty
 
         await seed_demo_users_if_enabled()
+        await seed_starter_hts_codes_if_empty()
     except Exception as e:
         logger.error(f"Database connection error: {e}")
         logger.warning("Application starting without database verification")
@@ -78,12 +80,15 @@ async def lifespan(app: FastAPI):
     await engine.dispose()
 
 
-# Create FastAPI app
+# Create FastAPI app (disable public OpenAPI/Swagger endpoints in production)
 app = FastAPI(
-    title="Documentation Ingestion Platform",
-    description="Multi-agent documentation ingestion API with LLM-powered analysis",
-    version="0.2.0",
+    title=f"{settings.broker_name} API",
+    description="Customs brokerage document intelligence, compliance triage, and entry preparation API",
+    version="1.0.0",
     lifespan=lifespan,
+    docs_url=None if settings.is_production else "/docs",
+    redoc_url=None if settings.is_production else "/redoc",
+    openapi_url=None if settings.is_production else "/openapi.json",
 )
 
 # Add Rate Limiting middleware (before CORS so it can reject early)

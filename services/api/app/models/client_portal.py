@@ -16,15 +16,18 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 import secrets
 import hashlib
+import hmac
 
 from app.models.base import BaseModel
 
 
 class ClientUserRole(str, Enum):
-    """Client user roles."""
-    ADMIN = "admin"  # Can manage other client users
-    USER = "user"  # Can view and take actions
-    READONLY = "readonly"  # View only
+    """Portal & brokerage user roles."""
+    ADMIN = "admin"                # Brokerage platform admin (cross-client)
+    BROKER_STAFF = "broker_staff"  # Brokerage entry writer / operator (cross-client)
+    CLIENT_ADMIN = "client_admin"  # External importer admin (scoped to own client_id)
+    USER = "user"                  # External importer user (scoped to own client_id)
+    READONLY = "readonly"          # View only (scoped to own client_id)
 
 
 class ClientUserStatus(str, Enum):
@@ -108,23 +111,45 @@ class ClientUser(BaseModel):
         return f"{self.first_name} {self.last_name}"
     
     def set_password(self, password: str):
-        """Hash and set password."""
-        # Using SHA-256 for simplicity, use bcrypt in production
+        """Hash password using memory-hard OpenSSL scrypt (N=16384, r=8, p=1)."""
         salt = secrets.token_hex(16)
-        hash_input = f"{salt}:{password}"
-        hash_value = hashlib.sha256(hash_input.encode()).hexdigest()
-        self.password_hash = f"{salt}:{hash_value}"
+        dk = hashlib.scrypt(
+            password.encode("utf-8"),
+            salt=bytes.fromhex(salt),
+            n=16384,
+            r=8,
+            p=1,
+            dklen=32,
+        )
+        self.password_hash = f"scrypt$16384$8$1${salt}${dk.hex()}"
+
+    @property
+    def needs_password_rehash(self) -> bool:
+        """True if stored hash uses legacy unslowed SHA-256 format."""
+        return bool(self.password_hash and not self.password_hash.startswith("scrypt$"))
     
     def verify_password(self, password: str) -> bool:
-        """Verify password against stored hash."""
+        """Verify password against scrypt hash (with legacy SHA-256 migration fallback)."""
         if not self.password_hash:
             return False
         try:
-            salt, stored_hash = self.password_hash.split(":")
-            hash_input = f"{salt}:{password}"
-            computed_hash = hashlib.sha256(hash_input.encode()).hexdigest()
-            return computed_hash == stored_hash
-        except:
+            if self.password_hash.startswith("scrypt$"):
+                _, n_s, r_s, p_s, salt_hex, stored_hex = self.password_hash.split("$")
+                dk = hashlib.scrypt(
+                    password.encode("utf-8"),
+                    salt=bytes.fromhex(salt_hex),
+                    n=int(n_s),
+                    r=int(r_s),
+                    p=int(p_s),
+                    dklen=len(bytes.fromhex(stored_hex)),
+                )
+                return hmac.compare_digest(dk.hex(), stored_hex)
+
+            # Legacy <salt>:<sha256> format
+            salt, stored_hash = self.password_hash.split(":", 1)
+            computed_hash = hashlib.sha256(f"{salt}:{password}".encode("utf-8")).hexdigest()
+            return hmac.compare_digest(computed_hash, stored_hash)
+        except Exception:
             return False
     
     def generate_reset_token(self) -> str:
@@ -145,19 +170,31 @@ class ClientUser(BaseModel):
     
     def can_view_entry(self, entry_client_id) -> bool:
         """Check if user can view an entry."""
+        if self.role in [ClientUserRole.ADMIN.value, ClientUserRole.BROKER_STAFF.value]:
+            return True
         return str(self.client_id) == str(entry_client_id)
     
     def can_approve_entry(self) -> bool:
         """Check if user can approve entries."""
-        return self.role in [ClientUserRole.ADMIN.value, ClientUserRole.USER.value]
+        return self.role in [
+            ClientUserRole.ADMIN.value,
+            ClientUserRole.BROKER_STAFF.value,
+            ClientUserRole.CLIENT_ADMIN.value,
+            ClientUserRole.USER.value,
+        ]
     
     def can_upload_documents(self) -> bool:
         """Check if user can upload documents."""
-        return self.role in [ClientUserRole.ADMIN.value, ClientUserRole.USER.value]
+        return self.role in [
+            ClientUserRole.ADMIN.value,
+            ClientUserRole.BROKER_STAFF.value,
+            ClientUserRole.CLIENT_ADMIN.value,
+            ClientUserRole.USER.value,
+        ]
     
     def can_manage_users(self) -> bool:
-        """Check if user can manage other client users."""
-        return self.role == ClientUserRole.ADMIN.value
+        """Check if user can manage portal users (brokerage admin or scoped client_admin)."""
+        return self.role in [ClientUserRole.ADMIN.value, ClientUserRole.CLIENT_ADMIN.value]
     
     def to_dict(self):
         return {

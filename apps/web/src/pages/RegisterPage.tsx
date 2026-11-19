@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { API_BASE } from '../config/api';
+import { BRAND_NAME, BRAND_SUBTITLE } from '../config/brand';
 
 interface InvitationData {
     email: string;
@@ -224,7 +225,7 @@ export function RegisterPage() {
                             </div>
                             <h3 className="text-lg font-medium text-white mb-2">Public Registration Disabled</h3>
                             <p className="text-gray-300 text-sm mb-6">
-                                The GATE platform is currently invitation-only. Please contact your system administrator to request access, or use demo credentials to <Link to="/login" className="text-blue-400 hover:underline">sign in</Link>.
+                                {BRAND_NAME} is invitation-only. Please contact your customs broker administrator to request access, or <Link to="/login" className="text-blue-400 hover:underline">sign in</Link>.
                             </p>
                         </div>
                     ) : (
@@ -426,7 +427,7 @@ export function RegisterPage() {
 
                 {/* Footer */}
                 <p className="mt-8 text-center text-xs text-gray-400">
-                    © 2026 GATE Platform. Customs Brokerage Intelligence.
+                    © 2026 {BRAND_NAME}. {BRAND_SUBTITLE}.
                 </p>
             </div>
         </div>

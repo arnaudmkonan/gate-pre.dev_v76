@@ -114,17 +114,43 @@ async def get_current_portal_user(
     return user
 
 
+BROKERAGE_ONLY_ROLES = {"admin", "broker_admin", "broker_staff"}
+ALLOWED_PORTAL_ROLES = {"admin", "broker_staff", "client_admin", "user", "readonly"}
+
+
+def _assert_caller_can_manage_client_users(caller, target_client_id: Optional[UUID] = None, requested_role: Optional[str] = None) -> None:
+    """Enforce RBAC + tenant boundaries on portal user & invitation management."""
+    if not caller.can_manage_users():
+        raise HTTPException(status_code=403, detail="Insufficient permissions to manage portal users")
+
+    is_platform_admin = caller.role in ("admin", "broker_admin")
+
+    if requested_role is not None:
+        if requested_role not in ALLOWED_PORTAL_ROLES:
+            raise HTTPException(status_code=400, detail=f"Invalid role '{requested_role}'")
+        if requested_role in BROKERAGE_ONLY_ROLES and not is_platform_admin:
+            raise HTTPException(
+                status_code=403,
+                detail="Only brokerage administrators can assign brokerage staff roles",
+            )
+
+    if not is_platform_admin and target_client_id is not None and str(caller.client_id) != str(target_client_id):
+        raise HTTPException(
+            status_code=403,
+            detail="You may only manage users within your own organization",
+        )
+
+
 # ==================== Invitation Endpoints ====================
 
 @router.post("/invitations")
 async def create_invitation(
     request: InviteUserRequest,
+    caller = Depends(get_current_portal_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Invite a user to the client portal.
-    
-    Called by broker to invite client users.
+    Invite a user to the client portal (requires brokerage admin or matching client_admin).
     """
     from app.services.client_portal_auth_service import ClientPortalAuthService
     
@@ -132,6 +158,8 @@ async def create_invitation(
         client_uuid = UUID(request.client_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid client ID")
+
+    _assert_caller_can_manage_client_users(caller, target_client_id=client_uuid, requested_role=request.role)
     
     service = ClientPortalAuthService(db)
     
@@ -140,12 +168,14 @@ async def create_invitation(
             email=request.email,
             client_id=client_uuid,
             role=request.role,
+            invited_by_id=caller.id,
+            invited_by_name=caller.full_name,
             message=request.message,
         )
         
         return {
             "invitation": invitation.to_dict(),
-            "invitation_link": f"/portal/accept?token={invitation.token}",
+            "invitation_link": f"/register?token={invitation.token}",
             "message": f"Invitation sent to {request.email}",
         }
     except ValueError as e:
@@ -156,15 +186,29 @@ async def create_invitation(
 async def list_invitations(
     client_id: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
+    caller = Depends(get_current_portal_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """List portal invitations."""
+    """List portal invitations (scoped for client_admin)."""
     from app.services.client_portal_auth_service import ClientPortalAuthService
     
+    _assert_caller_can_manage_client_users(caller)
+    is_platform_admin = caller.role in ("admin", "broker_admin")
+
+    scoped_uuid: Optional[UUID] = None
+    if client_id:
+        try:
+            scoped_uuid = UUID(client_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid client ID")
+        _assert_caller_can_manage_client_users(caller, target_client_id=scoped_uuid)
+    elif not is_platform_admin:
+        scoped_uuid = caller.client_id
+
     service = ClientPortalAuthService(db)
     
     invitations = await service.list_invitations(
-        client_id=UUID(client_id) if client_id else None,
+        client_id=scoped_uuid,
         status=status,
     )
     
@@ -206,6 +250,7 @@ async def get_invitation(
 @router.delete("/invitations/{invitation_id}")
 async def revoke_invitation(
     invitation_id: str,
+    caller = Depends(get_current_portal_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Revoke a pending invitation."""
@@ -217,6 +262,10 @@ async def revoke_invitation(
         raise HTTPException(status_code=400, detail="Invalid invitation ID")
     
     service = ClientPortalAuthService(db)
+    inv = await service._get_invitation(invitation_uuid)
+    if not inv:
+        raise HTTPException(status_code=404, detail="Invitation not found")
+    _assert_caller_can_manage_client_users(caller, target_client_id=inv.client_id)
     
     try:
         await service.revoke_invitation(invitation_uuid)
@@ -305,14 +354,51 @@ async def resend_verification(
 
 # ==================== Authentication Endpoints ====================
 
+_FAILED_LOGIN_WINDOW_SECONDS = 900  # 15 minutes
+_MAX_FAILED_LOGIN_ATTEMPTS = 10
+_failed_login_tracker: dict[str, list[float]] = {}
+
+
+def _login_throttle_key(ip: Optional[str], email: str) -> str:
+    return f"{ip or 'unknown'}:{email.lower().strip()}"
+
+
+def _assert_not_login_throttled(ip: Optional[str], email: str) -> None:
+    import time
+
+    key = _login_throttle_key(ip, email)
+    now = time.monotonic()
+    recent = [ts for ts in _failed_login_tracker.get(key, []) if now - ts < _FAILED_LOGIN_WINDOW_SECONDS]
+    _failed_login_tracker[key] = recent
+    if len(recent) >= _MAX_FAILED_LOGIN_ATTEMPTS:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many failed sign-in attempts. Please wait 15 minutes or reset your password.",
+        )
+
+
+def _record_failed_login(ip: Optional[str], email: str) -> None:
+    import time
+
+    key = _login_throttle_key(ip, email)
+    _failed_login_tracker.setdefault(key, []).append(time.monotonic())
+
+
+def _clear_failed_login(ip: Optional[str], email: str) -> None:
+    _failed_login_tracker.pop(_login_throttle_key(ip, email), None)
+
+
 @router.post("/login")
 async def login(
     request: LoginRequest,
     req: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    """Log in to client portal."""
+    """Log in to client portal (protected by brute-force lockout)."""
     from app.services.client_portal_auth_service import ClientPortalAuthService
+
+    client_ip = req.client.host if req.client else None
+    _assert_not_login_throttled(client_ip, request.email)
     
     service = ClientPortalAuthService(db)
     
@@ -320,9 +406,10 @@ async def login(
         user, session = await service.login(
             email=request.email,
             password=request.password,
-            ip_address=req.client.host if req.client else None,
+            ip_address=client_ip,
             user_agent=req.headers.get("user-agent"),
         )
+        _clear_failed_login(client_ip, request.email)
         
         return {
             "user": user.to_dict(),
@@ -330,6 +417,7 @@ async def login(
             "expires_at": session.expires_at.isoformat(),
         }
     except ValueError as e:
+        _record_failed_login(client_ip, request.email)
         raise HTTPException(status_code=401, detail=str(e))
 
 
@@ -470,15 +558,29 @@ async def update_profile(
 async def list_users(
     client_id: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
+    caller = Depends(get_current_portal_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """List client portal users."""
+    """List client portal users (scoped for client_admin)."""
     from app.services.client_portal_auth_service import ClientPortalAuthService
     
+    _assert_caller_can_manage_client_users(caller)
+    is_platform_admin = caller.role in ("admin", "broker_admin")
+
+    scoped_uuid: Optional[UUID] = None
+    if client_id:
+        try:
+            scoped_uuid = UUID(client_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid client ID")
+        _assert_caller_can_manage_client_users(caller, target_client_id=scoped_uuid)
+    elif not is_platform_admin:
+        scoped_uuid = caller.client_id
+
     service = ClientPortalAuthService(db)
     
     users = await service.list_users(
-        client_id=UUID(client_id) if client_id else None,
+        client_id=scoped_uuid,
         status=status,
     )
     
@@ -491,6 +593,7 @@ async def list_users(
 @router.get("/users/{user_id}")
 async def get_user(
     user_id: str,
+    caller = Depends(get_current_portal_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Get user details."""
@@ -506,6 +609,9 @@ async def get_user(
     
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    if str(caller.id) != str(user.id):
+        _assert_caller_can_manage_client_users(caller, target_client_id=user.client_id)
     
     return user.to_dict()
 
@@ -514,9 +620,10 @@ async def get_user(
 async def update_user_role(
     user_id: str,
     request: UpdateUserRoleRequest,
+    caller = Depends(get_current_portal_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Update user role."""
+    """Update user role (prevents privilege escalation to brokerage admin)."""
     from app.services.client_portal_auth_service import ClientPortalAuthService
     
     try:
@@ -525,9 +632,24 @@ async def update_user_role(
         raise HTTPException(status_code=400, detail="Invalid user ID")
     
     service = ClientPortalAuthService(db)
+    target = await service.get_user(user_uuid)
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    _assert_caller_can_manage_client_users(
+        caller,
+        target_client_id=target.client_id,
+        requested_role=request.role,
+    )
+    if target.role in BROKERAGE_ONLY_ROLES and caller.role not in ("admin", "broker_admin"):
+        raise HTTPException(status_code=403, detail="Cannot modify brokerage staff accounts")
     
     try:
-        user = await service.update_user(user_uuid, {"role": request.role})
+        user = await service.update_user(
+            user_uuid,
+            {"role": request.role},
+            allow_privileged_fields=True,
+        )
         return {
             "user": user.to_dict(),
             "message": f"Role updated to {request.role}",
@@ -539,6 +661,7 @@ async def update_user_role(
 @router.post("/users/{user_id}/deactivate")
 async def deactivate_user(
     user_id: str,
+    caller = Depends(get_current_portal_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Deactivate a user."""
@@ -550,6 +673,12 @@ async def deactivate_user(
         raise HTTPException(status_code=400, detail="Invalid user ID")
     
     service = ClientPortalAuthService(db)
+    target = await service.get_user(user_uuid)
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    _assert_caller_can_manage_client_users(caller, target_client_id=target.client_id)
+    if target.role in BROKERAGE_ONLY_ROLES and caller.role not in ("admin", "broker_admin"):
+        raise HTTPException(status_code=403, detail="Cannot deactivate brokerage staff accounts")
     
     try:
         await service.deactivate_user(user_uuid)
@@ -561,6 +690,7 @@ async def deactivate_user(
 @router.post("/users/{user_id}/reactivate")
 async def reactivate_user(
     user_id: str,
+    caller = Depends(get_current_portal_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Reactivate a deactivated user."""
@@ -572,6 +702,12 @@ async def reactivate_user(
         raise HTTPException(status_code=400, detail="Invalid user ID")
     
     service = ClientPortalAuthService(db)
+    target = await service.get_user(user_uuid)
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    _assert_caller_can_manage_client_users(caller, target_client_id=target.client_id)
+    if target.role in BROKERAGE_ONLY_ROLES and caller.role not in ("admin", "broker_admin"):
+        raise HTTPException(status_code=403, detail="Cannot reactivate brokerage staff accounts")
     
     try:
         await service.reactivate_user(user_uuid)
@@ -584,13 +720,11 @@ async def reactivate_user(
 
 @router.get("/reference/roles")
 async def get_roles():
-    """Get available user roles."""
-    from app.models.client_portal import ClientUserRole
-    
+    """Get available importer portal user roles."""
     return {
         "roles": [
-            {"value": "admin", "name": "Client Admin", "description": "Can manage other client users"},
-            {"value": "user", "name": "Client User", "description": "Can view and take actions"},
-            {"value": "readonly", "name": "Read Only", "description": "View only access"},
+            {"value": "client_admin", "name": "Client Admin", "description": "Can manage portal users within this importer account"},
+            {"value": "user", "name": "Client User", "description": "Can upload documents, view, and approve entries"},
+            {"value": "readonly", "name": "Read Only", "description": "View-only access to assigned importer records"},
         ],
     }

@@ -173,6 +173,10 @@ def process_email_attachments(
                 document_ids.append(str(ingest_job.id))
                 
                 logger.info(f"Created ingest job {ingest_job.id} from email attachment: {attachment.filename}")
+
+                # Immediately dispatch job to primary Celery ingestion pipeline
+                from app.workers.job_processor import process_ingest_job
+                process_ingest_job.delay(str(ingest_job.id))
                 
                 # Cleanup temp file
                 import os
@@ -195,13 +199,11 @@ def process_email_attachments(
 def trigger_document_processing(document_id: str):
     """
     Trigger the document processing pipeline for an uploaded document.
-    
-    This is a lightweight task that delegates to the main processing pipeline.
     """
-    from app.workers.extraction_worker import process_document_task
+    from app.workers.job_processor import process_ingest_job
     
     logger.info(f"Triggering processing for document: {document_id}")
-    process_document_task.delay(document_id)
+    process_ingest_job.delay(document_id)
 
 
 @shared_task(name="email.sync_now")

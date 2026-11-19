@@ -18,7 +18,7 @@ test.describe('Role-based access', () => {
 
   test('standard user can access operational ingest UI', async ({ page }) => {
     await page.goto('/ingest-ui');
-    await expect(page.getByText('Document Ingestion UI')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Trade Document Ingestion' })).toBeVisible();
     await expect(page.getByText('Something went wrong')).toHaveCount(0);
   });
 });

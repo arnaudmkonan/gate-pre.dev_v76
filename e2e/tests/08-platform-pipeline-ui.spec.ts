@@ -18,7 +18,13 @@ test.describe('Platform UI pipeline (upload → review → operations)', () => {
   const uploadedJobIds: string[] = [];
 
   test('upload one demo document through ingest UI', async ({ page, request }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem('gates_onboarding_complete', 'true');
+    });
     await page.goto('/ingest-ui');
+    await expect(page.getByRole('heading', { name: 'Upload Trade Documents' })).toBeVisible({
+      timeout: 30_000,
+    });
     const filePath = path.join(repoRoot, QUICK_TEXT_DOCS[0]);
     await page.locator('input[type="file"]').setInputFiles(filePath);
     await page.getByRole('button', { name: 'Upload' }).click();

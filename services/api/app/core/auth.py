@@ -81,8 +81,8 @@ def require_role(*roles: str):
 
 
 def require_admin():
-    """Shorthand for require_role('admin')."""
-    return require_role("admin")
+    """Shorthand for brokerage-level admin roles."""
+    return require_role("admin", "broker_admin")
 
 
 # ===========================================================================

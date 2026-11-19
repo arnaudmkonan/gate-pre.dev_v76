@@ -479,7 +479,7 @@ export function LeadManagementPage() {
                                 Close
                             </button>
                             <a
-                                href={`mailto:${selectedLead.email}?subject=DocuMind%20-%20Follow%20up%20on%20your%20trial&body=Hi%20${selectedLead.first_name},%0A%0AThank%20you%20for%20signing%20up%20for%20DocuMind!`}
+                                href={`mailto:${selectedLead.email}?subject=${encodeURIComponent(`${import.meta.env.VITE_BRAND_NAME || 'GATE Platform'} - Follow up on your inquiry`)}&body=Hi%20${selectedLead.first_name},%0A%0AThank%20you%20for%20your%20interest!`}
                                 className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
                             >
                                 Send Email

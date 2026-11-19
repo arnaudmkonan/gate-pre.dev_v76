@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CheckCircle, Upload, ClipboardCheck, Link2, Shield, ChevronRight, X } from 'lucide-react'
 import { Button } from './Button'
+import { BRAND_SHORT_NAME } from '../config/brand'
 
 const STORAGE_KEY = 'gates_onboarding_complete'
 
@@ -32,7 +33,7 @@ export function OnboardingWizard() {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <div className="w-full max-w-md rounded-xl border border-gray-700 bg-gray-900 shadow-2xl">
         <div className="flex items-center justify-between border-b border-gray-800 px-5 py-4">
-          <h2 className="text-lg font-semibold text-white">Welcome to GATE</h2>
+          <h2 className="text-lg font-semibold text-white">Welcome to {BRAND_SHORT_NAME}</h2>
           <button type="button" onClick={complete} className="text-gray-400 hover:text-white" aria-label="Close">
             <X className="h-5 w-5" />
           </button>

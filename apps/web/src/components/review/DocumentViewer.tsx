@@ -192,7 +192,37 @@ export const DocumentViewer = ({
                 </button>
               )}
             </div>
-          ) : normalizedType === 'pdf' || normalizedType === 'html' ? (
+          ) : normalizedType === 'pdf' ? (
+            <object
+              data={blobUrl}
+              type="application/pdf"
+              aria-label={filename || 'PDF Preview'}
+              className="w-full h-[640px] bg-white"
+            >
+              <div className="p-6 max-h-[640px] overflow-auto bg-white space-y-4">
+                <div className="flex items-center justify-between border-b pb-3">
+                  <span className="text-xs font-medium text-gray-500">
+                    Inline PDF plugin unavailable — displaying extracted trade text
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleDownload}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-blue-600 border border-blue-200 rounded hover:bg-blue-50"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Download PDF
+                  </button>
+                </div>
+                {content ? (
+                  <pre className="text-sm text-gray-800 whitespace-pre-wrap font-mono leading-relaxed">
+                    {content}
+                  </pre>
+                ) : (
+                  <p className="text-sm text-gray-500">Use Download to open original PDF.</p>
+                )}
+              </div>
+            </object>
+          ) : normalizedType === 'html' ? (
             <iframe
               src={blobUrl}
               title={filename || 'Document Preview'}

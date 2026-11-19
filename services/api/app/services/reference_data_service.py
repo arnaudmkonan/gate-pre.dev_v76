@@ -48,6 +48,11 @@ class ReferenceDataService:
         # Check if query looks like an HTS code (contains digits/dots)
         if any(c.isdigit() for c in query):
             conditions.append(HTSCode.hts_code.ilike(f"%{query}%"))
+            digits_only = "".join(c for c in query if c.isdigit())
+            if digits_only:
+                conditions.append(
+                    func.replace(HTSCode.hts_code, ".", "").ilike(f"%{digits_only}%")
+                )
         
         # Always search description
         conditions.append(HTSCode.description.ilike(f"%{query}%"))

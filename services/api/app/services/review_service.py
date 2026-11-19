@@ -304,6 +304,9 @@ class ReviewService:
         await session.commit()
         await session.refresh(item)
 
+        # Propagate reviewed extractions to any linked Gold Shipments
+        await ReviewService._sync_document_to_linked_shipments(session, item.document_id)
+
         # Process for feedback learning (async, don't wait)
         try:
             from app.services.feedback_service import FeedbackService
@@ -409,6 +412,9 @@ class ReviewService:
         await session.commit()
         await session.refresh(extraction)
 
+        # Propagate corrected field value to any linked Gold Shipments
+        await ReviewService._sync_document_to_linked_shipments(session, extraction.document_id)
+
         # Log correction for feedback learning
         try:
             from app.services.feedback_service import FeedbackService
@@ -439,6 +445,52 @@ class ReviewService:
             logger.warning(f"Failed to log correction for {extraction_id}: {e}")
 
         return extraction
+
+    @staticmethod
+    async def _sync_document_to_linked_shipments(
+        session: AsyncSession,
+        document_id: UUID,
+    ) -> int:
+        """Refresh linked Gold Shipment header/totals after human-in-the-loop review approval or correction."""
+        try:
+            from app.models.gold_records import Shipment, ShipmentDocument
+            from app.services.entry_prep_service import EntryPrepService
+
+            links_res = await session.execute(
+                select(ShipmentDocument.shipment_id).where(ShipmentDocument.document_id == document_id)
+            )
+            shipment_ids = list({sid for sid in links_res.scalars().all() if sid})
+            if not shipment_ids:
+                return 0
+
+            updated_count = 0
+            for sid in shipment_ids:
+                ship_res = await session.execute(select(Shipment).where(Shipment.id == sid))
+                shipment = ship_res.scalar_one_or_none()
+                if not shipment:
+                    continue
+                prep = await EntryPrepService.prepare_from_shipment(session, sid)
+                if prep.master_bill:
+                    shipment.bol_number = prep.master_bill
+                if prep.importer_name:
+                    shipment.importer_name = prep.importer_name
+                if prep.foreign_port and not shipment.origin:
+                    shipment.origin = prep.foreign_port
+                if prep.port_code and not shipment.port_of_entry:
+                    shipment.port_of_entry = prep.port_code
+                if prep.total_entered_value > 0:
+                    shipment.total_declared_value = prep.total_entered_value
+                    shipment.total_duty = prep.grand_total
+                session.add(shipment)
+                updated_count += 1
+
+            if updated_count:
+                await session.commit()
+                logger.info("Synced reviewed document %s into %s shipment(s)", document_id, updated_count)
+            return updated_count
+        except Exception as e:
+            logger.warning("Failed to sync reviewed document %s to shipments: %s", document_id, e)
+            return 0
     
     @staticmethod
     async def get_review_stats(

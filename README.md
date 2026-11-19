@@ -421,7 +421,8 @@ celery -A app.core.celery_app worker --loglevel=info
 
 ## 📝 License
 
-MIT License - see LICENSE file for details
+Proprietary Commercial Software — Copyright (c) 2026 All Rights Reserved.
+Licensed solely for single-instance internal customs brokerage operations under a signed Commercial License Agreement. Unauthorized copying, sublicensing, resale, or redistribution is strictly prohibited. See [`LICENSE`](LICENSE) for details.
 
 ## 🎓 Learning Resources
 

@@ -15,10 +15,14 @@ router = APIRouter(prefix="/api/callbacks", tags=["callbacks"])
 
 
 def get_callback_secret() -> str:
-    """Get callback secret from config."""
-    secret = getattr(settings, "storage_callback_secret", None)
+    """Get callback secret from config (refuses insecure dev fallback in production)."""
+    secret = (settings.storage_callback_secret or "").strip()
     if not secret:
-        # Fallback to a default for development
+        if settings.is_production:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="STORAGE_CALLBACK_SECRET is not configured for production callbacks",
+            )
         secret = "dev-secret-change-in-production"
     return secret
 

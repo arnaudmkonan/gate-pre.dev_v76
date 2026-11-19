@@ -96,9 +96,12 @@ class CargoWiseXMLBuilder:
         parent: ET.Element,
         elements: Dict[str, Any]
     ) -> None:
-        """Add multiple child elements from dictionary."""
+        """Add multiple child elements from dictionary (recursively handles nested dicts)."""
         for key, value in elements.items():
-            if value is not None:
+            if isinstance(value, dict):
+                child = self.add_element(parent, key)
+                self.add_elements(child, value)
+            elif value is not None:
                 self.add_element(parent, key, str(value))
     
     def to_string(self, pretty: bool = True) -> str:
@@ -185,10 +188,11 @@ class CargoWiseExporter:
         shipment = builder.add_element(root, "Shipment")
         
         # Data context
+        from app.core.config import settings
         data_context = builder.add_element(shipment, "DataContext")
         builder.add_elements(data_context, {
-            "Company": {"Code": "GATE"},
-            "EnterpriseID": "GATE-CUSTOMS",
+            "Company": {"Code": settings.cargowise_company_code or "BROKER"},
+            "EnterpriseID": settings.cargowise_enterprise_id or "BROKER-CW1",
             "JobOwner": entry.assigned_to or "SYSTEM",
         })
         

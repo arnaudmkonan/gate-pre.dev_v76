@@ -64,7 +64,9 @@ export const ComplianceDashboardPage = () => {
     // Disclosure state
     const [dutyLoss, setDutyLoss] = useState('25000');
     const [violationType, setViolationType] = useState('negligence');
-    const [entryDate, setEntryDate] = useState('2024-01-15');
+    const [entryDate, setEntryDate] = useState(
+        () => new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10)
+    );
     const [disclosurePreview, setDisclosurePreview] = useState<DisclosurePreview | null>(null);
 
     // Statute state

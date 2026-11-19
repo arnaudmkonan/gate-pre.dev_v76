@@ -88,6 +88,30 @@ async def get_hts_stats(db=Depends(get_db)):
     return await service.get_hts_stats()
 
 
+@router.get("/broker-profile")
+async def get_broker_instance_profile(db=Depends(get_db)):
+    """Return active single-tenant customs brokerage instance configuration & readiness summary."""
+    from app.core.config import settings
+
+    service = ReferenceDataService(db)
+    hts_stats = await service.get_hts_stats()
+    live_ace = bool(settings.ace_sftp_enabled and settings.ace_sftp_host.strip())
+
+    return {
+        "broker_name": settings.broker_name,
+        "broker_filer_code": settings.broker_filer_code or None,
+        "broker_default_port": settings.broker_default_port or None,
+        "cargowise_company_code": settings.cargowise_company_code,
+        "cargowise_enterprise_id": settings.cargowise_enterprise_id,
+        "audit_log_retention_days": settings.audit_log_retention_days,
+        "cbp_19_cfr_163_compliant": settings.audit_log_retention_days >= 1825,
+        "ace_mode": "live_sftp" if live_ace else ("simulation" if settings.ace_allow_simulation else "export_only"),
+        "email_imap_configured": bool(settings.email_imap_host and settings.email_imap_user),
+        "smtp_configured": bool(settings.smtp_host and settings.smtp_username),
+        "hts_code_count": hts_stats.get("total_codes", 0) if isinstance(hts_stats, dict) else 0,
+    }
+
+
 # ==================== OFAC Screening Endpoints ====================
 
 @router.post("/ofac/screen")

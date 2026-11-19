@@ -13,18 +13,9 @@ def process_entity_resolution(self, document_id: str):
     """
     try:
         logger.info(f"Starting entity resolution for document {document_id}")
-        
-        # Sync wrapper for async service
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            result = loop.run_until_complete(
-                _run_resolution_service(document_id)
-            )
-            return result
-        finally:
-            loop.close()
-            
+        # asyncio.run() owns loop lifecycle; avoids "Future attached to a different loop"
+        # / "Event loop is closed" errors under Celery prefork workers.
+        return asyncio.run(_run_resolution_service(document_id))
     except Exception as e:
         logger.error(f"Entity resolution failed for {document_id}: {e}")
         raise self.retry(exc=e, countdown=60)

@@ -128,7 +128,8 @@ async def track_event(
 @router.get("/summary", response_model=AnalyticsSummary)
 async def get_analytics_summary(
     days: int = 30,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    _admin: dict = Depends(__import__("app.core.auth", fromlist=["require_admin"]).require_admin()),
 ):
     """
     Get landing page analytics summary.

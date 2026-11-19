@@ -36,6 +36,9 @@ CUSTOMER_NAME="$2"
 ADMIN_EMAIL="$3"
 SUBDOMAIN="$4"
 GATE_VERSION="${5:-latest}"  # Optional: pin image version
+BASE_DOMAIN="${BASE_DOMAIN:-localhost}"
+BROKER_FILER_CODE="${BROKER_FILER_CODE:-}"
+BROKER_DEFAULT_PORT="${BROKER_DEFAULT_PORT:-}"
 
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -106,8 +109,17 @@ cat > "${CUSTOMER_DIR}/.env" << EOF
 CUSTOMER_ID=${CUSTOMER_ID}
 CUSTOMER_NAME=${CUSTOMER_NAME}
 SUBDOMAIN=${SUBDOMAIN}
-INSTANCE_URL=https://${SUBDOMAIN}.gateplatform.com
+INSTANCE_URL=https://${SUBDOMAIN}.${BASE_DOMAIN}
+FRONTEND_URL=https://${SUBDOMAIN}.${BASE_DOMAIN}
 GATE_VERSION=${GATE_VERSION}
+
+# Broker Customs & White-Label Settings
+BROKER_NAME=${CUSTOMER_NAME}
+BROKER_FILER_CODE=${BROKER_FILER_CODE}
+BROKER_DEFAULT_PORT=${BROKER_DEFAULT_PORT}
+CARGOWISE_COMPANY_CODE=${CUSTOMER_ID^^}
+CARGOWISE_ENTERPRISE_ID=${CUSTOMER_ID^^}-CW1
+AUDIT_LOG_RETENTION_DAYS=2555
 
 # Database Configuration
 POSTGRES_HOST=db
@@ -115,19 +127,19 @@ POSTGRES_PORT=5432
 POSTGRES_DB=gate_${CUSTOMER_ID//[-]/_}
 POSTGRES_USER=gate_user
 POSTGRES_PASSWORD=${DB_PASSWORD}
-DATABASE_URL=postgresql://gate_user:${DB_PASSWORD}@db:5432/gate_${CUSTOMER_ID//[-]/_}
+DATABASE_URL=postgresql+asyncpg://gate_user:${DB_PASSWORD}@db:5432/gate_${CUSTOMER_ID//[-]/_}
+DATABASE_URL_SYNC=postgresql+psycopg2://gate_user:${DB_PASSWORD}@db:5432/gate_${CUSTOMER_ID//[-]/_}
 
 # Redis Configuration
 REDIS_HOST=redis
 REDIS_PORT=6379
 REDIS_PASSWORD=${REDIS_PASSWORD}
 REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+RATE_LIMIT_STORAGE=redis://:${REDIS_PASSWORD}@redis:6379/3
 
 # Security
 SECRET_KEY=${SECRET_KEY}
-JWT_SECRET=${SECRET_KEY}
-JWT_ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=1440
+SEED_DEMO_USERS=false
 
 # API Configuration
 API_HOST=0.0.0.0
@@ -135,28 +147,28 @@ API_PORT=8000
 ENVIRONMENT=production
 DEBUG=false
 
-# External Ports (for reverse proxy)
+# External Ports (loopback-bound for DB/Redis/Flower; reverse-proxy API & Web)
 EXTERNAL_API_PORT=${API_PORT}
 EXTERNAL_WEB_PORT=${WEB_PORT}
 EXTERNAL_DB_PORT=${DB_PORT}
 EXTERNAL_REDIS_PORT=${REDIS_PORT}
 EXTERNAL_FLOWER_PORT=${FLOWER_PORT}
 
-# Email Configuration (SMTP)
-SMTP_HOST=\${SMTP_HOST:-}
+# Email Configuration (SMTP — required in production)
+SMTP_HOST=\${SMTP_HOST:-smtp.resend.com}
 SMTP_PORT=\${SMTP_PORT:-587}
-SMTP_USER=\${SMTP_USER:-}
+SMTP_USERNAME=\${SMTP_USERNAME:-resend}
 SMTP_PASSWORD=\${SMTP_PASSWORD:-}
-SMTP_FROM_EMAIL=noreply@gateplatform.com
-SMTP_FROM_NAME=GATE Platform
+SMTP_FROM_EMAIL=noreply@${SUBDOMAIN}.${BASE_DOMAIN}
+SMTP_TLS=true
 
 # First Admin User
 FIRST_ADMIN_EMAIL=${ADMIN_EMAIL}
 FIRST_ADMIN_PASSWORD=${FIRST_USER_PASSWORD}
 
 # Storage Configuration
-STORAGE_TYPE=local
-STORAGE_LOCAL_PATH=/app/storage
+STORAGE_PROVIDER=local
+LOCAL_STORAGE_PATH=/app/storage
 
 # Celery Configuration
 CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/1
@@ -168,10 +180,9 @@ SENTRY_DSN=
 # OpenAI Configuration
 OPENAI_API_KEY=\${OPENAI_API_KEY:-}
 
-# ACE Configuration
-ACE_ENVIRONMENT=cert
-ACE_CLIENT_CERTIFICATE_PATH=/app/certs/ace_client.pem
-ACE_PRIVATE_KEY_PATH=/app/certs/ace_private.key
+# ACE Configuration (simulation blocked in production by default)
+ACE_SFTP_ENABLED=false
+ACE_ALLOW_SIMULATION=false
 EOF
 
 # Create docker-compose.yml
@@ -191,7 +202,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
     ports:
-      - "${EXTERNAL_DB_PORT}:5432"
+      - "127.0.0.1:${EXTERNAL_DB_PORT}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 10s
@@ -206,7 +217,7 @@ services:
     volumes:
       - redis_data:/data
     ports:
-      - "${EXTERNAL_REDIS_PORT}:6379"
+      - "127.0.0.1:${EXTERNAL_REDIS_PORT}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
@@ -272,13 +283,15 @@ services:
     restart: unless-stopped
 
   flower:
-    image: mher/flower:0.9.7
+    profiles:
+      - devtools
+    image: mher/flower:2.0
     container_name: gate_${CUSTOMER_ID}_flower
-    command: celery flower --broker=${CELERY_BROKER_URL}
+    command: celery --broker=${CELERY_BROKER_URL} flower --port=5555
     depends_on:
       - redis
     ports:
-      - "${EXTERNAL_FLOWER_PORT}:5555"
+      - "127.0.0.1:${EXTERNAL_FLOWER_PORT}:5555"
     restart: unless-stopped
 
   frontend:
@@ -287,7 +300,8 @@ services:
     depends_on:
       - api
     environment:
-      - VITE_API_URL=https://${SUBDOMAIN}.gateplatform.com/api
+      - VITE_BRAND_NAME=${CUSTOMER_NAME}
+      - VITE_ENABLE_DEMO_LOGIN=false
     ports:
       - "${EXTERNAL_WEB_PORT}:80"
     restart: unless-stopped
@@ -379,6 +393,10 @@ with engine.connect() as conn:
 engine.dispose()
 print("Table creation complete!")
 PYTHON
+
+echo "Stamping Alembic migration head & seeding starter USITC HTS tariff codes..."
+docker compose exec -T api alembic stamp head
+docker compose exec -T api python -m app.startup.hts_seed
 
 echo ""
 echo "Creating first admin user (with default client)..."

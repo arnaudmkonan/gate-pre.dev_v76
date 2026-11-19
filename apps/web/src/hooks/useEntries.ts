@@ -316,6 +316,36 @@ export function useEntryActions() {
         }
     }, [])
 
+    const updateLine = useCallback(async (entryId: string, lineId: string, data: Partial<AddLineRequest>): Promise<any> => {
+        setLoading(true)
+        setError(null)
+
+        try {
+            const response = await apiClient.patch(`${API_URL}/api/entries/${entryId}/lines/${lineId}`, data)
+            return response.data
+        } catch (err: any) {
+            setError(err.response?.data?.detail || err.message)
+            return null
+        } finally {
+            setLoading(false)
+        }
+    }, [])
+
+    const deleteLine = useCallback(async (entryId: string, lineId: string): Promise<boolean> => {
+        setLoading(true)
+        setError(null)
+
+        try {
+            await apiClient.delete(`${API_URL}/api/entries/${entryId}/lines/${lineId}`)
+            return true
+        } catch (err: any) {
+            setError(err.response?.data?.detail || err.message)
+            return false
+        } finally {
+            setLoading(false)
+        }
+    }, [])
+
     const calculateDuties = useCallback(async (entryId: string): Promise<any> => {
         setLoading(true)
         setError(null)
@@ -353,6 +383,8 @@ export function useEntryActions() {
         updateEntry,
         deleteEntry,
         addLine,
+        updateLine,
+        deleteLine,
         calculateDuties,
         validateEntry,
     }

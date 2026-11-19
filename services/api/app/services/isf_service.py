@@ -371,10 +371,14 @@ class ISFService:
     
     async def file_isf(self, isf_id: UUID) -> Dict[str, Any]:
         """
-        Submit ISF to CBP.
-        
-        In production, would transmit via ABI.
+        Stage or transmit ISF 10+2.
+
+        Blocks simulated submission in production when ACE_SFTP_ENABLED=false
+        and ACE_ALLOW_SIMULATION=false so brokers never mistake a local status
+        change for an actual CBP ABI ISF filing ($5,000 liquidated damages risk).
         """
+        from app.core.config import settings
+
         isf = await self.get_isf(isf_id)
         if not isf:
             return {"error": "ISF not found"}
@@ -386,9 +390,22 @@ class ISFService:
                 "error": "ISF cannot be filed",
                 "validation": validation,
             }
+
+        live_configured = bool(settings.ace_sftp_enabled and settings.ace_sftp_host.strip())
+        if settings.is_production and not live_configured and not settings.ace_allow_simulation:
+            return {
+                "error": (
+                    "Direct CBP ISF ABI transmission is not configured on this instance "
+                    "(ACE_SFTP_ENABLED=false and ACE_ALLOW_SIMULATION=false). "
+                    "Export the ABI 10+2 draft and transmit via your certified ABI software."
+                ),
+                "mode": "blocked",
+            }
         
-        # Generate transaction number
-        isf.transaction_number = f"ISF{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        # Generate transaction reference (clearly prefixed SIM- when not connected to live CBP SFTP)
+        mode = "live" if live_configured else "simulation"
+        prefix = "ISF" if live_configured else "SIM-ISF"
+        isf.transaction_number = f"{prefix}-{datetime.now().strftime('%Y%m%d%H%M%S')}"
         isf.status = ISFStatus.SUBMITTED.value
         isf.filed_at = datetime.now(timezone.utc)
         
@@ -400,11 +417,16 @@ class ISFService:
             "isf_number": isf.isf_number,
             "transaction_number": isf.transaction_number,
             "status": isf.status,
+            "mode": mode,
             "filed_at": isf.filed_at.isoformat(),
-            "message": "ISF submitted to CBP",
+            "message": (
+                "ISF 10+2 transmitted"
+                if live_configured
+                else "ISF 10+2 staged in simulation mode (not transmitted to CBP — export ABI draft to file)"
+            ),
             "is_flexible": isf.is_flexible,
             "next_steps": [
-                "Monitor for CBP acceptance/rejection",
+                "Monitor for CBP acceptance/rejection" if live_configured else "Export ABI draft to certified ABI transmitter",
                 "Complete missing elements if flexible filing" if isf.is_flexible else None,
                 "Match to entry when filed",
             ],

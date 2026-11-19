@@ -1097,29 +1097,58 @@ async def create_entry_from_shipment(
 
     actor_email = current_user.get("email") or current_user.get("sub") or "system"
 
+    # Match client_id by importer name when available (or link to non-staff user's client)
+    from app.models.client import Client
+    from app.startup.client_access import portal_user_client_id
+    resolved_client_id = portal_user_client_id(current_user)
+    imp_lookup_name = shipment.importer_name or (prep_data.importer_name if prep_data else None)
+    if resolved_client_id is None and imp_lookup_name:
+        client_match = await db.execute(
+            select(Client.id).where(Client.name.ilike(imp_lookup_name.strip())).limit(1)
+        )
+        resolved_client_id = client_match.scalar_one_or_none()
+
+    resolved_port = (
+        request.port_of_entry
+        or (prep_data.port_of_entry or prep_data.port_code if prep_data else None)
+    )
+    if resolved_port and len(resolved_port) > 4:
+        resolved_port = resolved_port[:4] if resolved_port[:4].isdigit() else None
+
+    unlading_port = prep_data.port_of_unlading if prep_data else None
+    if unlading_port and (not unlading_port.isdigit() or len(unlading_port) != 4):
+        unlading_port = resolved_port
+
     entry = Entry(
         entry_type=request.entry_type or (prep_data.entry_type if prep_data else "01"),
-        port_of_entry=(
-            request.port_of_entry
-            or (prep_data.port_of_entry or prep_data.port_code if prep_data else None)
-            or (shipment.entry_number[:4] if shipment.entry_number and len(shipment.entry_number) >= 4 else None)
-        ),
+        filer_code=prep_data.filer_code[:3] if (prep_data and prep_data.filer_code) else None,
+        entry_date=prep_data.entry_date if prep_data else datetime.now(timezone.utc),
+        import_date=(prep_data.import_date if prep_data else None) or shipment.arrival_date or datetime.now(timezone.utc),
+        port_of_entry=resolved_port,
+        port_of_unlading=unlading_port,
+        mode_of_transport="10",
         entry_number=shipment.entry_number or (prep_data.entry_number if prep_data else None),
         bill_of_lading=shipment.bol_number or (prep_data.master_bill if prep_data else None),
         master_bill=prep_data.master_bill if prep_data else shipment.bol_number,
         house_bill=prep_data.house_bill if prep_data else None,
-        carrier_code=prep_data.carrier_code if prep_data else None,
+        carrier_code=prep_data.carrier_code[:4] if (prep_data and prep_data.carrier_code) else None,
         vessel_name=prep_data.vessel_name if prep_data else None,
-        voyage_flight_number=prep_data.voyage_number if prep_data else None,
-        importer_of_record_name=shipment.importer_name or (prep_data.importer_name if prep_data else None),
-        importer_of_record_number=prep_data.importer_of_record_number if prep_data else None,
-        ultimate_consignee_name=prep_data.consignee_name if prep_data else shipment.importer_name,
+        voyage_flight_number=prep_data.voyage_number[:20] if (prep_data and prep_data.voyage_number) else None,
+        container_numbers=shipment.container_numbers or [],
+        importer_of_record_name=imp_lookup_name,
+        importer_of_record_number=prep_data.importer_of_record_number[:15] if (prep_data and prep_data.importer_of_record_number) else None,
+        ultimate_consignee_name=prep_data.consignee_name if prep_data else imp_lookup_name,
+        bond_type=prep_data.bond_type if prep_data else "8",
+        surety_code=prep_data.surety_code[:3] if (prep_data and prep_data.surety_code) else None,
         total_entered_value=float(prep_data.total_entered_value) if prep_data else float(shipment.total_declared_value or 0),
+        total_dutiable_value=float(prep_data.total_entered_value) if prep_data else float(shipment.total_declared_value or 0),
         total_duty=float(prep_data.total_duty) if prep_data else float(shipment.total_duty or 0),
         mpf_amount=float(prep_data.total_mpf) if prep_data else 0.0,
         hmf_amount=float(prep_data.total_hmf) if prep_data else 0.0,
+        total_fee=float((prep_data.total_mpf + prep_data.total_hmf)) if prep_data else 0.0,
         total_amount_due=float(prep_data.grand_total) if prep_data else float((shipment.total_duty or 0)),
         status=EntryStatus.DRAFT.value,
+        client_id=resolved_client_id,
         shipment_id=ship_uuid,
         notes=f"Created from shipment: {shipment.name or shipment_id}",
     )
@@ -1150,16 +1179,19 @@ async def create_entry_from_shipment(
     lines_created = 0
     if prep_data and prep_data.line_items:
         for idx, item in enumerate(prep_data.line_items, 1):
+            raw_hts = item.get("hts_number")
+            raw_origin = item.get("country_of_origin")
             line = EntryLine(
                 entry_id=entry.id,
                 line_number=item.get("line_number") or idx,
-                hts_code=item.get("hts_number") or "0000.00.0000",
+                hts_code=str(raw_hts)[:12] if raw_hts else None,
                 product_description=item.get("description") or "Imported Merchandise",
-                country_of_origin=(item.get("country_of_origin") or "US")[:2],
-                quantity_1=float(item.get("quantity") or 1),
+                country_of_origin=str(raw_origin)[:2].upper() if raw_origin else None,
+                quantity_1=float(item.get("quantity") or 0),
                 uom_1=item.get("unit") or "PCS",
                 gross_weight=float(item.get("gross_weight") or 0),
                 entered_value=float(item.get("entered_value") or 0),
+                dutiable_value=float(item.get("entered_value") or 0),
                 duty_rate=float(item.get("duty_rate") or 0),
                 duty_amount=float(item.get("duty_amount") or 0),
                 total_line_duty=float(item.get("duty_amount") or 0),
@@ -1262,5 +1294,112 @@ async def get_shipment_entry(
             "importer_of_record_name": entry.importer_of_record_name,
             "created_at": entry.created_at.isoformat(),
         },
+    }
+
+
+class RequestMissingDocumentPayload(BaseModel):
+    doc_type: str = Field(..., min_length=1, max_length=100)
+    recipient_email: Optional[str] = Field(None, max_length=255)
+    note: Optional[str] = Field(None, max_length=2000)
+
+
+@router.post("/{shipment_id}/request-document")
+async def request_missing_shipment_document(
+    payload: RequestMissingDocumentPayload,
+    shipment_id: str = Path(..., description="Shipment ID"),
+    db=Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Dispatch a real missing-document request email via EmailService and write an audit log.
+    """
+    from app.core.config import settings
+    from app.models.client import Client
+    from app.services.audit_service import audit
+    from app.services.email_service import EmailService
+
+    try:
+        ship_uuid = UUID(shipment_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid shipment ID format")
+
+    result = await db.execute(select(Shipment).where(Shipment.id == ship_uuid))
+    shipment = result.scalar_one_or_none()
+    if not shipment:
+        raise HTTPException(status_code=404, detail="Shipment not found")
+
+    target_email = (payload.recipient_email or "").strip() or None
+    importer_label = shipment.importer_name or "Importer"
+
+    if not target_email and shipment.importer_name:
+        client_res = await db.execute(
+            select(Client)
+            .options(selectinload(Client.contacts))
+            .where(Client.name.ilike(shipment.importer_name.strip()))
+            .limit(1)
+        )
+        matched_client = client_res.scalar_one_or_none()
+        if matched_client:
+            primary_contact = next(
+                (c for c in (matched_client.contacts or []) if c.email and c.is_primary),
+                next((c for c in (matched_client.contacts or []) if c.email), None),
+            )
+            target_email = (primary_contact.email if primary_contact else None) or matched_client.email
+
+    doc_label = payload.doc_type.replace("_", " ").title()
+    bol_ref = shipment.bol_number or str(shipment.id)[:8].upper()
+    requester = f"{current_user.get('first_name') or ''} {current_user.get('last_name') or ''}".strip() or (
+        settings.broker_name or "Customs Brokerage"
+    )
+    email_sent = False
+
+    if target_email:
+        email_sent = await EmailService().send_document_request(
+            to_email=target_email,
+            requester_name=requester,
+            document_types=[doc_label],
+            entry_number=shipment.entry_number or bol_ref,
+            message=payload.note,
+            upload_url=f"{settings.public_app_url}/ingest-ui",
+        )
+
+    await audit(
+        db,
+        action="request_document",
+        resource_type="shipment",
+        resource_id=str(shipment.id),
+        actor_id=str(current_user.get("id") or current_user.get("email") or "broker"),
+        after={
+            "doc_type": payload.doc_type,
+            "recipient_email": target_email,
+            "email_dispatched": email_sent,
+            "note": payload.note,
+        },
+    )
+    await db.commit()
+
+    if email_sent and target_email:
+        message = (
+            f"Requested {payload.doc_type.replace('_', ' ')} from importer "
+            f"({importer_label}) via {target_email}."
+        )
+    elif target_email and not email_sent:
+        message = (
+            f"Could not send request for {payload.doc_type.replace('_', ' ')} to {target_email} "
+            f"— SMTP is not configured or delivery failed. Request was audited."
+        )
+    else:
+        message = (
+            f"No email on file for importer ({importer_label}). "
+            f"Add a client contact email or pass recipient_email to send via SMTP. Request was audited."
+        )
+
+    return {
+        "shipment_id": str(shipment.id),
+        "doc_type": payload.doc_type,
+        "importer_name": importer_label,
+        "recipient_email": target_email,
+        "email_dispatched": email_sent,
+        "message": message,
     }
 

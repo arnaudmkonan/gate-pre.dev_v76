@@ -36,21 +36,13 @@ class CargoWiseExportResponse(BaseModel):
 async def export_to_cargowise(
     entry_id: str,
     download: bool = Query(False, description="Return as downloadable file"),
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Export entry to CargoWise XML format.
-    
-    Generates a UniversalShipment XML document compatible with
-    CargoWise One World customs brokerage systems.
-    
-    Args:
-        entry_id: UUID of the entry to export
-        download: If true, returns as downloadable file
-        
-    Returns:
-        XML content or file download
+    Export entry to CargoWise XML format (audited under 19 CFR Part 163).
     """
+    from app.services.audit_service import audit
     from app.services.cargowise_exporter import CargoWiseExporter
     
     try:
@@ -61,6 +53,15 @@ async def export_to_cargowise(
     try:
         exporter = CargoWiseExporter(db)
         xml_content, filename = await exporter.export_entry(entry_id)
+        await audit(
+            db,
+            action="export_cargowise_xml",
+            resource_type="entry",
+            resource_id=entry_id,
+            actor_id=str(current_user.get("id") or current_user.get("email") or "broker"),
+            after={"filename": filename, "format": "cargowise_xml"},
+        )
+        await db.commit()
         
         if download:
             return Response(
@@ -88,13 +89,13 @@ async def export_to_cargowise(
 @router.get("/cargowise/{entry_id}/download")
 async def download_cargowise_xml(
     entry_id: str,
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Download CargoWise XML file.
-    
-    Returns the XML file with appropriate headers for download.
+    Download CargoWise XML file (audited under 19 CFR Part 163).
     """
+    from app.services.audit_service import audit
     from app.services.cargowise_exporter import CargoWiseExporter
     
     try:
@@ -105,6 +106,15 @@ async def download_cargowise_xml(
     try:
         exporter = CargoWiseExporter(db)
         xml_content, filename = await exporter.export_entry(entry_id)
+        await audit(
+            db,
+            action="export_cargowise_xml",
+            resource_type="entry",
+            resource_id=entry_id,
+            actor_id=str(current_user.get("id") or current_user.get("email") or "broker"),
+            after={"filename": filename, "format": "cargowise_xml"},
+        )
+        await db.commit()
         
         return Response(
             content=xml_content,
@@ -125,11 +135,13 @@ async def download_cargowise_xml(
 @router.post("/pdf/{entry_id}")
 async def export_entry_to_pdf(
     entry_id: str,
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Export entry as a CBP Form 7501 Entry Summary PDF.
+    Export entry as a CBP Form 7501 Entry Summary PDF (audited under 19 CFR Part 163).
     """
+    from app.services.audit_service import audit
     from app.services.cargowise_exporter import CargoWiseExporter
 
     try:
@@ -140,6 +152,15 @@ async def export_entry_to_pdf(
     try:
         exporter = CargoWiseExporter(db)
         pdf_bytes, filename = await exporter.export_entry_pdf(entry_id)
+        await audit(
+            db,
+            action="export_7501_pdf",
+            resource_type="entry",
+            resource_id=entry_id,
+            actor_id=str(current_user.get("id") or current_user.get("email") or "broker"),
+            after={"filename": filename, "format": "cbp_7501_pdf"},
+        )
+        await db.commit()
         return Response(
             content=pdf_bytes,
             media_type="application/pdf",
@@ -158,11 +179,13 @@ async def export_entry_to_pdf(
 @router.post("/excel/{entry_id}")
 async def export_entry_to_excel(
     entry_id: str,
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Export entry as a multi-sheet CBP Form 7501 Entry Summary Excel (.xlsx) workbook.
+    Export entry as a multi-sheet CBP Form 7501 Entry Summary Excel (.xlsx) workbook (audited under 19 CFR Part 163).
     """
+    from app.services.audit_service import audit
     from app.services.cargowise_exporter import CargoWiseExporter
 
     try:
@@ -173,6 +196,15 @@ async def export_entry_to_excel(
     try:
         exporter = CargoWiseExporter(db)
         xlsx_bytes, filename = await exporter.export_entry_excel(entry_id)
+        await audit(
+            db,
+            action="export_7501_excel",
+            resource_type="entry",
+            resource_id=entry_id,
+            actor_id=str(current_user.get("id") or current_user.get("email") or "broker"),
+            after={"filename": filename, "format": "cbp_7501_xlsx"},
+        )
+        await db.commit()
         return Response(
             content=xlsx_bytes,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

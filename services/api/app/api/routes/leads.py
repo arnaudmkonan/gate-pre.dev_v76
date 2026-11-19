@@ -14,6 +14,7 @@ from sqlalchemy import Column, String, DateTime, Text, select, func
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth import require_admin
 from app.core.database import get_db
 from app.models.base import BaseModel
 
@@ -259,7 +260,8 @@ async def list_leads(
     page_size: int = 50,
     status_filter: Optional[str] = None,
     source: Optional[str] = None,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    _admin: dict = Depends(require_admin()),
 ):
     """
     List all leads with optional filtering.
@@ -313,7 +315,8 @@ async def get_lead(lead_id: UUID, db: AsyncSession = Depends(get_db)):
 async def update_lead(
     lead_id: UUID,
     update_data: LeadUpdate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    _admin: dict = Depends(require_admin()),
 ):
     """Update a lead's status or notes."""
     result = await db.execute(
@@ -340,7 +343,11 @@ async def update_lead(
 
 
 @router.delete("/{lead_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_lead(lead_id: UUID, db: AsyncSession = Depends(get_db)):
+async def delete_lead(
+    lead_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    _admin: dict = Depends(require_admin()),
+):
     """Delete a lead."""
     result = await db.execute(
         select(Lead).where(Lead.id == lead_id)
@@ -358,7 +365,10 @@ async def delete_lead(lead_id: UUID, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/stats/summary")
-async def get_lead_stats(db: AsyncSession = Depends(get_db)):
+async def get_lead_stats(
+    db: AsyncSession = Depends(get_db),
+    _admin: dict = Depends(require_admin()),
+):
     """Get lead statistics for dashboard."""
     result = await db.execute(select(Lead))
     all_leads = result.scalars().all()
