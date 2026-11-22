@@ -44,7 +44,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
     {
       label: 'Core',
       items: [
-        { path: '/admin/dashboard', label: 'Dashboard', icon: BarChart3 },
+        { path: '/dashboard', label: 'Workbench', icon: BarChart3 },
         { path: '/entries', label: 'Customs Entries', icon: FileText },
         { path: '/clients', label: 'Clients', icon: Building2 },
       ]
@@ -96,6 +96,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
       label: 'System',
       collapsible: true,
       items: [
+        { path: '/admin/dashboard', label: 'System Health', icon: Activity },
         { path: '/admin/monitoring', label: 'Monitoring', icon: Eye },
         { path: '/admin/metrics', label: 'Metrics', icon: LineChart },
         { path: '/admin/alerts', label: 'Alerts', icon: AlertCircle },

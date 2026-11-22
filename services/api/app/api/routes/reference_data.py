@@ -112,6 +112,30 @@ async def get_broker_instance_profile(db=Depends(get_db)):
     }
 
 
+@router.get("/document-types")
+async def list_document_types(
+    active_only: bool = Query(True, description="Only return active catalog rows"),
+    db=Depends(get_db),
+):
+    """
+    List catalog document types for Request Missing Document dropdowns.
+
+    Includes default importer instruction templates per type.
+    """
+    from sqlalchemy import select
+    from app.models.document_type import DocumentType
+
+    query = select(DocumentType).order_by(DocumentType.sort_order.asc(), DocumentType.label.asc())
+    if active_only:
+        query = query.where(DocumentType.is_active.is_(True))
+    result = await db.execute(query)
+    rows = result.scalars().all()
+    return {
+        "count": len(rows),
+        "items": [row.to_dict() for row in rows],
+    }
+
+
 # ==================== OFAC Screening Endpoints ====================
 
 @router.post("/ofac/screen")

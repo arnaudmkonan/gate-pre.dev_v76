@@ -42,6 +42,14 @@ Positioning: **Dedicated Single-Tenant AI Document Intake, Compliance Triage & C
 
 ---
 
+### P3 — Pilot Broker Handoff (1 / 1 Completed)
+
+| ID | Domain | Requirement | Status | Primary Files |
+|----|--------|-------------|--------|---------------|
+| **P3-1** | **Pilot Onboarding Pack** | Operator + broker acceptance guide (intake fields, provision, verify-instance, day-1 walkthrough A–K, sign-off checklist); production-safe `pilot.env.example` | **DONE** | `docs/PILOT_ONBOARDING.md`, `provisioning/templates/pilot.env.example` |
+
+---
+
 ### Deliberately Scoped to Optional Phase 2 Upsell (Do Not Promise Out-of-the-Box)
 
 1. **Direct Live CBP ACE ABI / ISF SFTP Interconnect:** Requires the broker's CBP-assigned ABI certification / MQ or SFTP circuit (v1 hands off validated 7501 PDFs, ISF-10 ABI drafts, and CargoWise `UniversalShipment` XML into their existing ABI transmitter).
@@ -64,6 +72,10 @@ Positioning: **Dedicated Single-Tenant AI Document Intake, Compliance Triage & C
 | `verify-instance.sh` | Pass (health, scrypt auth, 2555d audit, HTS seed) |
 | Frontend type-check / lint | Pass |
 | Playwright 01/03/04/05/06 | Pass |
-| Playwright 09 | Flaky without seeded review-queue data (env, not regression) |
+| Playwright 07/08/09 (post migration fix) | Pass |
+| Missing shipment-suggestion tables | Fixed (`m9n0o1p2q3r4`) |
 
 **Accepted caveats for this sale model:** shipments remain DB-wide (no `client_id`; OK for dedicated single-tenant DB); Vite brand vars are bake-time (rebuild frontend per white-label); live ACE/ISF SFTP remains Phase-2 upsell.
+
+**Pilot go-live path:** [docs/PILOT_ONBOARDING.md](docs/PILOT_ONBOARDING.md)  
+**Architecture & data flow:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)

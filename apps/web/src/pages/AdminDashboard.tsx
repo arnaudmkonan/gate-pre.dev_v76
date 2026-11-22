@@ -111,7 +111,12 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+        <div>
+          <h1 className="text-3xl font-bold">System Health</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Platform ops — Celery, queues, errors, and throughput. Day-to-day broker work lives on Workbench.
+          </p>
+        </div>
         <button
           onClick={fetchData}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"

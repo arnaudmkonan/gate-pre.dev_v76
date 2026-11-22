@@ -8,6 +8,7 @@ export const PUBLIC_ROUTES = [
 
 /** Routes any authenticated user can open (smoke: page loads without app crash). */
 export const AUTHENTICATED_ROUTES = [
+  '/dashboard',
   '/ingest-ui',
   '/upload',
   '/ingest',

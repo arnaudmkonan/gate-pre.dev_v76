@@ -32,7 +32,14 @@ The GATE Platform uses a **Single-Tenant** deployment model where each customer 
 └──────────────┘ └──────────────┘ └──────────────┘
 ```
 
-## Quick Start
+## Pilot broker handoff
+
+For the first boutique-broker **acceptance pilot** (draft/export workbench, not live CBP filing), follow:
+
+- **[docs/PILOT_ONBOARDING.md](../docs/PILOT_ONBOARDING.md)** — intake fields, provision, verify, day-1 walkthrough, sign-off
+- **[docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md)** — system architecture + data-flow Mermaid diagrams
+- **[templates/pilot.env.example](templates/pilot.env.example)** — production-safe ACE/SMTP/brand overrides
+- **[scripts/verify-instance.sh](scripts/verify-instance.sh)** — post-init smoke
 
 ### 1. Prerequisites
 

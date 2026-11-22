@@ -21,7 +21,8 @@ from app.api.routes import (
     client_preferences, client_reports, client_billing, client_portal, client_dashboard, document_requests,
     entry_lifecycle, analytics, production_ready, email, cargowise_export, leads, landing_analytics, embeddings,
     stripe_billing,
-    shipment_assembly, entry_prep, ace_transmit, webhooks, api_keys, notifications
+    shipment_assembly, entry_prep, ace_transmit, webhooks, api_keys, notifications,
+    workbench,
 )
 
 from app.api.routes import retry_policy
@@ -211,6 +212,7 @@ app.include_router(entry_reconciliation.router)
 app.include_router(ace_import.router)
 app.include_router(compliance_scorecard.router)
 app.include_router(shipments.router)
+app.include_router(workbench.router)
 app.include_router(compliance_integration.router)
 app.include_router(entries.router)
 app.include_router(entry_prep.router)

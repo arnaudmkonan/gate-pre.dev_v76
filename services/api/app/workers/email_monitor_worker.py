@@ -149,6 +149,14 @@ def process_email_attachments(
                 # Create IngestJob record for the processing pipeline
                 from app.models.ingest_job import IngestJob, IngestJobStatus
                 
+                # Correlate replies to missing-doc requests: [GATE-DOCREQ:{shipment_uuid}]
+                import re
+                corr_match = re.search(
+                    r"GATE-DOCREQ:([0-9a-fA-F-]{36})",
+                    email_msg.subject or "",
+                )
+                gate_docreq_shipment_id = corr_match.group(1) if corr_match else None
+
                 ingest_job = IngestJob(
                     filename=attachment.filename,
                     file_type=file_ext,
@@ -157,12 +165,13 @@ def process_email_attachments(
                     status=IngestJobStatus.PENDING,
                     uploader_id="email-ingestion",
                     extracted_metadata={
-                        "source": "email",
+                        "source": "email_reply" if gate_docreq_shipment_id else "email",
                         "email_sender": email_msg.sender_email,
                         "email_subject": email_msg.subject,
                         "email_date": email_msg.date.isoformat(),
                         "message_id": email_msg.message_id,
-                        "mime_type": attachment.content_type
+                        "mime_type": attachment.content_type,
+                        "gate_docreq_shipment_id": gate_docreq_shipment_id,
                     }
                 )
                 

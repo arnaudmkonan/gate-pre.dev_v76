@@ -213,6 +213,50 @@ def _process_job_sync(job_id: str) -> Dict[str, Any]:
         job.progress_percentage = 100
         job.extracted_metadata = extracted_metadata
         session.add(job)
+
+        # Auto-link email replies that carry [GATE-DOCREQ:{shipment_id}]
+        meta = job.extracted_metadata or {}
+        ship_corr = (meta.get("gate_docreq_shipment_id") if isinstance(meta, dict) else None) or (
+            extracted_metadata.get("gate_docreq_shipment_id")
+            if isinstance(extracted_metadata, dict)
+            else None
+        )
+        if ship_corr:
+            try:
+                from uuid import UUID as _UUID
+                from app.models.gold_records import Shipment, ShipmentDocument, LinkMethod
+
+                ship_uuid = _UUID(str(ship_corr))
+                shipment = session.execute(
+                    select(Shipment).where(Shipment.id == ship_uuid)
+                ).scalar_one_or_none()
+                if shipment:
+                    existing_link = session.execute(
+                        select(ShipmentDocument).where(
+                            ShipmentDocument.shipment_id == ship_uuid,
+                            ShipmentDocument.document_id == doc_metadata.id,
+                        )
+                    ).scalar_one_or_none()
+                    if not existing_link:
+                        session.add(
+                            ShipmentDocument(
+                                shipment_id=ship_uuid,
+                                document_id=doc_metadata.id,
+                                linked_by_key_type="GATE_DOCREQ",
+                                linked_by_key_value=str(ship_uuid),
+                                link_confidence=1.0,
+                                link_method=LinkMethod.AUTO.value,
+                            )
+                        )
+                        shipment.document_count = (shipment.document_count or 0) + 1
+                        session.add(shipment)
+                        logger.info(
+                            "Auto-linked email reply doc %s to shipment %s via GATE-DOCREQ",
+                            doc_metadata.id,
+                            ship_uuid,
+                        )
+            except Exception as e:
+                logger.warning(f"GATE-DOCREQ auto-link skipped (non-fatal): {e}")
         
         session.commit()
         

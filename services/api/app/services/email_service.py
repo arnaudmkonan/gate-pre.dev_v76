@@ -82,6 +82,7 @@ class EmailService:
         subject: str,
         html_content: str,
         text_content: Optional[str] = None,
+        reply_to: Optional[str] = None,
     ) -> bool:
         """
         Send an email.
@@ -95,6 +96,7 @@ class EmailService:
                 f"📧 EMAIL (dev mode — SMTP not configured)\n"
                 f"{'='*60}\n"
                 f"To:      {to_email}\n"
+                f"Reply-To:{reply_to or '(default)'}\n"
                 f"Subject: {subject}\n"
                 f"{'─'*60}\n"
                 f"{text_content or 'See HTML content'}\n"
@@ -109,6 +111,8 @@ class EmailService:
             msg["From"] = f"{settings.smtp_from_email}"
             msg["To"] = to_email
             msg["Subject"] = subject
+            if reply_to:
+                msg["Reply-To"] = reply_to
 
             if text_content:
                 msg.attach(MIMEText(text_content, "plain"))
@@ -288,10 +292,23 @@ class EmailService:
         entry_number: Optional[str] = None,
         message: Optional[str] = None,
         upload_url: Optional[str] = None,
+        shipment_id: Optional[str] = None,
+        reply_to: Optional[str] = None,
     ) -> bool:
-        """Send document request to client."""
+        """Send document request to client.
+
+        When ``shipment_id`` is set, the subject includes ``[GATE-DOCREQ:{id}]`` so
+        IMAP inbox replies with attachments can be auto-linked back to that shipment.
+        """
         brand = (settings.broker_name or "Customs Brokerage").strip()
         doc_list = "".join(f"<li>{dt}</li>" for dt in document_types)
+        corr = f"[GATE-DOCREQ:{shipment_id}]" if shipment_id else ""
+        reply_hint = (
+            "<p><em>Reply to this email with the document attached</em> — "
+            "attachments are ingested automatically when our inbox monitor is enabled.</p>"
+            if reply_to
+            else ""
+        )
 
         content = f"""
         <p>Hello,</p>
@@ -299,21 +316,30 @@ class EmailService:
         {f'for shipment/entry <strong>{entry_number}</strong>' if entry_number else ''}:</p>
         <ul>{doc_list}</ul>
         {f'<div class="info-box"><p>{message}</p></div>' if message else ''}
+        {reply_hint}
         {f'<p style="text-align:center;"><a href="{upload_url}" class="btn">Upload Documents</a></p>' if upload_url else ''}
+        {f'<p style="color:#888;font-size:12px;">Ref {corr}</p>' if corr else ''}
         """
 
         text = (
             f"Document Request from {requester_name}\n\n"
             f"Documents needed: {', '.join(document_types)}\n"
             f"{f'For shipment/entry: {entry_number}' if entry_number else ''}\n"
-            f"{f'Message: {message}' if message else ''}"
+            f"{f'Message: {message}' if message else ''}\n"
+            f"{'Reply with the file attached for automatic processing.' if reply_to else ''}\n"
+            f"{corr}"
         )
+
+        subject = f"{brand} — Document Request{f' for {entry_number}' if entry_number else ''}"
+        if corr:
+            subject = f"{subject} {corr}"
 
         return await self.send_email(
             to_email=to_email,
-            subject=f"{brand} — Document Request{f' for {entry_number}' if entry_number else ''}",
+            subject=subject,
             html_content=_render_email_html(content),
             text_content=text,
+            reply_to=reply_to,
         )
 
     async def send_compliance_alert(

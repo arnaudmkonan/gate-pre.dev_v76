@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CheckCircle, Upload, ClipboardCheck, Link2, Shield, ChevronRight, X } from 'lucide-react'
+import { CheckCircle, Upload, ClipboardCheck, Link2, Shield, ChevronRight, X, LayoutDashboard } from 'lucide-react'
 import { Button } from './Button'
 import { BRAND_SHORT_NAME } from '../config/brand'
 
 const STORAGE_KEY = 'gates_onboarding_complete'
 
 const STEPS = [
+  { id: 'workbench', label: 'Open your workbench dashboard', path: '/dashboard', icon: LayoutDashboard },
   { id: 'upload', label: 'Upload customs documents', path: '/ingest-ui', icon: Upload },
   { id: 'review', label: 'Review extracted data', path: '/review', icon: ClipboardCheck },
   { id: 'shipments', label: 'Assemble shipments', path: '/shipments/assembly', icon: Link2 },

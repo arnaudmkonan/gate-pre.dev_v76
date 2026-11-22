@@ -1312,9 +1312,13 @@ async def request_missing_shipment_document(
 ):
     """
     Dispatch a real missing-document request email via EmailService and write an audit log.
+
+    When IMAP ingest is configured, Reply-To points at the monitored inbox and the
+    subject includes ``[GATE-DOCREQ:{shipment_id}]`` so attachment replies auto-link.
     """
     from app.core.config import settings
     from app.models.client import Client
+    from app.models.document_type import DocumentType
     from app.services.audit_service import audit
     from app.services.email_service import EmailService
 
@@ -1346,11 +1350,18 @@ async def request_missing_shipment_document(
             )
             target_email = (primary_contact.email if primary_contact else None) or matched_client.email
 
-    doc_label = payload.doc_type.replace("_", " ").title()
+    doc_type_row = (
+        await db.execute(
+            select(DocumentType).where(DocumentType.code == payload.doc_type)
+        )
+    ).scalar_one_or_none()
+    doc_label = doc_type_row.label if doc_type_row else payload.doc_type.replace("_", " ").title()
     bol_ref = shipment.bol_number or str(shipment.id)[:8].upper()
     requester = f"{current_user.get('first_name') or ''} {current_user.get('last_name') or ''}".strip() or (
         settings.broker_name or "Customs Brokerage"
     )
+    imap_ready = bool(settings.email_imap_host and settings.email_imap_user)
+    reply_to = settings.email_imap_user if imap_ready else None
     email_sent = False
 
     if target_email:
@@ -1361,6 +1372,8 @@ async def request_missing_shipment_document(
             entry_number=shipment.entry_number or bol_ref,
             message=payload.note,
             upload_url=f"{settings.public_app_url}/ingest-ui",
+            shipment_id=str(shipment.id),
+            reply_to=reply_to,
         )
 
     await audit(
@@ -1371,21 +1384,28 @@ async def request_missing_shipment_document(
         actor_id=str(current_user.get("id") or current_user.get("email") or "broker"),
         after={
             "doc_type": payload.doc_type,
+            "doc_label": doc_label,
             "recipient_email": target_email,
             "email_dispatched": email_sent,
             "note": payload.note,
+            "reply_auto_ingest": imap_ready,
+            "correlation_token": f"GATE-DOCREQ:{shipment.id}",
         },
     )
     await db.commit()
 
     if email_sent and target_email:
         message = (
-            f"Requested {payload.doc_type.replace('_', ' ')} from importer "
-            f"({importer_label}) via {target_email}."
+            f"Requested {doc_label} from importer ({importer_label}) via {target_email}."
+            + (
+                " Replies with attachments to the monitored inbox will auto-ingest and link to this shipment."
+                if imap_ready
+                else " Configure EMAIL_IMAP_* to auto-process attachment replies."
+            )
         )
     elif target_email and not email_sent:
         message = (
-            f"Could not send request for {payload.doc_type.replace('_', ' ')} to {target_email} "
+            f"Could not send request for {doc_label} to {target_email} "
             f"— SMTP is not configured or delivery failed. Request was audited."
         )
     else:
@@ -1397,9 +1417,12 @@ async def request_missing_shipment_document(
     return {
         "shipment_id": str(shipment.id),
         "doc_type": payload.doc_type,
+        "doc_label": doc_label,
         "importer_name": importer_label,
         "recipient_email": target_email,
         "email_dispatched": email_sent,
+        "reply_auto_ingest": imap_ready,
+        "correlation_token": f"GATE-DOCREQ:{shipment.id}",
         "message": message,
     }
 

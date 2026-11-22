@@ -10,7 +10,7 @@ test.describe('Public pages & authentication', () => {
     await page.getByRole('button', { name: 'Admin User' }).click();
     await expect(page.locator('#email')).toHaveValue('admin@example.com');
     await page.getByRole('button', { name: 'Sign in' }).click();
-    await page.waitForURL(/\/ingest-ui/);
+    await page.waitForURL(/\/dashboard/);
   });
 
   test('unauthenticated user is redirected to login from protected route', async ({ page }) => {

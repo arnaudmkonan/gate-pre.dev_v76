@@ -35,6 +35,7 @@ import { DrawbackPage } from './pages/DrawbackPage'
 import { ACEImportPage } from './pages/ACEImportPage'
 import { ComplianceDashboardPage } from './pages/ComplianceDashboardPage'
 import AdminDashboard from './pages/AdminDashboard'
+import WorkbenchDashboardPage from './pages/WorkbenchDashboardPage'
 import AdminOrganizations from './pages/AdminOrganizations'
 import AdminRoles from './pages/AdminRoles'
 import MonitoringPage from './pages/MonitoringPage'
@@ -218,6 +219,16 @@ function App() {
                 <ProtectedRoute>
                   <AdminLayout>
                     <IngestUIPage />
+                  </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <AdminLayout>
+                    <WorkbenchDashboardPage />
                   </AdminLayout>
                 </ProtectedRoute>
               }
@@ -592,7 +603,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            <Route path="/" element={<Navigate to="/ingest-ui" replace />} />
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </Router>
       </AuthProvider>

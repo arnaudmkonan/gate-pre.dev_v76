@@ -80,6 +80,7 @@ from app.models.client_portal import (
     ClientUser, PortalInvitation, ClientUserSession,
     ClientUserRole, ClientUserStatus, InvitationStatus
 )
+from app.models.document_type import DocumentType
 from app.models.document_request import (
     DocumentRequest, ClientNotification,
     DocumentRequestStatus, DocumentRequestPriority

@@ -16,6 +16,14 @@ interface ShipmentDocument {
     uploaded_at?: string
 }
 
+interface CatalogDocumentType {
+    code: string
+    label: string
+    category?: string | null
+    request_instructions?: string | null
+    sort_order?: number
+}
+
 interface Shipment {
     id: string
     name?: string
@@ -62,6 +70,9 @@ export const ShipmentDetailPage = () => {
     const [showDocRequestModal, setShowDocRequestModal] = useState(false)
     const [docRequestType, setDocRequestType] = useState('commercial_invoice')
     const [docRequestNote, setDocRequestNote] = useState('')
+    const [docRequestNoteTouched, setDocRequestNoteTouched] = useState(false)
+    const [docRequestTypes, setDocRequestTypes] = useState<CatalogDocumentType[]>([])
+    const [docRequestReplyHint, setDocRequestReplyHint] = useState<string | null>(null)
     const [docRequestSent, setDocRequestSent] = useState<string | null>(null)
 
     useEffect(() => {
@@ -69,6 +80,59 @@ export const ShipmentDetailPage = () => {
             fetchShipment()
         }
     }, [shipmentId])
+
+    useEffect(() => {
+        const loadDocTypes = async () => {
+            try {
+                const resp = await authFetch(`${API_BASE}/api/reference-data/document-types`)
+                if (!resp.ok) return
+                const data = await resp.json()
+                const items: CatalogDocumentType[] = data.items || []
+                if (items.length) {
+                    setDocRequestTypes(items)
+                    const initial = items.find((t) => t.code === 'commercial_invoice') || items[0]
+                    setDocRequestType(initial.code)
+                    if (!docRequestNoteTouched) {
+                        setDocRequestNote(initial.request_instructions || '')
+                    }
+                }
+            } catch {
+                // keep hardcoded fallback options if catalog unavailable
+            }
+        }
+        loadDocTypes()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+
+    useEffect(() => {
+        if (!showDocRequestModal) return
+        const loadReplyCapability = async () => {
+            try {
+                const resp = await authFetch(`${API_BASE}/api/reference-data/broker-profile`)
+                if (!resp.ok) return
+                const profile = await resp.json()
+                if (profile.email_imap_configured) {
+                    setDocRequestReplyHint(
+                        'IMAP inbox is configured — importer replies with attachments can auto-ingest and link to this shipment.'
+                    )
+                } else {
+                    setDocRequestReplyHint(
+                        'IMAP not configured (EMAIL_IMAP_*). Replies will not auto-process until the shared inbox monitor is enabled; use the upload link or forward attachments manually.'
+                    )
+                }
+            } catch {
+                setDocRequestReplyHint(null)
+            }
+        }
+        loadReplyCapability()
+    }, [showDocRequestModal])
+
+    const applyDocTypeTemplate = (code: string) => {
+        setDocRequestType(code)
+        if (docRequestNoteTouched) return
+        const match = docRequestTypes.find((t) => t.code === code)
+        setDocRequestNote(match?.request_instructions || '')
+    }
 
     const fetchShipment = async () => {
         setLoading(true)
@@ -234,7 +298,9 @@ export const ShipmentDetailPage = () => {
             )
         } finally {
             setShowDocRequestModal(false)
-            setDocRequestNote('')
+            setDocRequestNoteTouched(false)
+            const selected = docRequestTypes.find((t) => t.code === docRequestType)
+            setDocRequestNote(selected?.request_instructions || '')
         }
     }
 
@@ -701,29 +767,56 @@ export const ShipmentDetailPage = () => {
                             <label className="block text-sm font-medium text-gray-700 mb-1">Document Type</label>
                             <select
                                 value={docRequestType}
-                                onChange={(e) => setDocRequestType(e.target.value)}
+                                onChange={(e) => applyDocTypeTemplate(e.target.value)}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                             >
-                                <option value="commercial_invoice">Commercial Invoice</option>
-                                <option value="packing_list">Packing List</option>
-                                <option value="bill_of_lading">Bill of Lading (MBL / HBL)</option>
-                                <option value="arrival_notice">Arrival Notice</option>
-                                <option value="power_of_attorney">Power of Attorney (POA)</option>
-                                <option value="pga_certificate">PGA / FDA / Lacey Act Certificate</option>
+                                {docRequestTypes.length > 0 ? (
+                                    docRequestTypes.map((t) => (
+                                        <option key={t.code} value={t.code}>
+                                            {t.label}
+                                        </option>
+                                    ))
+                                ) : (
+                                    <>
+                                        <option value="commercial_invoice">Commercial Invoice</option>
+                                        <option value="packing_list">Packing List</option>
+                                        <option value="bill_of_lading">Bill of Lading (MBL / HBL)</option>
+                                        <option value="arrival_notice">Arrival Notice</option>
+                                        <option value="power_of_attorney">Power of Attorney (POA)</option>
+                                        <option value="pga_certificate">PGA / FDA / Lacey Act Certificate</option>
+                                    </>
+                                )}
                             </select>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Instructions for Importer</label>
                             <textarea
                                 value={docRequestNote}
-                                onChange={(e) => setDocRequestNote(e.target.value)}
-                                rows={3}
-                                placeholder="e.g. Please provide a signed Commercial Invoice showing HTS codes and Country of Origin..."
+                                onChange={(e) => {
+                                    setDocRequestNoteTouched(true)
+                                    setDocRequestNote(e.target.value)
+                                }}
+                                rows={5}
+                                placeholder="Select a document type to load a suggested message, then edit as needed..."
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                             />
+                            <p className="mt-1 text-xs text-gray-500">
+                                Prewritten template loads when you change Document Type. Edit freely — further type changes won&apos;t overwrite your edits.
+                            </p>
                         </div>
+                        {docRequestReplyHint && (
+                            <p className="text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-lg p-2">
+                                {docRequestReplyHint}
+                            </p>
+                        )}
                         <div className="flex justify-end gap-2 pt-2 border-t">
-                            <Button variant="secondary" onClick={() => setShowDocRequestModal(false)}>
+                            <Button
+                                variant="secondary"
+                                onClick={() => {
+                                    setShowDocRequestModal(false)
+                                    setDocRequestNoteTouched(false)
+                                }}
+                            >
                                 Cancel
                             </Button>
                             <Button onClick={handleRequestMissingDocument}>
