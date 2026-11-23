@@ -1,0 +1,1282 @@
+{
+  "started_at": "2026-11-22T23:10:53.176290+00:00",
+  "steps": [
+    {
+      "name": "0. API health",
+      "ok": true,
+      "detail": {
+        "status": "ok",
+        "environment": "development"
+      },
+      "at": "2026-11-22T23:10:53.284300+00:00"
+    },
+    {
+      "name": "1. Broker admin login",
+      "ok": true,
+      "detail": {
+        "email": "admin@example.com",
+        "role": "admin",
+        "client_id": "22647313-b843-48ee-8637-9adc165e56f5"
+      },
+      "at": "2026-11-22T23:10:53.521994+00:00"
+    },
+    {
+      "name": "2a. Workbench summary",
+      "ok": true,
+      "detail": {
+        "attention": {
+          "total": 32,
+          "review_pending": 32,
+          "shipments_partial": 0,
+          "shipments_ready_for_prep": 3,
+          "entries_draft": 0,
+          "entries_ready_to_file": 0,
+          "ingest_processing": 0,
+          "ingest_failed": 0
+        },
+        "broker": {
+          "name": "Customs Brokerage",
+          "filer_code": null,
+          "ace_mode": "simulation",
+          "imap_configured": true,
+          "smtp_configured": false
+        }
+      },
+      "at": "2026-11-22T23:10:53.935903+00:00"
+    },
+    {
+      "name": "2b. Broker profile",
+      "ok": true,
+      "detail": {
+        "broker_name": "Customs Brokerage",
+        "broker_filer_code": null,
+        "broker_default_port": null,
+        "cargowise_company_code": "BROKER",
+        "cargowise_enterprise_id": "BROKER-CW1",
+        "audit_log_retention_days": 2555,
+        "cbp_19_cfr_163_compliant": true,
+        "ace_mode": "simulation",
+        "email_imap_configured": true,
+        "smtp_configured": false,
+        "hts_code_count": 238
+      },
+      "at": "2026-11-22T23:10:54.024659+00:00"
+    },
+    {
+      "name": "3. Create importer client",
+      "ok": true,
+      "detail": {
+        "id": "4bcfb88c-8054-4aea-b027-01d72f9ca0b7",
+        "name": "Helios Precision Instruments Inc.",
+        "status": "onboarding",
+        "ior_number": "77-4910283",
+        "created_at": "2026-11-22T23:10:54.432507+00:00"
+      },
+      "at": "2026-11-22T23:10:54.511272+00:00"
+    },
+    {
+      "name": "3b. Activate client",
+      "ok": true,
+      "detail": {
+        "id": "4bcfb88c-8054-4aea-b027-01d72f9ca0b7",
+        "name": "Helios Precision Instruments Inc.",
+        "status": "active",
+        "updated_at": "2026-11-22T23:10:54.544698+00:00",
+        "message": "Client updated successfully"
+      },
+      "at": "2026-11-22T23:10:54.566439+00:00"
+    },
+    {
+      "name": "4a. Invite client_admin",
+      "ok": true,
+      "detail": {
+        "email": "helios.ops+90418_1795389054@example.com",
+        "link": "/register?token=aADS2IroB_F5cpvn8UcDjZUDmuMvOdwW_cMwJuP__oA",
+        "role": "client_admin"
+      },
+      "at": "2026-11-22T23:10:54.655335+00:00"
+    },
+    {
+      "name": "4b. Accept invitation / register",
+      "ok": true,
+      "detail": {
+        "email": "helios.ops+90418_1795389054@example.com",
+        "user_id": "4e912ac9-be5b-47bf-924d-2db61f2417cb",
+        "role": "client_admin",
+        "requires_email_verification": false,
+        "message": "Account created successfully"
+      },
+      "at": "2026-11-22T23:10:54.867676+00:00"
+    },
+    {
+      "name": "4c. Client admin session from accept",
+      "ok": true,
+      "detail": {
+        "has_token": true
+      },
+      "at": "2026-11-22T23:10:54.867723+00:00"
+    },
+    {
+      "name": "4d. Client portal /me",
+      "ok": true,
+      "detail": {
+        "user": {
+          "id": "4e912ac9-be5b-47bf-924d-2db61f2417cb",
+          "email": "helios.ops+90418_1795389054@example.com",
+          "first_name": "Ava",
+          "last_name": "Nguyen",
+          "full_name": "Ava Nguyen",
+          "phone": "+1-206-555-1001",
+          "job_title": "Import Compliance Manager",
+          "client_id": "4bcfb88c-8054-4aea-b027-01d72f9ca0b7",
+          "role": "client_admin",
+          "status": "active",
+          "activated_at": "2026-11-22T23:10:54.663550+00:00",
+          "last_login_at": "2026-11-22T23:10:54.837903+00:00",
+          "email_verified": true,
+          "notification_prefs": {
+            "entry_filed": true,
+            "exam_required": true,
+            "invoice_ready": true,
+            "entry_released": true,
+            "approval_needed": true,
+            "document_requested": true
+          },
+          "timezone": "America/New_York"
+        }
+      },
+      "at": "2026-11-22T23:10:54.887109+00:00"
+    },
+    {
+      "name": "4e. Client can view own company",
+      "ok": true,
+      "detail": {
+        "name": "Helios Precision Instruments Inc.",
+        "status": "active"
+      },
+      "at": "2026-11-22T23:10:54.950184+00:00"
+    },
+    {
+      "name": "5a. Document types catalog",
+      "ok": true,
+      "detail": {
+        "count": 9,
+        "sample": [
+          "commercial_invoice",
+          "packing_list",
+          "bill_of_lading",
+          "arrival_notice",
+          "power_of_attorney",
+          "pga_certificate",
+          "certificate_of_origin",
+          "isf_worksheet"
+        ]
+      },
+      "at": "2026-11-22T23:10:54.977084+00:00"
+    },
+    {
+      "name": "5b. HTS search (9018.19)",
+      "ok": true,
+      "detail": {
+        "count": 1,
+        "sample": [
+          {
+            "id": "144",
+            "hts_code": "9018.19.00",
+            "description": "Other electro-diagnostic apparatus",
+            "chapter": 90,
+            "duty_rate": "Free",
+            "duty_rate_percent": null
+          }
+        ]
+      },
+      "at": "2026-11-22T23:10:55.070820+00:00"
+    },
+    {
+      "name": "6. Upload 40-page multi-doc PDF",
+      "ok": true,
+      "detail": {
+        "job_id": "4950ec05-6fdc-4c84-b32e-ef733dbc06fd",
+        "file_id": "ce119583-179b-4c36-9e4d-de93cb3587b5",
+        "filename": "SHP-2026-90418_40page_bundle.pdf",
+        "file_type": "pdf",
+        "size": 54462,
+        "storage_path": "uploads/20261122_231055_SHP-2026-90418_40page_bundle.pdf",
+        "status": "uploaded",
+        "message": "File uploaded and queued for ingestion"
+      },
+      "at": "2026-11-22T23:10:56.246268+00:00"
+    },
+    {
+      "name": "7. Ingest pipeline completed",
+      "ok": false,
+      "detail": {
+        "final_status": "pending",
+        "statuses_seen": [
+          "pending"
+        ],
+        "job": {
+          "id": "4950ec05-6fdc-4c84-b32e-ef733dbc06fd",
+          "status": "pending",
+          "filename": "SHP-2026-90418_40page_bundle.pdf",
+          "document_type": null,
+          "pages": null,
+          "error": null,
+          "progress": null
+        }
+      },
+      "at": "2026-11-22T23:26:00.053573+00:00"
+    },
+    {
+      "name": "8a. Review queue",
+      "ok": true,
+      "detail": {
+        "total_items": 32,
+        "related_guess": 0
+      },
+      "at": "2026-11-22T23:26:00.440701+00:00"
+    },
+    {
+      "name": "8b. Open review item",
+      "ok": false,
+      "detail": {
+        "id": "b8bacac9-8a9f-4966-ae7f-be5c6d02fb5e",
+        "keys": [
+          "detail"
+        ]
+      },
+      "at": "2026-11-22T23:26:00.487529+00:00"
+    },
+    {
+      "name": "8c. Approve review item",
+      "ok": false,
+      "detail": "no approve route matched / skipped",
+      "at": "2026-11-22T23:26:00.517441+00:00"
+    },
+    {
+      "name": "9a. Auto-assemble shipments",
+      "ok": true,
+      "detail": {
+        "status": "completed",
+        "shipments_created": 0,
+        "documents_analyzed": 0,
+        "documents_linked": 0
+      },
+      "at": "2026-11-22T23:26:00.628829+00:00"
+    },
+    {
+      "name": "9b. Locate shipment",
+      "ok": true,
+      "detail": {
+        "matched": 0,
+        "shipment": {
+          "id": "592f6587-d760-4877-a010-5da91331bdda",
+          "status": "complete",
+          "bol_number": "OOLU456789123",
+          "importer_name": "Global Industrial Machinery Inc.",
+          "reference_number": null,
+          "shipment_number": null,
+          "entry_number": "G76-3091827-5"
+        }
+      },
+      "at": "2026-11-22T23:26:03.811969+00:00"
+    },
+    {
+      "name": "9c. Shipment detail",
+      "ok": true,
+      "detail": {
+        "id": "592f6587-d760-4877-a010-5da91331bdda",
+        "status": "complete",
+        "bol_number": "OOLU456789123",
+        "importer_name": "Global Industrial Machinery Inc.",
+        "container_numbers": [
+          "OOLU7654321",
+          "OOLU7654322"
+        ],
+        "port_of_entry": null,
+        "total_value": null
+      },
+      "at": "2026-11-22T23:26:03.921848+00:00"
+    },
+    {
+      "name": "9d. Shipment linked documents",
+      "ok": true,
+      "detail": {
+        "count": 6,
+        "types": [
+          "commercial_invoice_scenario_3_consignee1.pdf",
+          "house_bl_scenario_3_consignee1.pdf",
+          "isf_form_scenario_3.xlsx",
+          "master_bl_scenario_3.pdf",
+          "packing_list_scenario_3_consignee1.pdf",
+          "packing_list_scenario_3_consignee1.xlsx"
+        ]
+      },
+      "at": "2026-11-22T23:26:03.981919+00:00"
+    },
+    {
+      "name": "10. Request missing document",
+      "ok": true,
+      "detail": {
+        "shipment_id": "592f6587-d760-4877-a010-5da91331bdda",
+        "doc_type": "commercial_invoice",
+        "doc_label": "Commercial Invoice",
+        "importer_name": "Global Industrial Machinery Inc.",
+        "recipient_email": null,
+        "email_dispatched": false,
+        "reply_auto_ingest": true,
+        "correlation_token": "GATE-DOCREQ:592f6587-d760-4877-a010-5da91331bdda",
+        "message": "No email on file for importer (Global Industrial Machinery Inc.). Add a client contact email or pass recipient_email to send via SMTP. Request was audited."
+      },
+      "at": "2026-11-22T23:26:04.222228+00:00"
+    },
+    {
+      "name": "11a. Generate ISF from shipment",
+      "ok": true,
+      "detail": {
+        "message": "ISF already exists for this shipment",
+        "already_exists": true,
+        "isf_id": "db372a0b-8797-47b6-9992-866f3cc9b5db",
+        "status": "draft"
+      },
+      "at": "2026-11-22T23:26:04.291974+00:00"
+    },
+    {
+      "name": "11b. Download ISF ABI draft",
+      "ok": true,
+      "detail": {
+        "keys": [
+          "isf_id",
+          "message_type",
+          "message",
+          "abi_ready"
+        ],
+        "abi_ready": false
+      },
+      "at": "2026-11-22T23:26:04.335876+00:00"
+    },
+    {
+      "name": "12a. Entry prep (7501)",
+      "ok": true,
+      "detail": {
+        "entry_number": "G76-3091827-5",
+        "filer_code": "G76",
+        "port": "2809",
+        "lines": 0,
+        "totals": {
+          "entered_value": 142800.0,
+          "duty": 0.0,
+          "mpf": 494.66,
+          "hmf": 178.5,
+          "taxes": 0.0,
+          "other": 0.0,
+          "grand_total": 673.16
+        },
+        "importer": "Global Industrial Machinery Inc."
+      },
+      "at": "2026-11-22T23:26:04.446540+00:00"
+    },
+    {
+      "name": "12b. Validate entry prep",
+      "ok": true,
+      "detail": {
+        "is_valid": true,
+        "completeness_score": 0.81,
+        "errors": [],
+        "warnings": [
+          "Missing Importer of Record EIN / CBP number",
+          "No line items \u2014 add commercial invoice lines and HTS classifications",
+          "No line items found - commercial invoice data may be missing"
+        ],
+        "field_issues": {}
+      },
+      "at": "2026-11-22T23:26:04.474359+00:00"
+    },
+    {
+      "name": "12c. Export 7501 pdf",
+      "ok": true,
+      "detail": {
+        "bytes": 3505,
+        "path": "docs/e2e-runs/SHP-2026-90418/exports/7501_prep.pdf"
+      },
+      "at": "2026-11-22T23:26:04.694926+00:00"
+    },
+    {
+      "name": "12c. Export 7501 excel",
+      "ok": true,
+      "detail": {
+        "bytes": 6884,
+        "path": "docs/e2e-runs/SHP-2026-90418/exports/7501_prep.xlsx"
+      },
+      "at": "2026-11-22T23:26:04.969490+00:00"
+    },
+    {
+      "name": "12c. Export 7501 ace",
+      "ok": true,
+      "detail": {
+        "bytes": 670,
+        "path": "docs/e2e-runs/SHP-2026-90418/exports/7501_prep.ace.json"
+      },
+      "at": "2026-11-22T23:26:05.000823+00:00"
+    },
+    {
+      "name": "13. Create official entry",
+      "ok": true,
+      "detail": {
+        "message": "Entry already exists for this shipment",
+        "already_exists": true,
+        "entry_id": "20f4047d-a9ff-44dd-adc5-581bd2a4e1c1",
+        "entry_number": "G76-3091827-5",
+        "shipment_id": "592f6587-d760-4877-a010-5da91331bdda",
+        "status": "released",
+        "created_at": "2026-11-18T11:36:55.947731+00:00"
+      },
+      "at": "2026-11-22T23:26:05.029703+00:00"
+    },
+    {
+      "name": "14a. Entry detail",
+      "ok": true,
+      "detail": {
+        "id": "20f4047d-a9ff-44dd-adc5-581bd2a4e1c1",
+        "entry_number": "G76-3091827-5",
+        "status": "released",
+        "ace_status": null,
+        "importer_of_record_name": "Global Industrial Machinery Inc.",
+        "port_of_entry": "2809",
+        "total_entered_value": 379000.0
+      },
+      "at": "2026-11-22T23:26:05.109827+00:00"
+    },
+    {
+      "name": "14b. CargoWise export metadata",
+      "ok": true,
+      "detail": {
+        "entry_id": "20f4047d-a9ff-44dd-adc5-581bd2a4e1c1",
+        "format": "cargowise_xml",
+        "filename": "CW_Entry_G76-3091827-5_20261122_232605.xml",
+        "xml_preview": "<?xml version=\"1.0\" ?>\n<UniversalShipment xmlns=\"http://www.cargowise.com/Schemas/Universal/2011/11\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n  <Shipment>\n    <DataContext>\n      <Company>\n        <Code>BROKER</Code>\n      </Company>\n      <EnterpriseID>BROKER-CW1</EnterpriseID>\n      <JobOwner>SYSTEM</JobOwner>\n    </DataContext>\n    <TransportBooking>\n      <LocalProcessing>Import</LocalProcessing>\n      <Direction>Destination</Direction>\n    </TransportBooking>\n    <CustomsEntry>\n      <EntryHeader>\n        <EntryNumber>G76-3091827-5</EntryNumber>\n        <EntryType>CONSUMPTION</EntryType>\n        <EntryTypeCode>01</EntryTypeCode>\n        <PortOfEntry>2809</PortOfEntry>\n        <PortOfUnlading>2809</PortOfUnlading>\n        <BondInfo>\n          <BondType>8</BondType>\n          <SuretyCode>001</SuretyCode>\n        </BondInfo>\n      </EntryHeader>\n      <Parties>\n        <Party>\n          <Role>ImporterOfRecord</Role>\n          <Name>Global Industrial Machinery Inc.</Name...",
+        "size_bytes": 11028
+      },
+      "at": "2026-11-22T23:26:05.249843+00:00"
+    },
+    {
+      "name": "14c. CargoWise XML download",
+      "ok": true,
+      "detail": {
+        "bytes": 11028
+      },
+      "at": "2026-11-22T23:26:05.302342+00:00"
+    },
+    {
+      "name": "14d. Compliance/PGA",
+      "ok": true,
+      "detail": "endpoint optional; skipped if not present",
+      "at": "2026-11-22T23:26:05.376191+00:00"
+    },
+    {
+      "name": "14e. ACE file (simulation)",
+      "ok": true,
+      "detail": {
+        "detail": "Entry status is 'released'. Must be 'ready_to_file' to submit."
+      },
+      "at": "2026-11-22T23:26:05.398292+00:00"
+    },
+    {
+      "name": "15. Duty calculator",
+      "ok": false,
+      "detail": {
+        "detail": "Not Found"
+      },
+      "at": "2026-11-22T23:26:05.419860+00:00"
+    },
+    {
+      "name": "16. Shipment suggestions",
+      "ok": true,
+      "detail": {
+        "status": 404,
+        "keys": [
+          "detail"
+        ]
+      },
+      "at": "2026-11-22T23:26:05.428322+00:00"
+    },
+    {
+      "name": "17. Final workbench snapshot",
+      "ok": true,
+      "detail": {
+        "attention": {
+          "total": 32,
+          "review_pending": 32,
+          "shipments_partial": 0,
+          "shipments_ready_for_prep": 3,
+          "entries_draft": 0,
+          "entries_ready_to_file": 0,
+          "ingest_processing": 1,
+          "ingest_failed": 0
+        }
+      },
+      "at": "2026-11-22T23:26:05.476207+00:00"
+    }
+  ],
+  "ids": {
+    "broker_admin_user_id": "007981f3-996a-4a5b-be25-8b5a31cf6326",
+    "broker_org_client_id": "22647313-b843-48ee-8637-9adc165e56f5",
+    "importer_client_id": "4bcfb88c-8054-4aea-b027-01d72f9ca0b7",
+    "invitation_link": "/register?token=aADS2IroB_F5cpvn8UcDjZUDmuMvOdwW_cMwJuP__oA",
+    "client_admin_email": "helios.ops+90418_1795389054@example.com",
+    "invitation_token": "aADS2IroB_F5cpvn8UcDjZUDmuMvOdwW_cMwJuP__oA",
+    "client_admin_user_id": "4e912ac9-be5b-47bf-924d-2db61f2417cb",
+    "client_admin_password": "HeliosWalkthrough!90418",
+    "job_id": "4950ec05-6fdc-4c84-b32e-ef733dbc06fd",
+    "file_id": "ce119583-179b-4c36-9e4d-de93cb3587b5",
+    "upload_filename": "SHP-2026-90418_40page_bundle.pdf",
+    "upload_bytes": 54462,
+    "ingest_status": "pending",
+    "review_item_id": "5cb413ef-ea03-4fe8-9d03-c3e05f5315c4",
+    "shipment_id": "24ea66e2-c63a-4645-8364-c13ae7752036",
+    "isf_id": "26a2e13e-e09d-49c8-9037-9960a3ef9c77",
+    "entry_id": "58db0030-f88f-4596-92f7-0731233ea17c",
+    "helios_phase2": true,
+    "document_ids": [
+      "1bf72d0d-3c4d-4e35-9e3c-eeb3ac0dd333",
+      "205d7e0f-5554-40bb-b77c-0a02d5c75bea"
+    ],
+    "entry_number": null
+  },
+  "notes": [],
+  "finished_at": "2026-11-22T23:33:35.393911+00:00",
+  "summary": {
+    "passed": 35,
+    "failed": 4,
+    "total": 39
+  },
+  "helios_followup_steps": [
+    {
+      "name": "A. Helios review items appeared",
+      "ok": true,
+      "detail": {
+        "count": 2,
+        "sample": [
+          {
+            "id": "5cb413ef-ea03-4fe8-9d03-c3e05f5315c4",
+            "document_id": "1bf72d0d-3c4d-4e35-9e3c-eeb3ac0dd333",
+            "priority": 3,
+            "status": "pending",
+            "assigned_to": null,
+            "assigned_at": null,
+            "reason": "Confidence too low for automated processing",
+            "reason_code": "auto_review",
+            "confidence_score": 0.8,
+            "issues_detected": null,
+            "reviewed_at": null,
+            "reviewed_by": null,
+            "review_notes": null,
+            "time_to_review_seconds": null,
+            "created_at": "2026-11-22T23:31:19.008146+00:00",
+            "document": {
+              "filename": "SHP-2026-90418_40page_bundle.pdf",
+              "file_type": "pdf",
+              "size": 54462,
+              "ingestion_status": "completed"
+            }
+          },
+          {
+            "id": "f3e70e89-02f8-4ea9-b565-188cbba9688b",
+            "document_id": "205d7e0f-5554-40bb-b77c-0a02d5c75bea",
+            "priority": 3,
+            "status": "pending",
+            "assigned_to": null,
+            "assigned_at": null,
+            "reason": "Confidence too low for automated processing",
+            "reason_code": "auto_review",
+            "confidence_score": 0.8,
+            "issues_detected": null,
+            "reviewed_at": null,
+            "reviewed_by": null,
+            "review_notes": null,
+            "time_to_review_seconds": null,
+            "created_at": "2026-11-22T23:31:31.747119+00:00",
+            "document": {
+              "filename": "SHP-2026-90418_40page_bundle.pdf",
+              "file_type": "pdf",
+              "size": 54462,
+              "ingestion_status": "completed"
+            }
+          }
+        ]
+      },
+      "at": "2026-11-22T23:31:37.242320+00:00"
+    },
+    {
+      "name": "B. Ingest job final",
+      "ok": false,
+      "detail": {
+        "status": "processing",
+        "attempts": 4,
+        "extracted_metadata": {
+          "filename": "SHP-2026-90418_40page_bundle.pdf",
+          "file_size": 54462,
+          "file_type": "pdf",
+          "format": "pdf",
+          "page_count": 40,
+          "title": "(anonymous)",
+          "author": "(anonymous)",
+          "subject": "(unspecified)",
+          "creation_date": "2026-11-22",
+          "modification_date": "2026-11-22",
+          "creator_tool": "(unspecified)",
+          "scanned_pages": 0,
+          "native_pages": 40,
+          "is_fully_scanned": false,
+          "is_mixed": false
+        }
+      },
+      "at": "2026-11-22T23:31:37.254710+00:00"
+    },
+    {
+      "name": "C. Helios shipment located",
+      "ok": false,
+      "detail": {
+        "matched": 0,
+        "sample": []
+      },
+      "at": "2026-11-22T23:31:37.414063+00:00"
+    },
+    {
+      "name": "R. Duty calculator",
+      "ok": false,
+      "detail": {
+        "status": 404,
+        "body": {
+          "detail": "Not Found"
+        }
+      },
+      "at": "2026-11-22T23:31:37.506200+00:00"
+    },
+    {
+      "name": "T. Approve review",
+      "ok": false,
+      "detail": "no route",
+      "at": "2026-11-22T23:31:37.555710+00:00"
+    },
+    {
+      "name": "U. Workbench",
+      "ok": true,
+      "detail": {
+        "total": 34,
+        "review_pending": 34,
+        "shipments_partial": 0,
+        "shipments_ready_for_prep": 3,
+        "entries_draft": 0,
+        "entries_ready_to_file": 0,
+        "ingest_processing": 1,
+        "ingest_failed": 0
+      },
+      "at": "2026-11-22T23:31:37.602777+00:00"
+    }
+  ],
+  "helios_followup_summary": {
+    "passed": 2,
+    "failed": 4,
+    "total": 6
+  },
+  "helios_complete_steps": [
+    {
+      "name": "Approve review 5cb413ef",
+      "ok": true,
+      "detail": {
+        "message": "Item approved",
+        "item": {
+          "id": "5cb413ef-ea03-4fe8-9d03-c3e05f5315c4",
+          "document_id": "1bf72d0d-3c4d-4e35-9e3c-eeb3ac0dd333",
+          "priority": 3,
+          "status": "approved",
+          "assigned_to": null,
+          "assigned_at": null,
+          "reason": "Confidence too low for automated processing",
+          "reason_code": "auto_review",
+          "confidence_score": 0.0,
+          "issues_detected": null,
+          "reviewed_at": "2026-11-22T23:32:27.349596+00:00",
+          "reviewed_by": "admin@example.com",
+          "review_notes": "Approved Helios SHP-2026-90418 multi-doc bundle for walkthrough",
+          "time_to_review_seconds": null,
+          "created_at": "2026-11-22T23:31:19.008146+00:00"
+        }
+      },
+      "at": "2026-11-22T23:32:27.462346+00:00"
+    },
+    {
+      "name": "Approve review f3e70e89",
+      "ok": true,
+      "detail": {
+        "message": "Item approved",
+        "item": {
+          "id": "f3e70e89-02f8-4ea9-b565-188cbba9688b",
+          "document_id": "205d7e0f-5554-40bb-b77c-0a02d5c75bea",
+          "priority": 3,
+          "status": "approved",
+          "assigned_to": null,
+          "assigned_at": null,
+          "reason": "Confidence too low for automated processing",
+          "reason_code": "auto_review",
+          "confidence_score": 0.0,
+          "issues_detected": null,
+          "reviewed_at": "2026-11-22T23:32:27.470714+00:00",
+          "reviewed_by": "admin@example.com",
+          "review_notes": "Approved Helios SHP-2026-90418 multi-doc bundle for walkthrough",
+          "time_to_review_seconds": null,
+          "created_at": "2026-11-22T23:31:31.747119+00:00"
+        }
+      },
+      "at": "2026-11-22T23:32:27.482072+00:00"
+    },
+    {
+      "name": "Open review item detail",
+      "ok": true,
+      "detail": {
+        "keys": [
+          "review_item",
+          "document",
+          "extractions",
+          "extraction_count",
+          "low_confidence_count",
+          "history"
+        ]
+      },
+      "at": "2026-11-22T23:32:27.505776+00:00"
+    },
+    {
+      "name": "Update shipment header",
+      "ok": true,
+      "detail": {
+        "id": "24ea66e2-c63a-4645-8364-c13ae7752036",
+        "name": "SHP-2026-90418 \u2014 Helios Precision Instruments",
+        "reference_num": "SHP-2026-90418",
+        "bol_number": "MAEU664190821",
+        "importer_name": "Helios Precision Instruments Inc.",
+        "status": "partial"
+      },
+      "at": "2026-11-22T23:32:27.556516+00:00"
+    },
+    {
+      "name": "Link document 1bf72d0d",
+      "ok": false,
+      "detail": {
+        "error": {
+          "code": "INTERNAL_ERROR",
+          "message": "(sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.ForeignKeyViolationError'>: insert or update on table \"shipment_documents\" violates foreign key constraint \"shipment_documents_document_id_fkey\"\nDETAIL:  Key (document_id)=(1bf72d0d-3c4d-4e35-9e3c-eeb3ac0dd333) is not present in table \"raw_files\".\n[SQL: INSERT INTO shipment_documents (shipment_id, document_id, linked_by_key_type, linked_by_key_value, link_confidence, link_method, id, created_at, updated_at) VALUES ($1::UUID, $2::UUID, $3::VARCHAR, $4::VARCHAR, $5::FLOAT, $6::VARCHAR, $7::UUID, $8::TIMESTAMP WITH TIME ZONE, $9::TIMESTAMP WITH TIME ZONE)]\n[parameters: (UUID('24ea66e2-c63a-4645-8364-c13ae7752036'), UUID('1bf72d0d-3c4d-4e35-9e3c-eeb3ac0dd333'), 'MANUAL', 'Helios E2E manual link', 1.0, 'manual', UUID('08d837b7-bc47-47b3-ac3f-21133ee88848'), datetime.datetime(2026, 11, 22, 23, 32, 27, 575422, tzinfo=datetime.timezone.utc), datetime.datetime(2026, 11, 22, 23, 32, 27, 575426, tzinfo=datetime.timezone.utc))]\n(Background on this error at: https://sqlalche.me/e/20/gkpj)"
+        }
+      },
+      "at": "2026-11-22T23:32:27.847393+00:00"
+    },
+    {
+      "name": "Link document 205d7e0f",
+      "ok": false,
+      "detail": {
+        "error": {
+          "code": "INTERNAL_ERROR",
+          "message": "(sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.ForeignKeyViolationError'>: insert or update on table \"shipment_documents\" violates foreign key constraint \"shipment_documents_document_id_fkey\"\nDETAIL:  Key (document_id)=(205d7e0f-5554-40bb-b77c-0a02d5c75bea) is not present in table \"raw_files\".\n[SQL: INSERT INTO shipment_documents (shipment_id, document_id, linked_by_key_type, linked_by_key_value, link_confidence, link_method, id, created_at, updated_at) VALUES ($1::UUID, $2::UUID, $3::VARCHAR, $4::VARCHAR, $5::FLOAT, $6::VARCHAR, $7::UUID, $8::TIMESTAMP WITH TIME ZONE, $9::TIMESTAMP WITH TIME ZONE)]\n[parameters: (UUID('24ea66e2-c63a-4645-8364-c13ae7752036'), UUID('205d7e0f-5554-40bb-b77c-0a02d5c75bea'), 'MANUAL', 'Helios E2E manual link', 1.0, 'manual', UUID('1ba4e9b3-bb6e-4324-bc1f-a93d8cfdbf17'), datetime.datetime(2026, 11, 22, 23, 32, 27, 905445, tzinfo=datetime.timezone.utc), datetime.datetime(2026, 11, 22, 23, 32, 27, 905446, tzinfo=datetime.timezone.utc))]\n(Background on this error at: https://sqlalche.me/e/20/gkpj)"
+        }
+      },
+      "at": "2026-11-22T23:32:27.913394+00:00"
+    },
+    {
+      "name": "Shipment documents",
+      "ok": false,
+      "detail": {
+        "count": 0
+      },
+      "at": "2026-11-22T23:32:27.934858+00:00"
+    },
+    {
+      "name": "Analyze assembly suggestions",
+      "ok": false,
+      "detail": {
+        "detail": [
+          {
+            "type": "missing",
+            "loc": [
+              "body",
+              "document_ids"
+            ],
+            "msg": "Field required",
+            "input": {},
+            "url": "https://errors.pydantic.dev/2.14/v/missing"
+          }
+        ]
+      },
+      "at": "2026-11-22T23:32:27.953595+00:00"
+    },
+    {
+      "name": "Request missing document",
+      "ok": true,
+      "detail": {
+        "shipment_id": "24ea66e2-c63a-4645-8364-c13ae7752036",
+        "doc_type": "arrival_notice",
+        "doc_label": "Arrival Notice",
+        "importer_name": "Helios Precision Instruments Inc.",
+        "recipient_email": "imports@helios-precision.example",
+        "email_dispatched": true,
+        "reply_auto_ingest": true,
+        "correlation_token": "GATE-DOCREQ:24ea66e2-c63a-4645-8364-c13ae7752036",
+        "message": "Requested Arrival Notice from importer (Helios Precision Instruments Inc.) via imports@helios-precision.example. Replies with attachments to the monitored inbox will auto-ingest and link to this shipment."
+      },
+      "at": "2026-11-22T23:32:28.038590+00:00"
+    },
+    {
+      "name": "Generate ISF",
+      "ok": true,
+      "detail": {
+        "message": "ISF created from shipment",
+        "isf_id": "26a2e13e-e09d-49c8-9037-9960a3ef9c77",
+        "status": "draft"
+      },
+      "at": "2026-11-22T23:32:28.088451+00:00"
+    },
+    {
+      "name": "ISF ABI draft",
+      "ok": true,
+      "detail": {
+        "abi_ready": false,
+        "message_type": "ISF-10"
+      },
+      "at": "2026-11-22T23:32:28.101307+00:00"
+    },
+    {
+      "name": "Entry prep 7501",
+      "ok": false,
+      "detail": {
+        "lines": 0,
+        "importer": null,
+        "totals": null,
+        "entry_number": null,
+        "warnings": null
+      },
+      "at": "2026-11-22T23:32:28.150673+00:00"
+    },
+    {
+      "name": "Validate prep",
+      "ok": false,
+      "detail": {
+        "detail": "Validation failed: 'Client' object has no attribute 'address_line1'"
+      },
+      "at": "2026-11-22T23:32:28.165706+00:00"
+    },
+    {
+      "name": "Export 7501 pdf",
+      "ok": false,
+      "detail": {
+        "bytes": null
+      },
+      "at": "2026-11-22T23:32:28.181071+00:00"
+    },
+    {
+      "name": "Export 7501 excel",
+      "ok": false,
+      "detail": {
+        "bytes": null
+      },
+      "at": "2026-11-22T23:32:28.199459+00:00"
+    },
+    {
+      "name": "Export 7501 ace",
+      "ok": false,
+      "detail": {
+        "bytes": null
+      },
+      "at": "2026-11-22T23:32:28.209812+00:00"
+    },
+    {
+      "name": "Create official entry",
+      "ok": false,
+      "detail": {
+        "error": {
+          "code": "INTERNAL_ERROR",
+          "message": "name 'timezone' is not defined"
+        }
+      },
+      "at": "2026-11-22T23:32:28.236339+00:00"
+    },
+    {
+      "name": "Duty calculator MED-201",
+      "ok": false,
+      "detail": {
+        "detail": [
+          {
+            "type": "missing",
+            "loc": [
+              "body",
+              "value"
+            ],
+            "msg": "Field required",
+            "input": {
+              "hts_code": "9018.19.9560",
+              "country_of_origin": "TW",
+              "entered_value": 2337.5,
+              "quantity": 55
+            },
+            "url": "https://errors.pydantic.dev/2.14/v/missing"
+          }
+        ]
+      },
+      "at": "2026-11-22T23:32:28.251810+00:00"
+    },
+    {
+      "name": "Duty calculator MET-509 (CN aluminum)",
+      "ok": false,
+      "detail": {
+        "detail": [
+          {
+            "type": "missing",
+            "loc": [
+              "body",
+              "value"
+            ],
+            "msg": "Field required",
+            "input": {
+              "hts_code": "7604.29.5090",
+              "country_of_origin": "CN",
+              "entered_value": 10000,
+              "quantity": 100
+            },
+            "url": "https://errors.pydantic.dev/2.14/v/missing"
+          }
+        ]
+      },
+      "at": "2026-11-22T23:32:28.273488+00:00"
+    },
+    {
+      "name": "HTS search RF-612",
+      "ok": true,
+      "detail": {
+        "count": 2
+      },
+      "at": "2026-11-22T23:32:28.351942+00:00"
+    },
+    {
+      "name": "Workbench summary",
+      "ok": true,
+      "detail": {
+        "total": 33,
+        "review_pending": 32,
+        "shipments_partial": 1,
+        "shipments_ready_for_prep": 3,
+        "entries_draft": 0,
+        "entries_ready_to_file": 0,
+        "ingest_processing": 0,
+        "ingest_failed": 0
+      },
+      "at": "2026-11-22T23:32:28.382816+00:00"
+    },
+    {
+      "name": "Importer client record",
+      "ok": true,
+      "detail": {
+        "name": "Helios Precision Instruments Inc.",
+        "status": "active",
+        "ein": null
+      },
+      "at": "2026-11-22T23:32:28.419495+00:00"
+    }
+  ],
+  "helios_complete_summary": {
+    "passed": 10,
+    "failed": 12,
+    "total": 22
+  },
+  "bundle_document_map": {
+    "pages_1": "Pre-alert cover",
+    "pages_2": "ISF 10+2 worksheet",
+    "pages_3_14": "Commercial Invoice (12p)",
+    "pages_15_28": "Packing List (14p)",
+    "pages_29_31": "Master Ocean BOL (3p)",
+    "pages_32_34": "Certificates of Origin TW/VN/MX/JP/CN",
+    "pages_35": "FDA medical device / prior notice",
+    "pages_36": "USDA APHIS botanical permit",
+    "pages_37": "FCC equipment authorization",
+    "pages_38": "Aluminum extrusion mill/origin statement",
+    "pages_39": "Arrival notice & terminal LFD",
+    "pages_40": "POA & continuous bond verification"
+  },
+  "helios_final_steps": [
+    {
+      "name": "Link raw_file to shipment",
+      "ok": true,
+      "detail": {
+        "message": "Document linked successfully",
+        "shipment_id": "24ea66e2-c63a-4645-8364-c13ae7752036",
+        "document_id": "ce119583-179b-4c36-9e4d-de93cb3587b5"
+      }
+    },
+    {
+      "name": "Shipment has linked docs",
+      "ok": true,
+      "detail": {
+        "count": 1
+      }
+    },
+    {
+      "name": "Entry prep",
+      "ok": true,
+      "detail": {
+        "importer": "Helios Precision Instruments Inc.",
+        "lines": 10,
+        "totals": {
+          "entered_value": 71.0,
+          "duty": 0.0,
+          "mpf": 33.58,
+          "hmf": 0.09,
+          "taxes": 0.0,
+          "other": 0.0,
+          "grand_total": 33.67
+        },
+        "filer": null
+      }
+    },
+    {
+      "name": "Validate prep",
+      "ok": true,
+      "detail": {
+        "is_valid": true,
+        "completeness_score": 0.66,
+        "errors": [],
+        "warnings": [
+          "Line-item values were apportioned evenly from total invoice value \u2014 verify individual line values",
+          "Missing CBP 3-character broker filer code (configure BROKER_FILER_CODE)",
+          "Missing country of origin",
+          "Line 1: HTS 1211.90.8089 duty rate not verified against USITC tariff table",
+          "Line 1: Missing ISO 2-letter country of origin",
+          "Line 2: HTS 9001.90 duty rate not verified against USITC tariff table",
+          "Line 2: Missing ISO 2-letter country of origin",
+          "Line 3: HTS 1211.90 duty rate not verified against USITC tariff table",
+          "Line 3: Missing ISO 2-letter country of origin",
+          "Line 4: HTS 9001.90.9000 duty rate not verified against USITC tariff table",
+          "Line 4: Missing ISO 2-letter country of origin",
+          "Line 5: HTS 7604.29 duty rate not verified against USITC tariff table",
+          "Line 5: Missing ISO 2-letter country of origin",
+          "Line 6: HTS 9018.19.9560 duty rate not verified against USITC tariff table",
+          "Line 6: Missing ISO 2-letter country of origin",
+          "Line 7: HTS 9018.19 duty rate not verified against USITC tariff table",
+          "Line 7: Missing ISO 2-letter country of origin",
+          "Line 8: HTS 8517.62 duty rate not verified against USITC tariff table",
+          "Line 8: Missing ISO 2-letter country of origin",
+          "Line 9: HTS 8517.62.0090 duty rate not verified against USITC tariff table",
+          "Line 9: Missing ISO 2-letter country of origin",
+          "Line 10: HTS 7604.29.5090 duty rate not verified against USITC tariff table",
+          "Line 10: Missing ISO 2-letter country of origin"
+        ],
+        "field_issues": {}
+      }
+    },
+    {
+      "name": "Export pdf",
+      "ok": true,
+      "detail": {
+        "bytes": 4104
+      }
+    },
+    {
+      "name": "Export excel",
+      "ok": true,
+      "detail": {
+        "bytes": 7372
+      }
+    },
+    {
+      "name": "Export ace",
+      "ok": true,
+      "detail": {
+        "bytes": 3039
+      }
+    },
+    {
+      "name": "Create official entry",
+      "ok": false,
+      "detail": {
+        "error": {
+          "code": "INTERNAL_ERROR",
+          "message": "(sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.ForeignKeyViolationError'>: insert or update on table \"entry_documents\" violates foreign key constraint \"entry_documents_document_id_fkey\"\nDETAIL:  Key (document_id)=(ce119583-179b-4c36-9e4d-de93cb3587b5) is not present in table \"document_metadata\".\n[SQL: INSERT INTO entry_documents (entry_id, document_id, document_type, is_primary, added_by, notes, id, created_at, updated_at) VALUES ($1::UUID, $2::UUID, $3::VARCHAR, $4::BOOLEAN, $5::VARCHAR, $6::VARCHAR, $7::UUID, $8::TIMESTAMP WITH TIME ZONE, $9::TIMESTAMP WITH TIME ZONE)]\n[parameters: (UUID('990eeb09-7ae0-4b01-ae9b-e62999860522'), UUID('ce119583-179b-4c36-9e4d-de93cb3587b5'), None, True, 'admin@example.com', None, UUID('448b467b-55ea-4290-a2fa-cffba15d99de'), datetime.datetime(2026, 11, 22, 23, 33, 9, 334922, tzinfo=datetime.timezone.utc), datetime.datetime(2026, 11, 22, 23, 33, 9, 334924, tzinfo=datetime.timezone.utc))]\n(Background on this error at: https://sqlalche.me/e/20/gkpj)"
+        }
+      }
+    },
+    {
+      "name": "Duty calc MED-201",
+      "ok": true,
+      "detail": {
+        "hts_code": "9018199560",
+        "entered_value": 2337.5,
+        "quantity": 55.0,
+        "country_of_origin": "TW",
+        "base_duty": {
+          "rate": null,
+          "rate_type": "ad_valorem",
+          "amount": 0.0
+        },
+        "section_301": {
+          "rate": null,
+          "amount": 0.0,
+          "list": null
+        },
+        "section_232": {
+          "rate": null,
+          "amount": 0.0,
+          "product": null
+        },
+        "add_cvd": {
+          "add_rate": null,
+          "add_amount": 0.0,
+          "add_case_number": null,
+          "cvd_rate": null,
+          "cvd_amount": 0.0,
+          "cvd_case_number": null
+        },
+        "fta": {
+          "code": null,
+          "rate": null,
+          "eligible": false,
+          "savings": 0.0
+        },
+        "total_duty": 0.0,
+        "hts_description": null
+      }
+    },
+    {
+      "name": "Duty calc MET-509 CN",
+      "ok": true,
+      "detail": {
+        "hts_code": "7604295090",
+        "entered_value": 10000.0,
+        "quantity": 100.0,
+        "country_of_origin": "CN",
+        "base_duty": {
+          "rate": null,
+          "rate_type": "ad_valorem",
+          "amount": 0.0
+        },
+        "section_301": {
+          "rate": null,
+          "amount": 0.0,
+          "list": null
+        },
+        "section_232": {
+          "rate": null,
+          "amount": 0.0,
+          "product": null
+        },
+        "add_cvd": {
+          "add_rate": null,
+          "add_amount": 0.0,
+          "add_case_number": null,
+          "cvd_rate": null,
+          "cvd_amount": 0.0,
+          "cvd_case_number": null
+        },
+        "fta": {
+          "code": null,
+          "rate": null,
+          "eligible": false,
+          "savings": 0.0
+        },
+        "total_duty": 0.0,
+        "hts_description": null
+      }
+    }
+  ],
+  "helios_final_summary": {
+    "passed": 9,
+    "failed": 1,
+    "total": 10
+  },
+  "helios_entry_steps": [
+    {
+      "name": "Create official entry",
+      "ok": true,
+      "detail": {
+        "message": "Entry created successfully from shipment",
+        "already_exists": false,
+        "entry_id": "58db0030-f88f-4596-92f7-0731233ea17c",
+        "entry_number": null,
+        "shipment_id": "24ea66e2-c63a-4645-8364-c13ae7752036",
+        "status": "draft",
+        "lines_created": 10,
+        "documents_linked": 1,
+        "document_types": [],
+        "fields_populated": [],
+        "suggestions": [],
+        "created_at": "2026-11-22T23:33:34.947998+00:00"
+      }
+    },
+    {
+      "name": "Entry detail",
+      "ok": true,
+      "detail": {
+        "id": "58db0030-f88f-4596-92f7-0731233ea17c",
+        "entry_number": null,
+        "status": "draft",
+        "importer_of_record_name": "Helios Precision Instruments Inc.",
+        "port_of_entry": "3001",
+        "total_entered_value": 71.0,
+        "line_count": 10
+      }
+    },
+    {
+      "name": "CargoWise export",
+      "ok": true,
+      "detail": {
+        "filename": "CW_Entry_58db0030_20261122_233335.xml",
+        "format": "cargowise_xml"
+      }
+    },
+    {
+      "name": "CargoWise XML",
+      "ok": true,
+      "detail": {
+        "bytes": 6900
+      }
+    },
+    {
+      "name": "ACE file simulation",
+      "ok": true,
+      "detail": {
+        "entry_id": "58db0030-f88f-4596-92f7-0731233ea17c",
+        "entry_number": null,
+        "ace_entry_id": "SIM-ACE--20261122233335",
+        "status": "filed",
+        "ace_status": "submitted",
+        "filed_at": "2026-11-22T23:33:35.328732+00:00",
+        "mode": "simulation",
+        "message": "Entry marked filed in SIMULATION mode (not transmitted to CBP)",
+        "next_steps": [
+          "Export ABI/7501 and transmit via your certified ABI software",
+          "Enable ACE_SFTP_* for live filing, or keep ACE_ALLOW_SIMULATION=true for demos only"
+        ]
+      }
+    },
+    {
+      "name": "ACE accepted simulation",
+      "ok": true,
+      "detail": {
+        "entry_id": "58db0030-f88f-4596-92f7-0731233ea17c",
+        "previous_status": "filed",
+        "previous_ace_status": "submitted",
+        "new_status": "accepted",
+        "new_ace_status": "accepted",
+        "message": "Simulated ACE response",
+        "updated_at": "2026-11-22T23:33:35.354140+00:00"
+      }
+    },
+    {
+      "name": "ISF ABI saved",
+      "ok": true,
+      "detail": {
+        "abi_ready": false
+      }
+    }
+  ],
+  "helios_entry_summary": {
+    "passed": 7,
+    "failed": 0,
+    "total": 7
+  }
+}

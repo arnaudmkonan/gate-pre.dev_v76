@@ -1,0 +1,67 @@
+{
+  "entry_number": "G76-3091827-5",
+  "entry_type": "01",
+  "entry_date": "2026-11-22T23:26:04.406602+00:00",
+  "filer_code": "G76",
+  "port_code": "2809",
+  "importer": {
+    "ior_number": null,
+    "name": "Global Industrial Machinery Inc.",
+    "address": null,
+    "city": null,
+    "state": null,
+    "zip": null
+  },
+  "consignee": {
+    "name": "Global Industrial Machinery Inc.",
+    "address": null
+  },
+  "transport": {
+    "carrier_code": null,
+    "vessel_name": null,
+    "voyage_number": null,
+    "port_of_unlading": null,
+    "port_of_entry": "2809",
+    "importing_carrier": null,
+    "foreign_port": "TWKHH (Kaohsiung, Taiwan)",
+    "export_date": null,
+    "import_date": "2026-11-22T23:26:04.415802+00:00",
+    "master_bill": "OOLU456789123",
+    "house_bill": null,
+    "scac_code": null
+  },
+  "bond": {
+    "type": "9",
+    "surety_code": null
+  },
+  "origin": {
+    "country_of_origin": null,
+    "exporting_country": null
+  },
+  "totals": {
+    "entered_value": 142800.0,
+    "duty": 0.0,
+    "mpf": 494.66,
+    "hmf": 178.5,
+    "taxes": 0.0,
+    "other": 0.0,
+    "grand_total": 673.16
+  },
+  "line_items": [],
+  "metadata": {
+    "source_shipment_id": "592f6587-d760-4877-a010-5da91331bdda",
+    "source_documents": [
+      "58b19d5b-0f28-458f-995d-a30603b86c97",
+      "39483d9f-fae8-4404-9f58-e2550e00dffa",
+      "9c78d67d-aee5-40a3-a7ce-ed9879433aef",
+      "dd489261-bd5b-4741-be45-02536111eaff",
+      "a0d73107-d666-4601-8885-bde6e62da677",
+      "02539150-b37c-451e-9bba-520e4664d282"
+    ],
+    "validation_warnings": [
+      "Missing Importer of Record EIN / CBP number",
+      "No line items \u2014 add commercial invoice lines and HTS classifications"
+    ],
+    "completeness_score": 0.81
+  }
+}

@@ -6,7 +6,7 @@ Implements the Lakehouse architecture where documents are grouped
 into virtual shipment folders via shared identifiers.
 """
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Path
@@ -1210,18 +1210,48 @@ async def create_entry_from_shipment(
     )
     db.add(history)
     
-    # Link documents to entry
+    # Link documents to entry (shipment_documents may reference raw_files.id;
+    # entry_documents FK requires document_metadata.id — resolve when needed)
     linked_count = 0
+    resolved_doc_ids = []
     for doc_id in document_ids:
+        meta = await db.execute(
+            select(DocumentMetadata).where(DocumentMetadata.id == doc_id)
+        )
+        if meta.scalar_one_or_none():
+            resolved_doc_ids.append(doc_id)
+            continue
+        # Try match metadata produced from this raw file / same storage basename
+        from app.models.raw_file import RawFile
+        raw = await db.execute(select(RawFile).where(RawFile.id == doc_id))
+        raw_file = raw.scalar_one_or_none()
+        if not raw_file:
+            continue
+        fname = getattr(raw_file, "filename", None) or getattr(raw_file, "original_filename", None)
+        if not fname:
+            continue
+        meta_match = await db.execute(
+            select(DocumentMetadata.id)
+            .where(DocumentMetadata.filename == fname)
+            .order_by(DocumentMetadata.created_at.desc())
+            .limit(1)
+        )
+        meta_id = meta_match.scalar_one_or_none()
+        if meta_id:
+            resolved_doc_ids.append(meta_id)
+
+    for doc_id in resolved_doc_ids:
         try:
-            entry_doc = EntryDocument(
-                entry_id=entry.id,
-                document_id=doc_id,
-                is_primary=linked_count == 0,
-                added_by=actor_email,
-            )
-            db.add(entry_doc)
-            linked_count += 1
+            async with db.begin_nested():
+                entry_doc = EntryDocument(
+                    entry_id=entry.id,
+                    document_id=doc_id,
+                    is_primary=linked_count == 0,
+                    added_by=actor_email,
+                )
+                db.add(entry_doc)
+                await db.flush()
+                linked_count += 1
         except Exception:
             pass
     

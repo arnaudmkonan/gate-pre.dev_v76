@@ -250,16 +250,25 @@ async def upload_file(
         # Commit transaction
         await session.commit()
 
-        # Trigger async task to transition to "queued" status and immediately start extraction
+        # Enqueue on dedicated `ingest` queue (not the default celery backlog).
         try:
             from app.workers.ingest_tasks import queue_raw_file
             from app.workers.job_processor import process_ingest_job
-            queue_raw_file.delay(str(raw_files[0].id))
-            process_ingest_job.delay(str(ingest_job.id))
+
+            ingest_job.status = IngestJobStatus.QUEUED
+            await session.commit()
+
+            queue_raw_file.apply_async(args=[str(raw_files[0].id)], queue="ingest")
+            process_ingest_job.apply_async(
+                args=[str(ingest_job.id)],
+                queue="ingest",
+                expires=60 * 60,
+            )
         except Exception as task_error:
             logger.warning(f"Could not trigger async queuing task: {task_error}. File will stay in UPLOADED state.")
             # Set to QUEUED synchronously as fallback
             raw_files[0].status = RawFileStatus.QUEUED
+            ingest_job.status = IngestJobStatus.QUEUED
             await session.commit()
 
         logger.info(

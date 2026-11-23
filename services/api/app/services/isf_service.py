@@ -75,7 +75,9 @@ class ISFService:
         # Override with provided data
         if data:
             self._apply_data(isf, data)
-        
+
+        self._sanitize_isf_lengths(isf)
+
         # Generate ISF number
         isf.isf_number = self._generate_isf_number()
         
@@ -89,6 +91,63 @@ class ISFService:
         """Generate unique ISF number (<= 20 chars)."""
         timestamp = datetime.now().strftime("%y%m%d%H%M")
         return f"ISF-{timestamp}-{str(uuid4())[:4].upper()}"
+
+    @staticmethod
+    def _clip(value: Optional[str], max_len: int) -> Optional[str]:
+        if value is None:
+            return None
+        text = str(value).strip()
+        if not text:
+            return None
+        return text[:max_len]
+
+    @staticmethod
+    def _normalize_hts(value: Optional[str], max_len: int = 10) -> Optional[str]:
+        """Normalize HTS to digit-only form that fits varchar(10)."""
+        if not value:
+            return None
+        digits = "".join(ch for ch in str(value) if ch.isdigit())
+        if digits:
+            return digits[:max_len]
+        return str(value).strip()[:max_len] or None
+
+    def _sanitize_isf_lengths(self, isf: ISFFiling) -> None:
+        """Clamp string fields to DB column limits before insert/update."""
+        isf.hts_primary = self._normalize_hts(isf.hts_primary, 10)
+        if isf.hts_codes:
+            isf.hts_codes = [
+                self._normalize_hts(code, 10) or code
+                for code in isf.hts_codes
+                if code
+            ][:20]
+
+        isf.carrier_code = self._clip(isf.carrier_code, 10)
+        isf.port_of_loading = self._clip(isf.port_of_loading, 10)
+        isf.port_of_discharge = self._clip(isf.port_of_discharge, 10)
+        isf.filer_code = self._clip(isf.filer_code, 10)
+        isf.bond_type = self._clip(isf.bond_type, 5)
+
+        for field in (
+            "seller_country",
+            "buyer_country",
+            "manufacturer_country",
+            "ship_to_country",
+            "stuffing_location_country",
+            "consolidator_country",
+            "country_of_origin",
+        ):
+            setattr(isf, field, self._clip(getattr(isf, field, None), 2))
+
+        if isf.countries_of_origin:
+            isf.countries_of_origin = [
+                self._clip(c, 2) for c in isf.countries_of_origin if self._clip(c, 2)
+            ]
+
+        isf.master_bill_of_lading = self._clip(isf.master_bill_of_lading, 50)
+        isf.house_bill_of_lading = self._clip(isf.house_bill_of_lading, 50)
+        isf.voyage_number = self._clip(isf.voyage_number, 50)
+        isf.vessel_name = self._clip(isf.vessel_name, 200)
+        isf.ship_to_postal_code = self._clip(isf.ship_to_postal_code, 20)
     
     async def _populate_from_shipment(self, isf: ISFFiling, shipment_id: UUID):
         """Populate ISF from shipment data."""
@@ -110,7 +169,7 @@ class ISFService:
         isf.container_numbers = shipment.container_numbers or []
         isf.master_bill_of_lading = shipment.bol_number
         
-        isf.port_of_discharge = (shipment.port_of_entry or "")[:10] if shipment.port_of_entry else None
+        isf.port_of_discharge = self._clip(shipment.port_of_entry, 10)
 
         # Enrich from EntryPrepService linked document extractions
         try:
@@ -124,18 +183,18 @@ class ISFService:
                 if not isf.consignee_name and prep.consignee_name:
                     isf.consignee_name = prep.consignee_name
                 if not isf.master_bill_of_lading and prep.master_bill:
-                    isf.master_bill_of_lading = prep.master_bill[:50]
+                    isf.master_bill_of_lading = prep.master_bill
                 if not isf.house_bill_of_lading and prep.house_bill:
-                    isf.house_bill_of_lading = prep.house_bill[:50]
+                    isf.house_bill_of_lading = prep.house_bill
                 if not isf.vessel_name and prep.vessel_name:
-                    isf.vessel_name = prep.vessel_name[:100]
+                    isf.vessel_name = prep.vessel_name
                 if not isf.country_of_origin and prep.country_of_origin:
-                    isf.country_of_origin = prep.country_of_origin[:2]
+                    isf.country_of_origin = prep.country_of_origin
                 if prep.line_items:
                     hts_list = [li.get("hts_number") for li in prep.line_items if li.get("hts_number")]
                     if hts_list:
                         isf.hts_codes = hts_list[:10]
-                        isf.hts_primary = hts_list[0][:15]
+                        isf.hts_primary = hts_list[0]
         except Exception:
             pass
     
@@ -174,7 +233,7 @@ class ISFService:
         # Get HTS codes from lines
         if entry.lines:
             hts_codes = list(set(
-                line.hts_code[:6] for line in entry.lines if line.hts_code
+                line.hts_code for line in entry.lines if line.hts_code
             ))
             isf.hts_codes = hts_codes
             if hts_codes:
@@ -231,14 +290,24 @@ class ISFService:
         return result.scalar_one_or_none()
     
     async def get_isf_by_shipment(self, shipment_id: UUID) -> Optional[ISFFiling]:
-        """Get ISF for a shipment."""
-        query = select(ISFFiling).where(ISFFiling.shipment_id == shipment_id)
+        """Get latest ISF for a shipment (shipments may have historical drafts)."""
+        query = (
+            select(ISFFiling)
+            .where(ISFFiling.shipment_id == shipment_id)
+            .order_by(ISFFiling.created_at.desc().nullslast())
+            .limit(1)
+        )
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
     
     async def get_isf_by_entry(self, entry_id: UUID) -> Optional[ISFFiling]:
-        """Get ISF for an entry."""
-        query = select(ISFFiling).where(ISFFiling.entry_id == entry_id)
+        """Get latest ISF for an entry."""
+        query = (
+            select(ISFFiling)
+            .where(ISFFiling.entry_id == entry_id)
+            .order_by(ISFFiling.created_at.desc().nullslast())
+            .limit(1)
+        )
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
     

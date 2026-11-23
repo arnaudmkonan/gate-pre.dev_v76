@@ -1,0 +1,73 @@
+{
+  "isf_id": "db372a0b-8797-47b6-9992-866f3cc9b5db",
+  "message_type": "ISF-10",
+  "message": {
+    "message_type": "IS",
+    "transaction_type": "ISF-10",
+    "isf_number": "ISF-2611220257-D6CA",
+    "flexible_filing": true,
+    "10_elements": {
+      "1_seller": {
+        "name": "Kaohsiung Precision Components Corp.",
+        "address": null,
+        "city": null,
+        "country": null
+      },
+      "2_buyer": {
+        "name": null,
+        "address": null,
+        "country": null
+      },
+      "3_importer_of_record": {
+        "number": null,
+        "name": "Global Industrial Machinery Inc."
+      },
+      "4_consignee": {
+        "number": null,
+        "name": "Global Industrial Machinery Inc."
+      },
+      "5_manufacturer": {
+        "name": null,
+        "mid": null,
+        "country": null
+      },
+      "6_ship_to": {
+        "name": null,
+        "address": null,
+        "city": null,
+        "country": null
+      },
+      "7_country_of_origin": [
+        null
+      ],
+      "8_hts_codes": [],
+      "9_stuffing_location": {
+        "name": null,
+        "address": null,
+        "country": null
+      },
+      "10_consolidator": {
+        "name": null,
+        "address": null,
+        "country": null
+      }
+    },
+    "transport": {
+      "vessel": null,
+      "voyage": null,
+      "carrier_code": null,
+      "port_of_loading": null,
+      "port_of_discharge": "2809",
+      "bill_of_lading": "OOLU456789123",
+      "containers": [
+        "OOLU7654321",
+        "OOLU7654322"
+      ]
+    },
+    "dates": {
+      "estimated_departure": null,
+      "estimated_arrival": null
+    }
+  },
+  "abi_ready": false
+}

@@ -217,9 +217,13 @@ export const ShipmentDetailPage = () => {
             const resp = await authFetch(`${API_BASE}/api/isf/from-shipment/${shipmentId}`, {
                 method: 'POST',
             })
-            if (!resp.ok) throw new Error('Failed to generate ISF (10+2)')
-            const data = await resp.json()
+            const data = await resp.json().catch(() => ({}))
+            if (!resp.ok) {
+                const detail = data.detail || data.error?.message || data.message || 'Failed to generate ISF (10+2)'
+                throw new Error(typeof detail === 'string' ? detail : JSON.stringify(detail))
+            }
             setIsfData(data.isf || data)
+            setError(null)
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to generate ISF')
         } finally {

@@ -257,8 +257,8 @@ class EntryPrepService:
             matched_client = client_res.scalar_one_or_none()
             if matched_client:
                 entry.importer_of_record_number = matched_client.ior_number or matched_client.ein
-                if not entry.importer_address and matched_client.address_line1:
-                    entry.importer_address = matched_client.address_line1
+                if not entry.importer_address and matched_client.address_line_1:
+                    entry.importer_address = matched_client.address_line_1
                 if not entry.importer_city and matched_client.city:
                     entry.importer_city = matched_client.city
                 if not entry.importer_state and matched_client.state_province:

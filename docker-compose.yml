@@ -136,7 +136,8 @@ services:
       - docingestion_network
     restart: unless-stopped
     entrypoint: []
-    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=4
+    # ingest queue first so uploads are not starved by beat/maintenance tasks
+    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=4 -Q ingest,celery
     healthcheck:
       test: [ "CMD-SHELL", "celery -A app.core.celery_app inspect ping -d celery@$$HOSTNAME || exit 1" ]
       interval: 30s

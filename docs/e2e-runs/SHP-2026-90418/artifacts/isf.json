@@ -1,0 +1,84 @@
+{
+  "id": "db372a0b-8797-47b6-9992-866f3cc9b5db",
+  "isf_number": "ISF-2611220257-D6CA",
+  "transaction_number": null,
+  "status": "draft",
+  "filed_at": null,
+  "accepted_at": null,
+  "shipment_id": "592f6587-d760-4877-a010-5da91331bdda",
+  "entry_id": null,
+  "seller": {
+    "name": "Kaohsiung Precision Components Corp.",
+    "address": null,
+    "country": null
+  },
+  "buyer": {
+    "name": null,
+    "address": null,
+    "country": null
+  },
+  "importer_of_record": {
+    "number": null,
+    "name": "Global Industrial Machinery Inc."
+  },
+  "consignee": {
+    "number": null,
+    "name": "Global Industrial Machinery Inc."
+  },
+  "manufacturer": {
+    "name": null,
+    "address": null,
+    "country": null,
+    "mid": null
+  },
+  "ship_to": {
+    "name": null,
+    "address": null,
+    "city": null,
+    "country": null
+  },
+  "country_of_origin": null,
+  "countries_of_origin": [],
+  "hts_codes": [],
+  "stuffing_location": {
+    "name": null,
+    "address": null,
+    "country": null
+  },
+  "consolidator": {
+    "name": null,
+    "address": null,
+    "country": null
+  },
+  "vessel": {
+    "name": null,
+    "voyage": null,
+    "carrier_code": null
+  },
+  "container_numbers": [
+    "OOLU7654321",
+    "OOLU7654322"
+  ],
+  "bill_of_lading": {
+    "master": "OOLU456789123",
+    "house": null
+  },
+  "port_of_loading": null,
+  "port_of_discharge": "2809",
+  "estimated_departure": null,
+  "estimated_arrival": null,
+  "is_valid": false,
+  "is_flexible": true,
+  "completeness_percentage": 20.0,
+  "missing_elements": [
+    "buyer_name",
+    "importer_of_record_number",
+    "manufacturer_name",
+    "ship_to",
+    "country_of_origin",
+    "hts_codes",
+    "stuffing_location",
+    "consolidator"
+  ],
+  "amendment_count": 0
+}

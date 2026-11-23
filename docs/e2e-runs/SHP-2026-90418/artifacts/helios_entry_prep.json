@@ -1,0 +1,214 @@
+{
+  "entry_number": null,
+  "entry_type": "01",
+  "entry_date": "2026-11-22T23:33:08.752120+00:00",
+  "filer_code": null,
+  "port_code": "3001",
+  "importer": {
+    "ior_number": "77-4910283",
+    "name": "Helios Precision Instruments Inc.",
+    "address": "1200 Harbor Ave SW",
+    "city": "Seattle",
+    "state": "WA",
+    "zip": "98134"
+  },
+  "consignee": {
+    "name": "Helios Precision Instruments Inc.",
+    "address": null
+  },
+  "transport": {
+    "carrier_code": null,
+    "vessel_name": null,
+    "voyage_number": null,
+    "port_of_unlading": null,
+    "port_of_entry": "3001",
+    "importing_carrier": null,
+    "foreign_port": null,
+    "export_date": null,
+    "import_date": "2026-11-22T23:33:08.755498+00:00",
+    "master_bill": "MAEU664190821",
+    "house_bill": null,
+    "scac_code": null
+  },
+  "bond": {
+    "type": "9",
+    "surety_code": null
+  },
+  "origin": {
+    "country_of_origin": null,
+    "exporting_country": null
+  },
+  "totals": {
+    "entered_value": 71.0,
+    "duty": 0.0,
+    "mpf": 33.58,
+    "hmf": 0.09,
+    "taxes": 0.0,
+    "other": 0.0,
+    "grand_total": 33.67
+  },
+  "line_items": [
+    {
+      "line_number": 1,
+      "hts_number": "1211.90.8089",
+      "description": "Item with HTS 1211.90.8089",
+      "quantity": 0.0,
+      "unit": "PCS",
+      "gross_weight": 0.0,
+      "country_of_origin": null,
+      "entered_value": "7.10",
+      "duty_rate": 0.0,
+      "rate_verified": false,
+      "duty_amount": "0.00"
+    },
+    {
+      "line_number": 2,
+      "hts_number": "9001.90",
+      "description": "Item with HTS 9001.90",
+      "quantity": 0.0,
+      "unit": "PCS",
+      "gross_weight": 0.0,
+      "country_of_origin": null,
+      "entered_value": "7.10",
+      "duty_rate": 0.0,
+      "rate_verified": false,
+      "duty_amount": "0.00"
+    },
+    {
+      "line_number": 3,
+      "hts_number": "1211.90",
+      "description": "Item with HTS 1211.90",
+      "quantity": 0.0,
+      "unit": "PCS",
+      "gross_weight": 0.0,
+      "country_of_origin": null,
+      "entered_value": "7.10",
+      "duty_rate": 0.0,
+      "rate_verified": false,
+      "duty_amount": "0.00"
+    },
+    {
+      "line_number": 4,
+      "hts_number": "9001.90.9000",
+      "description": "Item with HTS 9001.90.9000",
+      "quantity": 0.0,
+      "unit": "PCS",
+      "gross_weight": 0.0,
+      "country_of_origin": null,
+      "entered_value": "7.10",
+      "duty_rate": 0.0,
+      "rate_verified": false,
+      "duty_amount": "0.00"
+    },
+    {
+      "line_number": 5,
+      "hts_number": "7604.29",
+      "description": "Item with HTS 7604.29",
+      "quantity": 0.0,
+      "unit": "PCS",
+      "gross_weight": 0.0,
+      "country_of_origin": null,
+      "entered_value": "7.10",
+      "duty_rate": 0.0,
+      "rate_verified": false,
+      "duty_amount": "0.00"
+    },
+    {
+      "line_number": 6,
+      "hts_number": "9018.19.9560",
+      "description": "Item with HTS 9018.19.9560",
+      "quantity": 0.0,
+      "unit": "PCS",
+      "gross_weight": 0.0,
+      "country_of_origin": null,
+      "entered_value": "7.10",
+      "duty_rate": 0.0,
+      "rate_verified": false,
+      "duty_amount": "0.00"
+    },
+    {
+      "line_number": 7,
+      "hts_number": "9018.19",
+      "description": "Item with HTS 9018.19",
+      "quantity": 0.0,
+      "unit": "PCS",
+      "gross_weight": 0.0,
+      "country_of_origin": null,
+      "entered_value": "7.10",
+      "duty_rate": 0.0,
+      "rate_verified": false,
+      "duty_amount": "0.00"
+    },
+    {
+      "line_number": 8,
+      "hts_number": "8517.62",
+      "description": "Item with HTS 8517.62",
+      "quantity": 0.0,
+      "unit": "PCS",
+      "gross_weight": 0.0,
+      "country_of_origin": null,
+      "entered_value": "7.10",
+      "duty_rate": 0.0,
+      "rate_verified": false,
+      "duty_amount": "0.00"
+    },
+    {
+      "line_number": 9,
+      "hts_number": "8517.62.0090",
+      "description": "Item with HTS 8517.62.0090",
+      "quantity": 0.0,
+      "unit": "PCS",
+      "gross_weight": 0.0,
+      "country_of_origin": null,
+      "entered_value": "7.10",
+      "duty_rate": 0.0,
+      "rate_verified": false,
+      "duty_amount": "0.00"
+    },
+    {
+      "line_number": 10,
+      "hts_number": "7604.29.5090",
+      "description": "Item with HTS 7604.29.5090",
+      "quantity": 0.0,
+      "unit": "PCS",
+      "gross_weight": 0.0,
+      "country_of_origin": null,
+      "entered_value": "7.10",
+      "duty_rate": 0.0,
+      "rate_verified": false,
+      "duty_amount": "0.00"
+    }
+  ],
+  "metadata": {
+    "source_shipment_id": "24ea66e2-c63a-4645-8364-c13ae7752036",
+    "source_documents": [
+      "ce119583-179b-4c36-9e4d-de93cb3587b5"
+    ],
+    "validation_warnings": [
+      "Line-item values were apportioned evenly from total invoice value \u2014 verify individual line values",
+      "Missing CBP 3-character broker filer code (configure BROKER_FILER_CODE)",
+      "Missing country of origin",
+      "Line 1: HTS 1211.90.8089 duty rate not verified against USITC tariff table",
+      "Line 1: Missing ISO 2-letter country of origin",
+      "Line 2: HTS 9001.90 duty rate not verified against USITC tariff table",
+      "Line 2: Missing ISO 2-letter country of origin",
+      "Line 3: HTS 1211.90 duty rate not verified against USITC tariff table",
+      "Line 3: Missing ISO 2-letter country of origin",
+      "Line 4: HTS 9001.90.9000 duty rate not verified against USITC tariff table",
+      "Line 4: Missing ISO 2-letter country of origin",
+      "Line 5: HTS 7604.29 duty rate not verified against USITC tariff table",
+      "Line 5: Missing ISO 2-letter country of origin",
+      "Line 6: HTS 9018.19.9560 duty rate not verified against USITC tariff table",
+      "Line 6: Missing ISO 2-letter country of origin",
+      "Line 7: HTS 9018.19 duty rate not verified against USITC tariff table",
+      "Line 7: Missing ISO 2-letter country of origin",
+      "Line 8: HTS 8517.62 duty rate not verified against USITC tariff table",
+      "Line 8: Missing ISO 2-letter country of origin",
+      "Line 9: HTS 8517.62.0090 duty rate not verified against USITC tariff table",
+      "Line 9: Missing ISO 2-letter country of origin",
+      "Line 10: HTS 7604.29.5090 duty rate not verified against USITC tariff table",
+      "Line 10: Missing ISO 2-letter country of origin"
+    ],
+    "completeness_score": 0.66
+  }
+}

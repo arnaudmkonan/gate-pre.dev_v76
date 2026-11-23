@@ -11,7 +11,7 @@ from app.models.raw_file import RawFile, RawFileStatus
 logger = logging.getLogger(__name__)
 
 
-@celery_app.task(bind=True, max_retries=3)
+@celery_app.task(bind=True, max_retries=3, queue="ingest")
 def queue_raw_file(self, file_id: str):
     """
     Queue a raw file for ingestion processing.

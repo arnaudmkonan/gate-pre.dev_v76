@@ -52,7 +52,7 @@ async function saveAuthState(
     await page.locator('#password').fill(password);
   }
   await page.getByRole('button', { name: 'Sign in' }).click();
-  await page.waitForURL(/\/(ingest-ui|admin\/dashboard)/, { timeout: 30_000 });
+  await page.waitForURL(/\/(dashboard|ingest-ui|admin\/dashboard)/, { timeout: 30_000 });
   const gotItBtn = page.getByRole('button', { name: 'Got it' });
   if (await gotItBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
     await gotItBtn.click();

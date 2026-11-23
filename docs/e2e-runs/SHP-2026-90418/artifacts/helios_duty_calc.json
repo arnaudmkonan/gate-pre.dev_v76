@@ -1,0 +1,37 @@
+{
+  "hts_code": "9018199560",
+  "entered_value": 2337.5,
+  "quantity": 55.0,
+  "country_of_origin": "TW",
+  "base_duty": {
+    "rate": null,
+    "rate_type": "ad_valorem",
+    "amount": 0.0
+  },
+  "section_301": {
+    "rate": null,
+    "amount": 0.0,
+    "list": null
+  },
+  "section_232": {
+    "rate": null,
+    "amount": 0.0,
+    "product": null
+  },
+  "add_cvd": {
+    "add_rate": null,
+    "add_amount": 0.0,
+    "add_case_number": null,
+    "cvd_rate": null,
+    "cvd_amount": 0.0,
+    "cvd_case_number": null
+  },
+  "fta": {
+    "code": null,
+    "rate": null,
+    "eligible": false,
+    "savings": 0.0
+  },
+  "total_duty": 0.0,
+  "hts_description": null
+}

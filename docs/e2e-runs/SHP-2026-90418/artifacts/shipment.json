@@ -1,0 +1,35 @@
+{
+  "id": "592f6587-d760-4877-a010-5da91331bdda",
+  "name": "Shipment OOLU456789123 \u2014 Scenario 3 (Multi-Container Industrial)",
+  "reference_num": "SHP-2026-003",
+  "status": "complete",
+  "document_count": 6,
+  "entry_number": "G76-3091827-5",
+  "bol_number": "OOLU456789123",
+  "awb_number": null,
+  "importer_name": "Global Industrial Machinery Inc.",
+  "created_at": "2026-11-18T11:36:54.550437Z",
+  "primary_key_type": "BOL_NUM",
+  "primary_key_value": "OOLU456789123",
+  "exporter_name": "Kaohsiung Precision Components Corp.",
+  "manufacturer_name": null,
+  "container_numbers": [
+    "OOLU7654321",
+    "OOLU7654322"
+  ],
+  "po_numbers": [],
+  "total_declared_value": 142800.0,
+  "total_duty": 6412.15,
+  "document_types": [
+    "xlsx",
+    "pdf"
+  ],
+  "documents": [
+    "58b19d5b-0f28-458f-995d-a30603b86c97",
+    "39483d9f-fae8-4404-9f58-e2550e00dffa",
+    "9c78d67d-aee5-40a3-a7ce-ed9879433aef",
+    "dd489261-bd5b-4741-be45-02536111eaff",
+    "a0d73107-d666-4601-8885-bde6e62da677",
+    "02539150-b37c-451e-9bba-520e4664d282"
+  ]
+}

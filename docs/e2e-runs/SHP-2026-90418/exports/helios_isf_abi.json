@@ -1,0 +1,70 @@
+{
+  "isf_id": "26a2e13e-e09d-49c8-9037-9960a3ef9c77",
+  "message_type": "ISF-10",
+  "message": {
+    "message_type": "IS",
+    "transaction_type": "ISF-10",
+    "isf_number": "ISF-2611222332-4D28",
+    "flexible_filing": true,
+    "10_elements": {
+      "1_seller": {
+        "name": "Pacific Rim Optical & Industrial Supply Co.",
+        "address": null,
+        "city": null,
+        "country": null
+      },
+      "2_buyer": {
+        "name": null,
+        "address": null,
+        "country": null
+      },
+      "3_importer_of_record": {
+        "number": null,
+        "name": "Helios Precision Instruments Inc."
+      },
+      "4_consignee": {
+        "number": null,
+        "name": null
+      },
+      "5_manufacturer": {
+        "name": null,
+        "mid": null,
+        "country": null
+      },
+      "6_ship_to": {
+        "name": null,
+        "address": null,
+        "city": null,
+        "country": null
+      },
+      "7_country_of_origin": [
+        null
+      ],
+      "8_hts_codes": [],
+      "9_stuffing_location": {
+        "name": null,
+        "address": null,
+        "country": null
+      },
+      "10_consolidator": {
+        "name": null,
+        "address": null,
+        "country": null
+      }
+    },
+    "transport": {
+      "vessel": null,
+      "voyage": null,
+      "carrier_code": null,
+      "port_of_loading": null,
+      "port_of_discharge": null,
+      "bill_of_lading": "MAEU664190821",
+      "containers": []
+    },
+    "dates": {
+      "estimated_departure": null,
+      "estimated_arrival": null
+    }
+  },
+  "abi_ready": false
+}

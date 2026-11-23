@@ -10,11 +10,11 @@ This worker handles the full ingestion pipeline:
 6. Store embeddings for vector search
 """
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, Optional, List
 from uuid import UUID
 
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, or_
 
 from app.core.celery_app import celery_app
 from app.core.database import get_sync_db
@@ -82,7 +82,7 @@ def get_extractor_for_file_type(file_type: str):
     return extractors.get(file_type.lower())
 
 
-@celery_app.task(bind=True, max_retries=3)
+@celery_app.task(bind=True, max_retries=3, queue="ingest")
 def process_ingest_job(self, job_id: str):
     """
     Process a single ingest job through the full extraction pipeline.
@@ -478,28 +478,56 @@ def process_pending_jobs(self):
 
 
 def _process_pending_jobs_sync() -> Dict[str, Any]:
-    """Find and process pending jobs."""
+    """Find pending/stale-queued jobs and enqueue each at most once.
+
+    Upload already enqueues `process_ingest_job` directly. This beat task is a
+    safety net. Re-enqueueing every PENDING row every 30s flooded Redis and
+    starved ingest — mark QUEUED before delay and only reclaim stuck QUEUED.
+    """
     with get_sync_db() as session:
-        # Get pending jobs (limit to 10 at a time to avoid overload)
+        now = datetime.now(timezone.utc)
+        stale_before = now - timedelta(minutes=15)
+
         result = session.execute(
-            select(IngestJob).where(
-                IngestJob.status == IngestJobStatus.PENDING
-            ).limit(10)
+            select(IngestJob)
+            .where(
+                or_(
+                    IngestJob.status == IngestJobStatus.PENDING,
+                    and_(
+                        IngestJob.status == IngestJobStatus.QUEUED,
+                        or_(
+                            IngestJob.updated_at.is_(None),
+                            IngestJob.updated_at < stale_before,
+                        ),
+                    ),
+                )
+            )
+            .order_by(IngestJob.created_at.asc())
+            .limit(5)
         )
         pending_jobs = result.scalars().all()
-        
-        logger.info(f"Found {len(pending_jobs)} pending jobs")
-        
+
+        logger.info(f"Found {len(pending_jobs)} pending/stale ingest jobs to enqueue")
+
         queued_count = 0
         for job in pending_jobs:
             try:
-                # Queue each job for processing
-                process_ingest_job.delay(str(job.id))
+                job.status = IngestJobStatus.QUEUED
+                job.updated_at = now
+                session.add(job)
+                session.commit()
+
+                process_ingest_job.apply_async(
+                    args=[str(job.id)],
+                    queue="ingest",
+                    expires=60 * 30,
+                )
                 queued_count += 1
-                logger.info(f"Queued job for processing: {job.filename}")
+                logger.info(f"Queued job for processing: {job.filename} ({job.id})")
             except Exception as e:
+                session.rollback()
                 logger.error(f"Error queuing job {job.id}: {e}")
-        
+
         return {
             "status": "completed",
             "pending_found": len(pending_jobs),
