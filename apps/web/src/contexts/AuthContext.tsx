@@ -12,7 +12,7 @@ export interface User {
     email: string;
     first_name: string;
     last_name: string;
-    role: 'admin' | 'user' | 'readonly';
+    role: 'admin' | 'user' | 'readonly' | 'broker_staff' | 'broker_admin';
     client_id?: string;
     client_name?: string;
     status: string;

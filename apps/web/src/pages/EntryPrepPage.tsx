@@ -306,7 +306,7 @@ export const EntryPrepPage = () => {
                     </Button>
                     <Button onClick={saveOfficialEntry} disabled={creatingEntry}>
                         <CheckCircle className="w-4 h-4 mr-2" />
-                        {creatingEntry ? 'Saving Entry...' : 'Save as Official Entry'}
+                        {creatingEntry ? 'Creating entry...' : 'Create official entry'}
                     </Button>
                 </div>
             </div>

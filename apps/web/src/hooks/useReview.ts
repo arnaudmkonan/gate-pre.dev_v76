@@ -1,6 +1,15 @@
 import { authFetch } from '../lib/authFetch'
 import { useState, useCallback } from 'react'
 
+export interface ReviewShipmentLink {
+  id: string
+  name?: string | null
+  bol_number?: string | null
+  awb_number?: string | null
+  importer_name?: string | null
+  status?: string | null
+}
+
 interface ReviewItem {
   id: string
   document_id: string
@@ -21,6 +30,7 @@ interface ReviewItem {
   updated_at?: string
   issues_detected?: unknown[]
   agent_results?: Record<string, unknown>
+  shipments?: ReviewShipmentLink[]
 }
 
 interface ReviewItemDetail extends ReviewItem {
@@ -33,6 +43,8 @@ interface ReviewItemDetail extends ReviewItem {
   }
   extractions?: Extraction[]
   history?: ReviewAction[]
+  shipments?: ReviewShipmentLink[]
+  next_pending_id?: string | null
 }
 
 interface Extraction {
@@ -68,6 +80,8 @@ interface ReviewStats {
 interface UseReviewQueueOptions {
   status?: string
   assignedTo?: string
+  reasonCode?: string
+  fileType?: string
 }
 
 export const useReviewQueue = (options: UseReviewQueueOptions = {}) => {
@@ -82,6 +96,8 @@ export const useReviewQueue = (options: UseReviewQueueOptions = {}) => {
       const params = new URLSearchParams()
       if (options.status) params.append('status', options.status)
       if (options.assignedTo) params.append('assigned_to', options.assignedTo)
+      if (options.reasonCode) params.append('reason_code', options.reasonCode)
+      if (options.fileType) params.append('file_type', options.fileType)
 
       const response = await authFetch(`/api/review/queue?${params.toString()}`)
       if (!response.ok) {
@@ -93,7 +109,8 @@ export const useReviewQueue = (options: UseReviewQueueOptions = {}) => {
       const flattenedItems = (data.items || data).map((item: Record<string, unknown>) => ({
         ...item,
         filename: (item.document as Record<string, unknown>)?.filename || item.filename,
-        file_type: (item.document as Record<string, unknown>)?.file_type || item.file_type
+        file_type: (item.document as Record<string, unknown>)?.file_type || item.file_type,
+        shipments: item.shipments || [],
       }))
       setItems(flattenedItems)
     } catch (err) {
@@ -101,7 +118,7 @@ export const useReviewQueue = (options: UseReviewQueueOptions = {}) => {
     } finally {
       setLoading(false)
     }
-  }, [options.status, options.assignedTo])
+  }, [options.status, options.assignedTo, options.reasonCode, options.fileType])
 
   return { items, loading, error, refetch: fetchQueue }
 }
@@ -127,7 +144,9 @@ export const useReviewItem = (itemId: string | undefined) => {
         ...data.review_item,
         document: data.document,
         extractions: data.extractions || [],
-        history: data.history || []
+        history: data.history || [],
+        shipments: data.shipments || [],
+        next_pending_id: data.next_pending_id ?? null,
       }
       setItem(flattenedItem)
     } catch (err) {
@@ -206,7 +225,12 @@ export const useReviewActions = () => {
         const err = await response.json()
         throw new Error(err.detail || 'Failed to approve item')
       }
-      return await response.json()
+      return await response.json() as {
+        message: string
+        item: ReviewItem
+        next_pending_id?: string | null
+        shipments?: ReviewShipmentLink[]
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to approve item'
       setError(message)
@@ -229,7 +253,11 @@ export const useReviewActions = () => {
         const err = await response.json()
         throw new Error(err.detail || 'Failed to reject item')
       }
-      return await response.json()
+      return await response.json() as {
+        message: string
+        item: ReviewItem
+        next_pending_id?: string | null
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to reject item'
       setError(message)

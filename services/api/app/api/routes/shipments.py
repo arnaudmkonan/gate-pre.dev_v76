@@ -1097,16 +1097,24 @@ async def create_entry_from_shipment(
 
     actor_email = current_user.get("email") or current_user.get("sub") or "system"
 
-    # Match client_id by importer name when available (or link to non-staff user's client)
-    from app.models.client import Client
+    # Match client_id: portal user's client, else IOR/EIN/name resolve
     from app.startup.client_access import portal_user_client_id
+    from app.services.client_resolve_service import resolve_client_id
+
     resolved_client_id = portal_user_client_id(current_user)
     imp_lookup_name = shipment.importer_name or (prep_data.importer_name if prep_data else None)
-    if resolved_client_id is None and imp_lookup_name:
-        client_match = await db.execute(
-            select(Client.id).where(Client.name.ilike(imp_lookup_name.strip())).limit(1)
+    prep_ein = None
+    if prep_data:
+        prep_ein = getattr(prep_data, "importer_of_record_number", None) or getattr(
+            prep_data, "importer_ein", None
         )
-        resolved_client_id = client_match.scalar_one_or_none()
+    if resolved_client_id is None:
+        resolved_client_id = await resolve_client_id(
+            db,
+            importer_name=imp_lookup_name,
+            ein=prep_ein,
+            ior_number=prep_ein,
+        )
 
     resolved_port = (
         request.port_of_entry
@@ -1325,6 +1333,27 @@ async def get_shipment_entry(
             "created_at": entry.created_at.isoformat(),
         },
     }
+
+
+@router.get("/{shipment_id}/pipeline")
+async def get_shipment_pipeline(
+    shipment_id: str = Path(..., description="Shipment ID"),
+    db=Depends(get_db),
+):
+    """
+    Job timeline for one shipment: Docs → Review → Assembled → ISF → Entry → ACE.
+    """
+    from app.services.shipment_pipeline_service import get_shipment_pipeline as build_pipeline
+
+    try:
+        ship_uuid = UUID(shipment_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid shipment ID format")
+
+    pipeline = await build_pipeline(db, ship_uuid)
+    if not pipeline:
+        raise HTTPException(status_code=404, detail="Shipment not found")
+    return pipeline
 
 
 class RequestMissingDocumentPayload(BaseModel):

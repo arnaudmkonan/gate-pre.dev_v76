@@ -225,10 +225,14 @@ export const EntryDetailPage = () => {
     const { entryId } = useParams<{ entryId: string }>()
     const navigate = useNavigate()
     const { entry, loading, error, refetch } = useEntry(entryId)
-    const { updateEntry, addLine, updateLine, deleteLine, calculateDuties, validateEntry, loading: actionLoading } = useEntryActions()
+    const { updateEntry, addLine, updateLine, deleteLine, calculateDuties, validateEntry, brokerOk, loading: actionLoading, error: actionError } = useEntryActions()
 
     const [showAddLineModal, setShowAddLineModal] = useState(false)
     const [editingLine, setEditingLine] = useState<any | null>(null)
+    const [brokerHtsOk, setBrokerHtsOk] = useState(true)
+    const [brokerValuesOk, setBrokerValuesOk] = useState(true)
+    const [brokerAdcvd, setBrokerAdcvd] = useState('note-only')
+    const [brokerNotes, setBrokerNotes] = useState('')
     const [selectedPreviewDocId, setSelectedPreviewDocId] = useState<string | null>(null)
     const [showEditEntryModal, setShowEditEntryModal] = useState(
         typeof window !== 'undefined' && window.location.pathname.endsWith('/edit')
@@ -339,6 +343,20 @@ export const EntryDetailPage = () => {
         }
     }
 
+    const handleBrokerOk = async () => {
+        if (!entryId) return
+        const result = await brokerOk(entryId, {
+            hts_confirmed: brokerHtsOk,
+            values_confirmed: brokerValuesOk,
+            adcvd_notes: brokerAdcvd || undefined,
+            notes: brokerNotes || undefined,
+            mark_ready_to_file: true,
+        })
+        if (result) {
+            refetch()
+        }
+    }
+
     const handleExport = async (format: 'pdf' | 'excel' | 'cargowise') => {
         if (!entryId) return
         try {
@@ -420,10 +438,9 @@ export const EntryDetailPage = () => {
                         Validate
                     </Button>
                     {entry.status === 'ready_to_file' && (
-                        <Button onClick={() => handleStatusChange('filing')} disabled={actionLoading}>
-                            <Send className="w-4 h-4 mr-2" />
-                            Submit to ACE
-                        </Button>
+                        <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md px-3 py-2 max-w-xs">
+                            Broker OK complete — use <strong>File to ACE</strong> in the ACE panel (single filing path).
+                        </p>
                     )}
                 </div>
             </div>
@@ -856,6 +873,74 @@ export const EntryDetailPage = () => {
 
                 {/* Right Column - Quick Actions & Status */}
                 <div className="space-y-6">
+                    {/* Broker OK gate */}
+                    <Card className={entry.broker_ok?.ok || entry.status === 'ready_to_file' ? 'border-emerald-200 bg-emerald-50/40' : 'border-amber-200'}>
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-base flex items-center gap-2">
+                                <CheckCircle className="w-4 h-4" />
+                                Broker OK
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3 text-sm">
+                            {entry.broker_ok?.ok || entry.status === 'ready_to_file' ? (
+                                <div className="space-y-1 text-emerald-900">
+                                    <p className="font-medium">Signed off</p>
+                                    {entry.broker_ok?.by && (
+                                        <p className="text-xs">By {entry.broker_ok.by}{entry.broker_ok.at ? ` · ${new Date(entry.broker_ok.at).toLocaleString()}` : ''}</p>
+                                    )}
+                                    {entry.broker_ok?.notes && (
+                                        <p className="text-xs text-emerald-800/80">{entry.broker_ok.notes}</p>
+                                    )}
+                                    <p className="text-xs pt-1">Entry is Ready to File — use ACE panel to submit.</p>
+                                </div>
+                            ) : (
+                                <>
+                                    <p className="text-amber-900 text-xs">
+                                        Licensed broker confirms HTS / values before ACE. Required to unlock filing.
+                                    </p>
+                                    <label className="flex items-center gap-2">
+                                        <input type="checkbox" checked={brokerHtsOk} onChange={(e) => setBrokerHtsOk(e.target.checked)} />
+                                        HTS classifications confirmed
+                                    </label>
+                                    <label className="flex items-center gap-2">
+                                        <input type="checkbox" checked={brokerValuesOk} onChange={(e) => setBrokerValuesOk(e.target.checked)} />
+                                        Entered values confirmed
+                                    </label>
+                                    <div>
+                                        <label className="block text-xs text-slate-600 mb-1">AD/CVD notes</label>
+                                        <input
+                                            value={brokerAdcvd}
+                                            onChange={(e) => setBrokerAdcvd(e.target.value)}
+                                            className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+                                            placeholder="note-only / HOLD / N/A"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-slate-600 mb-1">Notes (optional)</label>
+                                        <textarea
+                                            value={brokerNotes}
+                                            onChange={(e) => setBrokerNotes(e.target.value)}
+                                            rows={2}
+                                            className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+                                            placeholder="Scope memo, FCC, etc."
+                                        />
+                                    </div>
+                                    {actionError && (
+                                        <p className="text-xs text-red-600">{actionError}</p>
+                                    )}
+                                    <Button
+                                        className="w-full"
+                                        onClick={handleBrokerOk}
+                                        disabled={actionLoading || !brokerHtsOk || !brokerValuesOk}
+                                    >
+                                        <CheckCircle className="w-4 h-4 mr-2" />
+                                        Record Broker OK → Ready to File
+                                    </Button>
+                                </>
+                            )}
+                        </CardContent>
+                    </Card>
+
                     {/* Quick Actions */}
                     <Card>
                         <CardHeader>
@@ -863,36 +948,24 @@ export const EntryDetailPage = () => {
                         </CardHeader>
                         <CardContent className="space-y-2">
                             {entry.status === 'draft' && (
-                                <>
-                                    <Button
-                                        variant="secondary"
-                                        className="w-full justify-start"
-                                        onClick={() => handleStatusChange('pending_review')}
-                                    >
-                                        <Send className="w-4 h-4 mr-2" />
-                                        Submit for Review
-                                    </Button>
-                                </>
+                                <Button
+                                    variant="secondary"
+                                    className="w-full justify-start"
+                                    onClick={() => handleStatusChange('pending_review')}
+                                >
+                                    <Send className="w-4 h-4 mr-2" />
+                                    Send to entry review queue
+                                </Button>
                             )}
-                            {entry.status === 'pending_review' && (
-                                <>
-                                    <Button
-                                        variant="secondary"
-                                        className="w-full justify-start"
-                                        onClick={() => handleStatusChange('ready_to_file')}
-                                    >
-                                        <CheckCircle className="w-4 h-4 mr-2" />
-                                        Mark Ready to File
-                                    </Button>
-                                    <Button
-                                        variant="secondary"
-                                        className="w-full justify-start text-red-600"
-                                        onClick={() => handleStatusChange('draft')}
-                                    >
-                                        <XCircle className="w-4 h-4 mr-2" />
-                                        Return to Draft
-                                    </Button>
-                                </>
+                            {(entry.status === 'pending_review' || entry.status === 'ready_to_file') && (
+                                <Button
+                                    variant="secondary"
+                                    className="w-full justify-start text-red-600"
+                                    onClick={() => handleStatusChange('draft')}
+                                >
+                                    <XCircle className="w-4 h-4 mr-2" />
+                                    Return to Draft
+                                </Button>
                             )}
                             <Button
                                 variant="secondary"

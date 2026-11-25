@@ -124,8 +124,13 @@ async def get_workbench_summary(
         )
     ).scalars().all()
 
+    from app.services.shipment_pipeline_service import build_pipeline_summary_for_shipments
+
+    pipeline_by_id = await build_pipeline_summary_for_shipments(db, list(shipment_rows))
+
     recent_shipments: List[Dict[str, Any]] = []
     for s in shipment_rows:
+        pipe = pipeline_by_id.get(str(s.id), {})
         recent_shipments.append(
             {
                 "id": str(s.id),
@@ -136,6 +141,11 @@ async def get_workbench_summary(
                 "importer_name": s.importer_name,
                 "document_count": s.document_count or 0,
                 "updated_at": s.updated_at.isoformat() if s.updated_at else None,
+                "pipeline_stage": pipe.get("current_stage"),
+                "pipeline_label": pipe.get("current_label"),
+                "next_action": pipe.get("next_action"),
+                "review_pending": pipe.get("review_pending", 0),
+                "entry_id": pipe.get("entry_id"),
             }
         )
 
@@ -167,6 +177,29 @@ async def get_workbench_summary(
                 "importer_of_record_name": e.importer_of_record_name,
                 "port_of_entry": e.port_of_entry,
                 "updated_at": e.updated_at.isoformat() if e.updated_at else None,
+            }
+        )
+
+    # Recent uploads so clerks can find "where did my file go?"
+    since = datetime.now(timezone.utc) - timedelta(hours=48)
+    upload_rows = (
+        await db.execute(
+            select(IngestJob)
+            .where(IngestJob.created_at >= since)
+            .order_by(IngestJob.created_at.desc())
+            .limit(recent_limit)
+        )
+    ).scalars().all()
+
+    recent_uploads: List[Dict[str, Any]] = []
+    for job in upload_rows:
+        recent_uploads.append(
+            {
+                "id": str(job.id),
+                "filename": job.filename,
+                "status": job.status,
+                "created_at": job.created_at.isoformat() if job.created_at else None,
+                "progress_percentage": getattr(job, "progress_percentage", None) or 0,
             }
         )
 
@@ -207,11 +240,102 @@ async def get_workbench_summary(
         "recent_review": recent_review,
         "recent_shipments": recent_shipments,
         "recent_entries": recent_entries,
+        "recent_uploads": recent_uploads,
+        "continue_job": _pick_continue_job(
+            recent_review=recent_review,
+            recent_shipments=recent_shipments,
+            recent_entries=recent_entries,
+            recent_uploads=recent_uploads,
+            review_pending=review_pending,
+            ingest_processing=ingest_processing,
+        ),
         "quick_actions": [
             {"id": "ingest", "label": "Ingest documents", "path": "/ingest-ui"},
-            {"id": "review", "label": "Open review queue", "path": "/review"},
+            {"id": "review", "label": "Doc exceptions (HITL)", "path": "/review"},
             {"id": "shipments", "label": "Shipment assembly", "path": "/shipments/assembly"},
             {"id": "entries", "label": "Customs entries", "path": "/entries"},
-            {"id": "new_entry", "label": "New official entry", "path": "/entries/new"},
+            {
+                "id": "new_entry",
+                "label": "Manual entry (no shipment)",
+                "path": "/entries/new",
+            },
         ],
     }
+
+
+def _pick_continue_job(
+    *,
+    recent_review: List[Dict[str, Any]],
+    recent_shipments: List[Dict[str, Any]],
+    recent_entries: List[Dict[str, Any]],
+    recent_uploads: List[Dict[str, Any]],
+    review_pending: int,
+    ingest_processing: int,
+) -> Optional[Dict[str, Any]]:
+    """Single Continue CTA: prefer in-flight ingest, then HITL, shipment, entry."""
+    if ingest_processing > 0 and recent_uploads:
+        flying = next(
+            (
+                u
+                for u in recent_uploads
+                if (u.get("status") or "").lower() in ("pending", "queued", "processing")
+            ),
+            recent_uploads[0],
+        )
+        return {
+            "kind": "ingest",
+            "label": "Continue: watch document extract",
+            "detail": flying.get("filename") or flying.get("id"),
+            "path": "/ingest-ui",
+        }
+
+    if review_pending > 0 and recent_review:
+        item = recent_review[0]
+        return {
+            "kind": "doc_exception",
+            "label": "Continue: clear doc exception",
+            "detail": item.get("reason") or "Document needs HITL",
+            "path": f"/review/{item['id']}",
+        }
+
+    for s in recent_shipments:
+        stage = (s.get("pipeline_stage") or "").lower()
+        nxt = s.get("next_action") or {}
+        if stage and stage not in ("ace",) and nxt.get("path"):
+            # Skip completed jobs
+            if stage == "ace" and (nxt.get("action") == "open_entry"):
+                continue
+            if nxt.get("action") == "open_entry" and "complete" in (nxt.get("label") or "").lower():
+                continue
+            return {
+                "kind": "shipment",
+                "label": f"Continue: {nxt.get('label') or s.get('pipeline_label')}",
+                "detail": s.get("importer_name") or s.get("bol_number") or s.get("id"),
+                "path": nxt.get("path") or f"/shipments/{s['id']}",
+                "shipment_id": s.get("id"),
+                "pipeline_stage": stage,
+            }
+
+    for e in recent_entries:
+        status = (e.get("status") or "").lower()
+        if status in ("draft", "pending_review", "ready_to_file", "validated"):
+            label = "Continue: Broker OK / finish entry"
+            if status == "ready_to_file":
+                label = "Continue: file entry to ACE"
+            return {
+                "kind": "entry",
+                "label": label,
+                "detail": e.get("entry_number") or e.get("importer_of_record_name") or e.get("id"),
+                "path": f"/entries/{e['id']}",
+            }
+
+    if recent_shipments:
+        s = recent_shipments[0]
+        nxt = s.get("next_action") or {}
+        return {
+            "kind": "shipment",
+            "label": f"Continue: {nxt.get('label') or 'open shipment'}",
+            "detail": s.get("importer_name") or s.get("id"),
+            "path": nxt.get("path") or f"/shipments/{s['id']}",
+        }
+    return None

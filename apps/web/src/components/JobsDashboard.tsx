@@ -20,6 +20,8 @@ interface IngestJob {
 interface JobsDashboardProps {
   onJobSelect?: (job: IngestJob) => void
   onRetryClick?: (jobId: string) => void
+  /** Highlight the job that was just uploaded */
+  highlightJobId?: string
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -58,7 +60,11 @@ const formatDate = (dateString: string): string => {
   return date.toLocaleDateString() + ' ' + date.toLocaleTimeString()
 }
 
-export const JobsDashboard: React.FC<JobsDashboardProps> = ({ onJobSelect, onRetryClick }) => {
+export const JobsDashboard: React.FC<JobsDashboardProps> = ({
+  onJobSelect,
+  onRetryClick,
+  highlightJobId,
+}) => {
   const { isAuthenticated, isLoading: authLoading } = useAuth()
   const [jobs, setJobs] = useState<IngestJob[]>([])
   const [loading, setLoading] = useState(true)
@@ -242,10 +248,21 @@ export const JobsDashboard: React.FC<JobsDashboardProps> = ({ onJobSelect, onRet
                 {jobs.map((job) => (
                   <tr
                     key={job.id}
-                    className="border-b hover:bg-gray-50 cursor-pointer transition"
+                    className={`border-b cursor-pointer transition ${
+                      highlightJobId && job.id === highlightJobId
+                        ? 'bg-sky-50 ring-1 ring-inset ring-sky-200 hover:bg-sky-100'
+                        : 'hover:bg-gray-50'
+                    }`}
                     onClick={() => handleJobClick(job)}
                   >
-                    <td className="py-3 px-2 font-medium truncate">{job.filename}</td>
+                    <td className="py-3 px-2 font-medium truncate">
+                      {job.filename}
+                      {highlightJobId && job.id === highlightJobId && (
+                        <span className="ml-2 text-[10px] font-semibold uppercase tracking-wide text-sky-700">
+                          Just uploaded
+                        </span>
+                      )}
+                    </td>
                     <td className="py-3 px-2">
                       <div className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[job.status] || STATUS_COLORS.pending}`}>
                         {getStatusIcon(job.status)}

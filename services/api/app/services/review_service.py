@@ -14,9 +14,58 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.document_metadata import DocumentMetadata
 from app.models.extraction_result import ExtractionResult
+from app.models.gold_records import Shipment, ShipmentDocument
 from app.models.review_queue import ReviewQueueItem, ReviewAction
 
 logger = logging.getLogger(__name__)
+
+
+async def _shipments_for_document(
+    session: AsyncSession,
+    document_id: UUID,
+) -> List[Dict[str, Any]]:
+    links = (
+        await session.execute(
+            select(ShipmentDocument.shipment_id).where(
+                ShipmentDocument.document_id == document_id
+            )
+        )
+    ).scalars().all()
+    ship_ids = [sid for sid in links if sid]
+    if not ship_ids:
+        return []
+    rows = (
+        await session.execute(select(Shipment).where(Shipment.id.in_(ship_ids)))
+    ).scalars().all()
+    return [
+        {
+            "id": str(s.id),
+            "name": s.name,
+            "bol_number": s.bol_number,
+            "awb_number": s.awb_number,
+            "importer_name": s.importer_name,
+            "status": s.status,
+        }
+        for s in rows
+    ]
+
+
+async def _next_pending_item_id(
+    session: AsyncSession,
+    exclude_id: Optional[UUID] = None,
+) -> Optional[str]:
+    query = (
+        select(ReviewQueueItem.id)
+        .where(ReviewQueueItem.status.in_(["pending", "in_review"]))
+        .order_by(ReviewQueueItem.priority.desc(), ReviewQueueItem.created_at.asc())
+        .limit(5)
+    )
+    if exclude_id:
+        query = query.where(ReviewQueueItem.id != exclude_id)
+    rows = (await session.execute(query)).scalars().all()
+    for rid in rows:
+        return str(rid)
+    return None
 
 
 # Confidence thresholds for routing
@@ -92,6 +141,8 @@ class ReviewService:
         session: AsyncSession,
         status: Optional[str] = None,
         assigned_to: Optional[str] = None,
+        reason_code: Optional[str] = None,
+        file_type: Optional[str] = None,
         limit: int = 50,
         offset: int = 0
     ) -> List[Dict[str, Any]]:
@@ -111,6 +162,9 @@ class ReviewService:
         
         if assigned_to:
             query = query.where(ReviewQueueItem.assigned_to == assigned_to)
+
+        if reason_code:
+            query = query.where(ReviewQueueItem.reason_code == reason_code)
         
         query = query.limit(limit).offset(offset)
         
@@ -124,6 +178,9 @@ class ReviewService:
                 select(DocumentMetadata).where(DocumentMetadata.id == item.document_id)
             )
             doc = doc_result.scalar_one_or_none()
+
+            if file_type and doc and (doc.file_type or "").lower() != file_type.lower():
+                continue
             
             item_dict = item.to_dict()
             if not item_dict.get("confidence_score"):
@@ -142,6 +199,7 @@ class ReviewService:
                     "size": doc.size,
                     "ingestion_status": doc.ingestion_status,
                 }
+            item_dict["shipments"] = await _shipments_for_document(session, item.document_id)
             enriched.append(item_dict)
         
         return enriched
@@ -192,6 +250,9 @@ class ReviewService:
             avg_conf = sum((e.confidence or 0.0) for e in extractions) / len(extractions)
             review_item_dict["confidence_score"] = round(float(avg_conf), 2)
 
+        shipments = await _shipments_for_document(session, item.document_id)
+        next_id = await _next_pending_item_id(session, exclude_id=item_uuid)
+
         return {
             "review_item": review_item_dict,
             "document": {
@@ -207,6 +268,8 @@ class ReviewService:
                 "title": doc.title,
                 "author": doc.author,
             } if doc else None,
+            "shipments": shipments,
+            "next_pending_id": next_id,
             "extractions": [e.to_dict() for e in extractions],
             "extraction_count": len(extractions),
             "low_confidence_count": len([e for e in extractions if e.confidence < 0.9]),

@@ -8,6 +8,11 @@ import {
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/Card'
 import { Button } from '../components/Button'
+import {
+    ShipmentJobTimeline,
+    type PipelineNextAction,
+    type ShipmentPipeline,
+} from '../components/ShipmentJobTimeline'
 
 interface ShipmentDocument {
     id: string
@@ -64,7 +69,6 @@ export const ShipmentDetailPage = () => {
     const [documents, setDocuments] = useState<ShipmentDocument[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
-    const [creatingEntry, setCreatingEntry] = useState(false)
     const [generatingISF, setGeneratingISF] = useState(false)
     const [isfData, setIsfData] = useState<Record<string, any> | null>(null)
     const [showDocRequestModal, setShowDocRequestModal] = useState(false)
@@ -74,6 +78,7 @@ export const ShipmentDetailPage = () => {
     const [docRequestTypes, setDocRequestTypes] = useState<CatalogDocumentType[]>([])
     const [docRequestReplyHint, setDocRequestReplyHint] = useState<string | null>(null)
     const [docRequestSent, setDocRequestSent] = useState<string | null>(null)
+    const [pipeline, setPipeline] = useState<ShipmentPipeline | null>(null)
 
     useEffect(() => {
         if (shipmentId) {
@@ -134,6 +139,18 @@ export const ShipmentDetailPage = () => {
         setDocRequestNote(match?.request_instructions || '')
     }
 
+    const fetchPipeline = async () => {
+        if (!shipmentId) return
+        try {
+            const response = await authFetch(`${API_BASE}/api/shipments/${shipmentId}/pipeline`)
+            if (response.ok) {
+                setPipeline(await response.json())
+            }
+        } catch {
+            // Timeline is advisory — don't block the page
+        }
+    }
+
     const fetchShipment = async () => {
         setLoading(true)
         setError(null)
@@ -143,12 +160,37 @@ export const ShipmentDetailPage = () => {
             const data = await response.json()
             setShipment(data)
 
-            await fetchDocuments()
+            await Promise.all([fetchDocuments(), fetchPipeline()])
         } catch (err) {
             setError(err instanceof Error ? err.message : 'An error occurred')
         } finally {
             setLoading(false)
         }
+    }
+
+    const handlePipelineAction = (action: PipelineNextAction) => {
+        if (action.action === 'generate_isf') {
+            void handleGenerateISF()
+            return
+        }
+        if (action.action === 'prepare_entry' || action.path.startsWith('/entries/prep/')) {
+            navigate(action.path)
+            return
+        }
+        if (action.action === 'open_entry' || action.action === 'ace') {
+            navigate(action.path)
+            return
+        }
+        if (action.action === 'review') {
+            navigate('/review')
+            return
+        }
+        // ingest_or_request / assemble — stay on page; scroll to docs / open request
+        if (action.action === 'ingest_or_request' || action.action === 'assemble') {
+            setShowDocRequestModal(true)
+            return
+        }
+        navigate(action.path)
     }
 
     const fetchDocuments = async () => {
@@ -186,30 +228,6 @@ export const ShipmentDetailPage = () => {
         }
     }
 
-    const handleCreateOfficialEntry = async () => {
-        if (!shipmentId) return
-        setCreatingEntry(true)
-        try {
-            const resp = await authFetch(`${API_BASE}/api/shipments/${shipmentId}/create-entry`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ entry_type: '01', auto_calculate: true }),
-            })
-            if (!resp.ok) {
-                const err = await resp.json()
-                throw new Error(err.detail || 'Failed to create entry')
-            }
-            const data = await resp.json()
-            if (data.entry_id) {
-                navigate(`/entries/${data.entry_id}`)
-            }
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to create entry')
-        } finally {
-            setCreatingEntry(false)
-        }
-    }
-
     const handleGenerateISF = async () => {
         if (!shipmentId) return
         setGeneratingISF(true)
@@ -223,6 +241,7 @@ export const ShipmentDetailPage = () => {
                 throw new Error(typeof detail === 'string' ? detail : JSON.stringify(detail))
             }
             setIsfData(data.isf || data)
+            await fetchPipeline()
             setError(null)
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to generate ISF')
@@ -392,14 +411,17 @@ export const ShipmentDetailPage = () => {
                         <ShieldCheck className="w-4 h-4 mr-2" />
                         {generatingISF ? 'Generating ISF...' : 'Generate ISF (10+2)'}
                     </Button>
-                    <Button variant="secondary" onClick={() => navigate(`/entries/prep/${shipment.id}`)}>
-                        <FileText className="w-4 h-4 mr-2" />
-                        Prepare 7501
-                    </Button>
-                    <Button onClick={handleCreateOfficialEntry} disabled={creatingEntry}>
-                        <CheckCircle className="w-4 h-4 mr-2" />
-                        {creatingEntry ? 'Creating...' : 'Create Official Entry'}
-                    </Button>
+                    {pipeline?.links?.entry_id ? (
+                        <Button onClick={() => navigate(`/entries/${pipeline.links!.entry_id}`)}>
+                            <CheckCircle className="w-4 h-4 mr-2" />
+                            Open entry{pipeline.links.entry_number ? ` ${pipeline.links.entry_number}` : ''}
+                        </Button>
+                    ) : (
+                        <Button onClick={() => navigate(`/entries/prep/${shipment.id}`)}>
+                            <FileText className="w-4 h-4 mr-2" />
+                            Prepare 7501 & create entry
+                        </Button>
+                    )}
                 </div>
             </div>
 
@@ -408,6 +430,17 @@ export const ShipmentDetailPage = () => {
                     <span>✓ {docRequestSent}</span>
                     <button onClick={() => setDocRequestSent(null)} className="text-green-600 hover:underline text-xs">Dismiss</button>
                 </div>
+            )}
+
+            {pipeline && (
+                <Card className="border-slate-200 bg-slate-50/60">
+                    <CardContent className="pt-4">
+                        <ShipmentJobTimeline
+                            pipeline={pipeline}
+                            onActionClick={handlePipelineAction}
+                        />
+                    </CardContent>
+                </Card>
             )}
 
             {isfData && (
@@ -745,14 +778,17 @@ export const ShipmentDetailPage = () => {
                                 <Send className="w-4 h-4 mr-2" />
                                 Request Missing Doc
                             </Button>
-                            <Button variant="secondary" onClick={() => navigate(`/entries/prep/${shipment.id}`)}>
-                                <FileText className="w-4 h-4 mr-2" />
-                                Prepare Form 7501
-                            </Button>
-                            <Button onClick={handleCreateOfficialEntry} disabled={creatingEntry}>
-                                <CheckCircle className="w-4 h-4 mr-2" />
-                                {creatingEntry ? 'Creating...' : 'Create Official Entry'}
-                            </Button>
+                            {pipeline?.links?.entry_id ? (
+                                <Button onClick={() => navigate(`/entries/${pipeline.links!.entry_id}`)}>
+                                    <CheckCircle className="w-4 h-4 mr-2" />
+                                    Open entry
+                                </Button>
+                            ) : (
+                                <Button onClick={() => navigate(`/entries/prep/${shipment.id}`)}>
+                                    <FileText className="w-4 h-4 mr-2" />
+                                    Prepare 7501 & create entry
+                                </Button>
+                            )}
                             <Button variant="secondary" onClick={handleDeleteShipment}>
                                 <Trash2 className="w-4 h-4 mr-2" />
                                 Delete Shipment

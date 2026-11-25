@@ -56,6 +56,11 @@ interface WorkbenchSummary {
     importer_name?: string | null
     document_count: number
     updated_at: string | null
+    pipeline_stage?: string | null
+    pipeline_label?: string | null
+    review_pending?: number
+    entry_id?: string | null
+    next_action?: { label: string; action: string; path: string } | null
   }>
   recent_entries: Array<{
     id: string
@@ -65,7 +70,22 @@ interface WorkbenchSummary {
     port_of_entry?: string | null
     updated_at: string | null
   }>
+  recent_uploads?: Array<{
+    id: string
+    filename: string
+    status: string
+    created_at: string | null
+    progress_percentage?: number
+  }>
   quick_actions: Array<{ id: string; label: string; path: string }>
+  continue_job?: {
+    kind: string
+    label: string
+    detail?: string | null
+    path: string
+    shipment_id?: string
+    pipeline_stage?: string
+  } | null
 }
 
 function formatWhen(iso: string | null | undefined) {
@@ -145,17 +165,17 @@ export default function WorkbenchDashboardPage() {
 
   const metricCards = [
     {
-      label: 'Review queue',
+      label: 'Doc exceptions',
       value: a.review_pending,
-      hint: 'Pending / in review',
+      hint: 'HITL extraction review',
       to: '/review',
       icon: ClipboardCheck,
       alert: a.review_pending > 0,
     },
     {
-      label: 'Shipments incomplete',
+      label: 'Assembly needed',
       value: a.shipments_partial,
-      hint: 'Missing docs / partial',
+      hint: 'Shipments missing docs',
       to: '/shipments/assembly',
       icon: Package,
       alert: a.shipments_partial > 0,
@@ -169,7 +189,7 @@ export default function WorkbenchDashboardPage() {
       alert: false,
     },
     {
-      label: 'Entries to finish',
+      label: 'Broker OK / filing',
       value: a.entries_draft + a.entries_ready_to_file,
       hint: `${a.entries_draft} draft · ${a.entries_ready_to_file} ready to file`,
       to: '/entries',
@@ -201,13 +221,41 @@ export default function WorkbenchDashboardPage() {
             Refresh
           </Button>
           <Link to="/ingest-ui">
-            <Button size="sm">
+            <Button size="sm" variant="secondary">
               <Upload className="mr-1.5 h-3.5 w-3.5" />
               Ingest docs
             </Button>
           </Link>
+          {data.continue_job?.path && (
+            <Link to={data.continue_job.path}>
+              <Button size="sm">
+                {data.continue_job.label.replace(/^Continue:\s*/i, 'Continue: ')}
+                <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
+
+      {data.continue_job && (
+        <Card className="border-slate-800 bg-slate-900 text-white">
+          <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-300">Next job step</p>
+              <p className="mt-1 text-lg font-semibold">{data.continue_job.label}</p>
+              {data.continue_job.detail && (
+                <p className="mt-1 text-sm text-slate-300">{data.continue_job.detail}</p>
+              )}
+            </div>
+            <Link to={data.continue_job.path}>
+              <Button className="bg-white text-slate-900 hover:bg-slate-100">
+                Continue
+                <ArrowRight className="ml-1.5 h-4 w-4" />
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Attention metrics */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -331,18 +379,67 @@ export default function WorkbenchDashboardPage() {
         </Card>
       </div>
 
+      {/* Recent uploads — answers "where did my file go?" */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-base">Recent uploads</CardTitle>
+          <Link to="/ingest-ui" className="text-xs font-medium text-blue-700 hover:underline">
+            Ingest documents
+          </Link>
+        </CardHeader>
+        <CardContent>
+          {!data.recent_uploads || data.recent_uploads.length === 0 ? (
+            <div className="flex flex-col items-start gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-slate-500">
+                No uploads in the last 48 hours. Start here to put a packet into the pipeline.
+              </p>
+              <Link to="/ingest-ui">
+                <Button size="sm">
+                  <Upload className="mr-1.5 h-3.5 w-3.5" />
+                  Upload a document
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {data.recent_uploads.slice(0, 6).map((u) => (
+                <li key={u.id}>
+                  <Link
+                    to="/ingest-ui"
+                    className="flex items-center justify-between gap-3 py-2.5 -mx-2 rounded px-2 hover:bg-slate-50"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-slate-900">{u.filename}</p>
+                      <p className="text-xs text-slate-500">{formatWhen(u.created_at)}</p>
+                    </div>
+                    <span
+                      className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium uppercase ${statusPill(u.status)}`}
+                    >
+                      {u.status.replace(/_/g, ' ')}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="mt-3 border-t border-slate-100 pt-3 text-xs text-slate-500">
+            After extract finishes: check Doc exceptions → Shipment assembly → Entry / Broker OK.
+          </p>
+        </CardContent>
+      </Card>
+
       {/* Work queues */}
       <div className="grid gap-4 xl:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-base">Review needing action</CardTitle>
+            <CardTitle className="text-base">Doc exceptions</CardTitle>
             <Link to="/review" className="text-xs font-medium text-blue-700 hover:underline">
               View all
             </Link>
           </CardHeader>
           <CardContent>
             {data.recent_review.length === 0 ? (
-              <p className="py-6 text-center text-sm text-slate-500">Review queue is clear</p>
+              <p className="py-6 text-center text-sm text-slate-500">No document exceptions</p>
             ) : (
               <ul className="divide-y divide-slate-100">
                 {data.recent_review.map((item) => (
@@ -385,23 +482,29 @@ export default function WorkbenchDashboardPage() {
                 {data.recent_shipments.map((s) => (
                   <li key={s.id}>
                     <Link
-                      to={`/shipments/${s.id}`}
+                      to={s.next_action?.path || `/shipments/${s.id}`}
                       className="block py-3 hover:bg-slate-50 -mx-2 px-2 rounded"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <p className="text-sm font-medium text-slate-900 truncate">
                           {s.importer_name || s.name || s.bol_number || s.id.slice(0, 8)}
                         </p>
-                        <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium uppercase ${statusPill(s.status)}`}>
-                          {s.status}
+                        <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium uppercase ${statusPill(s.pipeline_stage || s.status)}`}>
+                          {s.pipeline_label || s.status}
                         </span>
                       </div>
                       <p className="mt-1 text-xs text-slate-500">
                         {s.document_count} docs
                         {s.bol_number ? ` · BOL ${s.bol_number}` : ''}
+                        {s.review_pending ? ` · ${s.review_pending} in review` : ''}
                         {' · '}
                         {formatWhen(s.updated_at)}
                       </p>
+                      {s.next_action?.label && (
+                        <p className="mt-1 text-[11px] font-medium text-slate-700">
+                          Next: {s.next_action.label}
+                        </p>
+                      )}
                     </Link>
                   </li>
                 ))}
@@ -412,7 +515,7 @@ export default function WorkbenchDashboardPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-base">Entries in progress</CardTitle>
+            <CardTitle className="text-base">Broker OK / filing</CardTitle>
             <Link to="/entries" className="text-xs font-medium text-blue-700 hover:underline">
               All entries
             </Link>

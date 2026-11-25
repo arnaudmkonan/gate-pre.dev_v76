@@ -161,8 +161,8 @@ export const ACEStatusPanel = ({ entryId, onStatusChange }: ACEStatusPanelProps)
         )
     }
 
-    const canFile = status?.entry_status === 'ready_to_file' || status?.entry_status === 'draft'
-    const canPoll = ['filed', 'accepted', 'filing'].includes(status?.entry_status || '')
+    const canFile = status?.entry_status === 'ready_to_file'
+    const canPoll = ['filed', 'accepted', 'filing', 'released'].includes(status?.entry_status || '')
     const canResubmit = status?.can_resubmit
 
     return (
@@ -292,6 +292,11 @@ export const ACEStatusPanel = ({ entryId, onStatusChange }: ACEStatusPanelProps)
 
                 {/* Actions */}
                 <div className="flex flex-wrap gap-2">
+                    {!canFile && !['filed', 'accepted', 'released', 'liquidated', 'filing'].includes(status?.entry_status || '') && (
+                        <p className="w-full text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                            ACE filing unlocks after <strong>Broker OK</strong> (status must be Ready to File).
+                        </p>
+                    )}
                     {canFile && (
                         <Button
                             onClick={handleFileEntry}

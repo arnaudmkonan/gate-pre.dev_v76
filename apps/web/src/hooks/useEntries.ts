@@ -101,6 +101,9 @@ export interface Entry {
     assigned_to: string | null
     internal_reference: string | null
     notes: string | null
+    client_id?: string | null
+    shipment_id?: string | null
+    broker_ok?: { ok: boolean; at?: string | null; by?: string | null; notes?: string | null; status?: string | null }
     is_ftz: boolean
     has_add_cvd: boolean
     is_reconciliation_flagged: boolean
@@ -376,6 +379,35 @@ export function useEntryActions() {
         }
     }, [])
 
+    const brokerOk = useCallback(async (
+        entryId: string,
+        data: {
+            hts_confirmed?: boolean
+            values_confirmed?: boolean
+            adcvd_notes?: string
+            notes?: string
+            mark_ready_to_file?: boolean
+        } = {}
+    ): Promise<any> => {
+        setLoading(true)
+        setError(null)
+        try {
+            const response = await apiClient.post(`${API_URL}/api/entries/${entryId}/broker-ok`, {
+                hts_confirmed: data.hts_confirmed ?? true,
+                values_confirmed: data.values_confirmed ?? true,
+                adcvd_notes: data.adcvd_notes,
+                notes: data.notes,
+                mark_ready_to_file: data.mark_ready_to_file ?? true,
+            })
+            return response.data
+        } catch (err: any) {
+            setError(err.response?.data?.detail || err.message)
+            return null
+        } finally {
+            setLoading(false)
+        }
+    }, [])
+
     return {
         loading,
         error,
@@ -387,6 +419,7 @@ export function useEntryActions() {
         deleteLine,
         calculateDuties,
         validateEntry,
+        brokerOk,
     }
 }
 

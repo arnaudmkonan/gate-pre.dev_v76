@@ -217,24 +217,32 @@ class Entry(BaseModel):
     
     def calculate_totals(self):
         """Recalculate entry totals from line items."""
-        self.total_entered_value = sum(line.entered_value or 0 for line in self.lines)
-        self.total_dutiable_value = sum(line.dutiable_value or 0 for line in self.lines)
-        self.total_duty = sum(line.duty_amount or 0 for line in self.lines)
-        self.section_301_amount = sum(line.section_301_duty or 0 for line in self.lines)
-        self.section_232_amount = sum(line.section_232_duty or 0 for line in self.lines)
-        self.add_amount = sum(line.add_duty or 0 for line in self.lines)
-        self.cvd_amount = sum(line.cvd_duty or 0 for line in self.lines)
+        from decimal import Decimal
+
+        def _d(val) -> Decimal:
+            if val is None:
+                return Decimal("0")
+            if isinstance(val, Decimal):
+                return val
+            return Decimal(str(val))
+
+        self.total_entered_value = sum((_d(line.entered_value) for line in self.lines), Decimal("0"))
+        self.total_dutiable_value = sum((_d(line.dutiable_value) for line in self.lines), Decimal("0"))
+        self.total_duty = sum((_d(line.duty_amount) for line in self.lines), Decimal("0"))
+        self.section_301_amount = sum((_d(line.section_301_duty) for line in self.lines), Decimal("0"))
+        self.section_232_amount = sum((_d(line.section_232_duty) for line in self.lines), Decimal("0"))
+        self.add_amount = sum((_d(line.add_duty) for line in self.lines), Decimal("0"))
+        self.cvd_amount = sum((_d(line.cvd_duty) for line in self.lines), Decimal("0"))
         self.line_count = len(self.lines)
-        
-        # Total amount due
+
         self.total_amount_due = (
-            self.total_duty + 
-            self.mpf_amount + 
-            self.hmf_amount +
-            self.section_301_amount +
-            self.section_232_amount +
-            self.add_amount +
-            self.cvd_amount
+            _d(self.total_duty)
+            + _d(self.mpf_amount)
+            + _d(self.hmf_amount)
+            + _d(self.section_301_amount)
+            + _d(self.section_232_amount)
+            + _d(self.add_amount)
+            + _d(self.cvd_amount)
         )
 
 

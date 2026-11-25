@@ -69,6 +69,31 @@ class EntryLineUpdate(BaseModel):
 
 router = APIRouter(prefix="/api/entries", tags=["Entries"], dependencies=[Depends(get_current_user)])
 
+BROKER_OK_REASON_PREFIX = "BROKER_OK:"
+
+
+def _broker_ok_from_history(entry: Entry) -> Optional[dict]:
+    """Parse latest broker OK from status history (no schema migration)."""
+    for h in sorted(entry.status_history or [], key=lambda x: x.changed_at or datetime.min.replace(tzinfo=timezone.utc), reverse=True):
+        reason = h.reason or ""
+        if reason.startswith(BROKER_OK_REASON_PREFIX) or (h.to_status == EntryStatus.READY_TO_FILE.value and "broker ok" in reason.lower()):
+            return {
+                "ok": True,
+                "at": h.changed_at.isoformat() if h.changed_at else None,
+                "by": h.changed_by,
+                "notes": reason.replace(BROKER_OK_REASON_PREFIX, "").strip() or reason,
+                "status": h.to_status,
+            }
+    return {"ok": False}
+
+
+class BrokerOkRequest(BaseModel):
+    hts_confirmed: bool = True
+    values_confirmed: bool = True
+    adcvd_notes: Optional[str] = None
+    notes: Optional[str] = None
+    mark_ready_to_file: bool = True
+
 
 # ==================== CRUD Endpoints ====================
 
@@ -83,6 +108,22 @@ async def create_entry(
     Entry starts in DRAFT status.
     Optionally include line_items to create entry with lines in one call.
     """
+    from app.services.client_resolve_service import resolve_client_id
+
+    resolved_client_id = None
+    if request.client_id:
+        try:
+            resolved_client_id = UUID(request.client_id)
+        except ValueError:
+            resolved_client_id = None
+    if resolved_client_id is None:
+        resolved_client_id = await resolve_client_id(
+            db,
+            importer_name=request.importer_of_record_name,
+            ein=request.importer_of_record_number,
+            ior_number=request.importer_of_record_number,
+        )
+
     entry = Entry(
         entry_type=request.entry_type,
         port_of_entry=request.port_of_entry,
@@ -94,13 +135,8 @@ async def create_entry(
         internal_reference=request.internal_reference,
         notes=request.notes,
         status=EntryStatus.DRAFT.value,
+        client_id=resolved_client_id,
     )
-    
-    if request.client_id:
-        try:
-            entry.client_id = UUID(request.client_id)
-        except ValueError:
-            pass
     
     db.add(entry)
     await db.flush()  # Get entry ID before creating history
@@ -244,12 +280,149 @@ async def list_entries(
                 "line_count": e.line_count,
                 "bill_of_lading": e.bill_of_lading,
                 "assigned_to": e.assigned_to,
+                "client_id": str(e.client_id) if e.client_id else None,
+                "shipment_id": str(e.shipment_id) if e.shipment_id else None,
                 "created_at": e.created_at.isoformat(),
                 "updated_at": e.updated_at.isoformat(),
             }
             for e in entries
         ],
     )
+
+
+@router.post("/backfill-client-ids")
+async def backfill_entry_client_ids(
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    limit: int = Query(200, ge=1, le=1000),
+):
+    """Staff-only: attach client_id to entries missing it via IOR name/EIN resolve."""
+    if not is_broker_staff(current_user):
+        raise HTTPException(status_code=403, detail="Broker staff only")
+
+    from app.services.client_resolve_service import resolve_client_id
+
+    result = await db.execute(
+        select(Entry)
+        .where(Entry.client_id.is_(None))
+        .order_by(Entry.created_at.desc())
+        .limit(limit)
+    )
+    entries = result.scalars().all()
+    updated = []
+    for entry in entries:
+        cid = await resolve_client_id(
+            db,
+            importer_name=entry.importer_of_record_name,
+            ein=entry.importer_of_record_number,
+            ior_number=entry.importer_of_record_number,
+        )
+        if cid:
+            entry.client_id = cid
+            updated.append(
+                {
+                    "entry_id": str(entry.id),
+                    "entry_number": entry.entry_number,
+                    "client_id": str(cid),
+                    "importer": entry.importer_of_record_name,
+                }
+            )
+    await db.commit()
+    return {
+        "scanned": len(entries),
+        "updated": len(updated),
+        "entries": updated,
+    }
+
+
+@router.post("/{entry_id}/broker-ok")
+async def broker_ok_entry(
+    entry_id: str,
+    request: BrokerOkRequest,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Licensed-broker sign-off gate before Ready to File / ACE."""
+    if not is_broker_staff(current_user):
+        raise HTTPException(status_code=403, detail="Broker staff only")
+
+    try:
+        entry_uuid = UUID(entry_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid entry ID")
+
+    result = await db.execute(
+        select(Entry)
+        .options(selectinload(Entry.lines), selectinload(Entry.status_history))
+        .where(Entry.id == entry_uuid)
+    )
+    entry = result.scalar_one_or_none()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Entry not found")
+
+    if not request.hts_confirmed or not request.values_confirmed:
+        raise HTTPException(
+            status_code=400,
+            detail="hts_confirmed and values_confirmed must both be true to record Broker OK",
+        )
+
+    if not entry.lines:
+        raise HTTPException(status_code=400, detail="Entry has no lines — cannot Broker OK")
+
+    missing_hts = [l.line_number for l in entry.lines if not (l.hts_code or "").strip()]
+    if missing_hts:
+        raise HTTPException(status_code=400, detail=f"Lines missing HTS: {missing_hts}")
+
+    zero_value = [
+        l.line_number
+        for l in entry.lines
+        if not l.entered_value or float(l.entered_value) <= 0
+    ]
+    if zero_value:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Lines with missing/zero value: {zero_value}",
+        )
+
+    actor = current_user.get("email") or current_user.get("sub") or "broker"
+    note_parts = ["HTS confirmed; values confirmed"]
+    if request.adcvd_notes:
+        note_parts.append(f"AD/CVD: {request.adcvd_notes.strip()}")
+    if request.notes:
+        note_parts.append(request.notes.strip())
+    reason = BROKER_OK_REASON_PREFIX + " ".join(note_parts)
+
+    from_status = entry.status
+    if request.mark_ready_to_file:
+        entry.status = EntryStatus.READY_TO_FILE.value
+    elif entry.status == EntryStatus.DRAFT.value:
+        entry.status = EntryStatus.PENDING_REVIEW.value
+
+    stamp = f"[BROKER_OK {datetime.now(timezone.utc).date().isoformat()} by {actor}]"
+    entry.notes = f"{stamp} {' · '.join(note_parts)}" + (f"\n{entry.notes}" if entry.notes else "")
+
+    history = EntryStatusHistory(
+        entry_id=entry.id,
+        from_status=from_status,
+        to_status=entry.status,
+        changed_by=actor,
+        reason=reason,
+    )
+    db.add(history)
+    await db.commit()
+    await db.refresh(entry)
+
+    return {
+        "message": "Broker OK recorded",
+        "entry_id": str(entry.id),
+        "entry_number": entry.entry_number,
+        "status": entry.status,
+        "broker_ok": {
+            "ok": True,
+            "by": actor,
+            "notes": reason.replace(BROKER_OK_REASON_PREFIX, "").strip(),
+        },
+    }
 
 
 @router.get("/{entry_id}")
@@ -402,6 +575,9 @@ async def get_entry(
         "assigned_to": entry.assigned_to,
         "internal_reference": entry.internal_reference,
         "notes": entry.notes,
+        "client_id": str(entry.client_id) if entry.client_id else None,
+        "shipment_id": str(entry.shipment_id) if entry.shipment_id else None,
+        "broker_ok": _broker_ok_from_history(entry),
         
         # Flags
         "is_ftz": entry.is_ftz,
@@ -2134,10 +2310,13 @@ async def file_entry_to_ace(
     if not entry:
         raise HTTPException(status_code=404, detail="Entry not found")
     
-    if entry.status not in [EntryStatus.READY_TO_FILE.value, EntryStatus.DRAFT.value]:
+    if entry.status != EntryStatus.READY_TO_FILE.value:
         raise HTTPException(
             status_code=400,
-            detail=f"Entry status is '{entry.status}'. Must be 'ready_to_file' to submit."
+            detail=(
+                f"Entry status is '{entry.status}'. "
+                "Record Broker OK (Mark Ready to File) before ACE submit."
+            ),
         )
     
     service = ACEStatusService(db)

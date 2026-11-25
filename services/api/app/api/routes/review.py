@@ -61,6 +61,8 @@ class AddToQueueRequest(BaseModel):
 async def get_review_queue(
     status: Optional[str] = Query(default=None, description="Filter by status"),
     assigned_to: Optional[str] = Query(default=None, description="Filter by assignee"),
+    reason_code: Optional[str] = Query(default=None, description="Filter by reason_code"),
+    file_type: Optional[str] = Query(default=None, description="Filter by document file_type"),
     limit: int = Query(default=50, le=100),
     offset: int = Query(default=0),
     session: AsyncSession = Depends(get_db)
@@ -72,7 +74,7 @@ async def get_review_queue(
     """
     try:
         items = await ReviewService.get_review_queue(
-            session, status, assigned_to, limit, offset
+            session, status, assigned_to, reason_code, file_type, limit, offset
         )
         return {
             "items": items,
@@ -168,9 +170,15 @@ async def approve_review_item(
         item = await ReviewService.approve_item(
             session, item_id, actor, request.notes
         )
+        from app.services.review_service import _next_pending_item_id, _shipments_for_document
+
+        next_id = await _next_pending_item_id(session, exclude_id=item.id)
+        shipments = await _shipments_for_document(session, item.document_id)
         return {
             "message": "Item approved",
             "item": item.to_dict(),
+            "next_pending_id": next_id,
+            "shipments": shipments,
         }
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -194,9 +202,13 @@ async def reject_review_item(
         item = await ReviewService.reject_item(
             session, item_id, actor, request.reason
         )
+        from app.services.review_service import _next_pending_item_id
+
+        next_id = await _next_pending_item_id(session, exclude_id=item.id)
         return {
             "message": "Item rejected",
             "item": item.to_dict(),
+            "next_pending_id": next_id,
         }
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

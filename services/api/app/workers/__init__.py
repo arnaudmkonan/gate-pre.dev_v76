@@ -19,6 +19,9 @@ from app.workers import (
     embedding_tasks,
     trade_extraction_worker,
     shipment_assembly_worker,
+    report_worker,
+    audit_worker,
+    deadline_worker,
 )
 
 __all__ = [
@@ -41,5 +44,8 @@ __all__ = [
     "embedding_tasks",
     "trade_extraction_worker",
     "shipment_assembly_worker",
+    "report_worker",
+    "audit_worker",
+    "deadline_worker",
 ]
 

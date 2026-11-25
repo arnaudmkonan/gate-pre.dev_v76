@@ -56,7 +56,11 @@ export function FeedbackPage() {
     const loadTemplates = async () => {
       try {
         const response = await apiClient.get(`${API_URL}/api/templates`);
-        setTemplates(response.data.templates || []);
+        const payload = response.data;
+        const list = Array.isArray(payload)
+          ? payload
+          : payload?.templates || payload?.items || [];
+        setTemplates(list);
       } catch (err) {
         console.error('Failed to load templates:', err);
       }

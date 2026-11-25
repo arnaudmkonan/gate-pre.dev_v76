@@ -25,7 +25,8 @@ export default defineConfig({
       '/agents': {
         target: apiTarget,
         changeOrigin: true,
-        rewrite: (path) => path,
+        // Backend mounts agents under /api/agents
+        rewrite: (path) => path.replace(/^\/agents/, '/api/agents'),
       },
       '/batch': {
         target: apiTarget,

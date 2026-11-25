@@ -54,7 +54,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
       items: [
         { path: '/ingest-ui', label: 'Ingest Documents', icon: Upload },
         { path: '/shipments/assembly', label: 'Shipment Assembly', icon: Package },
-        { path: '/review', label: 'Review Queue', icon: ClipboardCheck },
+        { path: '/review', label: 'Doc exceptions', icon: ClipboardCheck },
         { path: '/templates', label: 'Templates', icon: FileCode },
         { path: '/batch-upload', label: 'Batch Upload', icon: FolderArchive },
       ]

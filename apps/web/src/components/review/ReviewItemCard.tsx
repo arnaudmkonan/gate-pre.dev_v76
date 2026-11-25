@@ -1,4 +1,4 @@
-import { Clock, AlertCircle, User } from 'lucide-react'
+import { Clock, AlertCircle, User, Ship } from 'lucide-react'
 import { ConfidenceBadge } from './ConfidenceBadge'
 
 interface ReviewItem {
@@ -14,6 +14,12 @@ interface ReviewItem {
   assigned_to?: string
   created_at: string
   issues_detected?: unknown[]
+  shipments?: Array<{
+    id: string
+    name?: string | null
+    bol_number?: string | null
+    importer_name?: string | null
+  }>
 }
 
 interface ReviewItemCardProps {
@@ -75,7 +81,7 @@ export const ReviewItemCard = ({ item, onClick }: ReviewItemCardProps) => {
         </div>
       </div>
 
-      <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
+      <div className="flex flex-wrap items-center gap-4 mt-3 text-xs text-gray-500">
         <div className="flex items-center gap-1">
           <Clock className="w-3 h-3" />
           {getTimeAgo(item.created_at)}
@@ -90,6 +96,13 @@ export const ReviewItemCard = ({ item, onClick }: ReviewItemCardProps) => {
           <div className="flex items-center gap-1">
             <User className="w-3 h-3" />
             {item.assigned_to}
+          </div>
+        )}
+        {item.shipments && item.shipments.length > 0 && (
+          <div className="flex items-center gap-1 text-slate-700">
+            <Ship className="w-3 h-3" />
+            {item.shipments[0].importer_name || item.shipments[0].bol_number || item.shipments[0].id.slice(0, 8)}
+            {item.shipments.length > 1 ? ` +${item.shipments.length - 1}` : ''}
           </div>
         )}
         <span className={`px-2 py-0.5 rounded text-xs ${

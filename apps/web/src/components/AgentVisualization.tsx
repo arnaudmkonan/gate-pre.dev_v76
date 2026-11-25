@@ -107,39 +107,55 @@ export const AgentVisualization: React.FC = () => {
 
     const fetchDocuments = async () => {
         try {
+            // Prefer document metadata (agent APIs key off document_metadata.id)
+            const metaResponse = await authFetch('/api/metadata?page=1&page_size=20')
+            if (metaResponse.ok) {
+                const metaPayload = await metaResponse.json()
+                const items = metaPayload.items || metaPayload.documents || []
+                const docs = await Promise.all(
+                    items.slice(0, 10).map(async (item: any) => {
+                        try {
+                            const resultsResponse = await authFetch(`/api/agents/results/${item.id}`)
+                            const metaData = resultsResponse.ok ? await resultsResponse.json() : {}
+                            return {
+                                id: item.id,
+                                filename: item.filename || item.original_filename || 'document',
+                                file_type: item.file_type || item.mime_type || 'unknown',
+                                size: item.size || 0,
+                                status: item.ingestion_status || item.status || 'unknown',
+                                has_agent_results: Boolean(metaData.has_results),
+                                classification: metaData.classification,
+                            }
+                        } catch {
+                            return {
+                                id: item.id,
+                                filename: item.filename || item.original_filename || 'document',
+                                file_type: item.file_type || item.mime_type || 'unknown',
+                                size: item.size || 0,
+                                status: item.ingestion_status || item.status || 'unknown',
+                                has_agent_results: false,
+                            }
+                        }
+                    })
+                )
+                setDocuments(docs)
+                return
+            }
+
+            // Fallback: ingest jobs list (may not map 1:1 to agent document ids)
             const response = await authFetch('/api/ingest/jobs?page=1&page_size=20')
             const data = await response.json()
-
-            // Get agent results for each document
-            const docs = await Promise.all(
-                data.jobs.slice(0, 10).map(async (job: any) => {
-                    try {
-                        // Get document metadata
-                        const metaResponse = await fetch(`/agents/results/${job.id}`)
-                        const metaData = await metaResponse.json()
-                        return {
-                            id: job.id,
-                            filename: job.filename,
-                            file_type: job.file_type,
-                            size: job.size,
-                            status: job.status,
-                            has_agent_results: metaData.has_results || false,
-                            classification: metaData.classification,
-                        }
-                    } catch {
-                        return {
-                            id: job.id,
-                            filename: job.filename,
-                            file_type: job.file_type,
-                            size: job.size,
-                            status: job.status,
-                            has_agent_results: false,
-                        }
-                    }
-                })
+            const jobs = data.jobs || []
+            setDocuments(
+                jobs.slice(0, 10).map((job: any) => ({
+                    id: job.id,
+                    filename: job.filename,
+                    file_type: job.file_type,
+                    size: job.size,
+                    status: job.status,
+                    has_agent_results: false,
+                }))
             )
-
-            setDocuments(docs)
         } catch (err) {
             console.error('Failed to fetch documents:', err)
         }
@@ -147,11 +163,15 @@ export const AgentVisualization: React.FC = () => {
 
     const fetchAgents = async () => {
         try {
-            const response = await fetch('/agents/available')
+            const response = await authFetch('/api/agents/available')
+            if (!response.ok) {
+                throw new Error(`Failed to load agents (${response.status})`)
+            }
             const data = await response.json()
-            setAvailableAgents(data.agents)
+            setAvailableAgents(Array.isArray(data.agents) ? data.agents : [])
         } catch (err) {
             console.error('Failed to fetch agents:', err)
+            setAvailableAgents([])
         }
     }
 
@@ -163,7 +183,7 @@ export const AgentVisualization: React.FC = () => {
         setResults(null)
 
         try {
-            const response = await fetch('/agents/process', {
+            const response = await authFetch('/api/agents/process', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -175,7 +195,7 @@ export const AgentVisualization: React.FC = () => {
             const data = await response.json()
 
             if (!response.ok) {
-                throw new Error(data.detail || 'Processing failed')
+                throw new Error(data.detail || data.error?.message || 'Processing failed')
             }
 
             setTaskId(data.task_id)
@@ -188,7 +208,7 @@ export const AgentVisualization: React.FC = () => {
 
     const checkTaskStatus = async (id: string) => {
         try {
-            const response = await fetch(`/agents/status/${id}`)
+            const response = await authFetch(`/api/agents/status/${id}`)
             const data = await response.json()
 
             if (data.ready) {

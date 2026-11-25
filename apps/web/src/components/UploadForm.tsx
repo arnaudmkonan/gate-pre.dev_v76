@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
-import { Upload, AlertCircle, CheckCircle } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Upload, AlertCircle, CheckCircle, ArrowRight } from 'lucide-react'
 import { Card } from './Card'
 import { Button } from './Button'
 import { Input } from './Input'
@@ -8,11 +9,7 @@ import { authFetch } from '../lib/authFetch'
 const ALLOWED_TYPES = ['.txt', '.docx', '.xlsx', '.pptx', '.html', '.md', '.json', '.csv', '.yml', '.xml', '.pdf']
 const MAX_FILE_SIZE_MB = 50
 
-interface UploadFormProps {
-  onUploadSuccess?: (fileId: string, jobId: string) => void
-}
-
-interface UploadResponse {
+export interface UploadResponse {
   job_id: string
   file_id: string
   filename: string
@@ -23,7 +20,16 @@ interface UploadResponse {
   message: string
 }
 
-export const UploadForm: React.FC<UploadFormProps> = ({ onUploadSuccess }) => {
+interface UploadFormProps {
+  onUploadSuccess?: (fileId: string, jobId: string, meta?: UploadResponse) => void
+  /** When true, skip the inline success banner (parent shows next-steps). */
+  hideInlineSuccess?: boolean
+}
+
+export const UploadForm: React.FC<UploadFormProps> = ({
+  onUploadSuccess,
+  hideInlineSuccess = false,
+}) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -100,7 +106,9 @@ export const UploadForm: React.FC<UploadFormProps> = ({ onUploadSuccess }) => {
       }
 
       const data: UploadResponse = await response.json()
-      setSuccess(data)
+      if (!hideInlineSuccess) {
+        setSuccess(data)
+      }
       setSelectedFile(null)
       setSource('')
       setCustomerId('')
@@ -111,11 +119,8 @@ export const UploadForm: React.FC<UploadFormProps> = ({ onUploadSuccess }) => {
       }
 
       if (onUploadSuccess) {
-        onUploadSuccess(data.file_id, data.job_id)
+        onUploadSuccess(data.file_id, data.job_id, data)
       }
-
-      // Reset success message after 5 seconds
-      setTimeout(() => setSuccess(null), 5000)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed')
     } finally {
@@ -175,13 +180,32 @@ export const UploadForm: React.FC<UploadFormProps> = ({ onUploadSuccess }) => {
           </div>
         )}
 
-        {success && (
-          <div className="flex gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+        {success && !hideInlineSuccess && (
+          <div className="flex gap-3 p-4 bg-green-50 border border-green-200 rounded-lg">
             <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-green-600">
-              <p className="font-medium">File uploaded successfully</p>
-              <p className="text-xs mt-1">Job ID: <code className="bg-green-100 px-2 py-1 rounded">{success.job_id}</code></p>
-              <p className="text-xs mt-1">File ID: <code className="bg-green-100 px-2 py-1 rounded">{success.file_id}</code></p>
+            <div className="min-w-0 flex-1 space-y-2 text-sm text-green-900">
+              <p className="font-medium">
+                {success.filename || 'Document'} is in the ingest queue
+              </p>
+              <p className="text-xs text-green-800">
+                Extraction starts automatically. Next: watch the pipeline, clear any doc exceptions,
+                then open shipment assembly from the Workbench.
+              </p>
+              <div className="flex flex-wrap gap-2 pt-1">
+                <Link
+                  to="/dashboard"
+                  className="inline-flex items-center gap-1 rounded-md bg-green-700 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-green-800"
+                >
+                  Open Workbench <ArrowRight className="h-3 w-3" />
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setSuccess(null)}
+                  className="text-xs text-green-800 underline-offset-2 hover:underline"
+                >
+                  Dismiss
+                </button>
+              </div>
             </div>
           </div>
         )}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, RefreshCw, AlertCircle } from 'lucide-react'
+import { Link, useParams, useNavigate } from 'react-router-dom'
+import { ArrowLeft, RefreshCw, AlertCircle, Ship } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/Card'
 import { Button } from '../components/Button'
 import { DocumentViewer } from '../components/review/DocumentViewer'
@@ -9,6 +9,27 @@ import { ReviewActions } from '../components/review/ReviewActions'
 import { ConfidenceBadge } from '../components/review/ConfidenceBadge'
 import { useReviewItem, useReviewActions } from '../hooks/useReview'
 import { useAuth } from '../contexts/AuthContext'
+
+function formatIssue(issue: unknown): string {
+  if (typeof issue === 'string') return issue
+  if (issue && typeof issue === 'object') {
+    const obj = issue as Record<string, unknown>
+    const parts = [
+      obj.message,
+      obj.reason,
+      obj.field,
+      obj.code,
+      obj.severity,
+    ].filter(Boolean)
+    if (parts.length) return parts.map(String).join(' · ')
+    try {
+      return JSON.stringify(issue)
+    } catch {
+      return String(issue)
+    }
+  }
+  return String(issue)
+}
 
 export const ReviewItemDetailPage = () => {
   const { itemId } = useParams<{ itemId: string }>()
@@ -28,11 +49,31 @@ export const ReviewItemDetailPage = () => {
     }
   }, [itemId])
 
-  const handleApprove = async () => {
+  const goAfterDecision = (opts: {
+    nextId?: string | null
+    shipments?: Array<{ id: string }>
+    preferNext: boolean
+  }) => {
+    if (opts.preferNext && opts.nextId) {
+      navigate(`/review/${opts.nextId}`)
+      return
+    }
+    if (opts.shipments && opts.shipments.length === 1) {
+      navigate(`/shipments/${opts.shipments[0].id}`)
+      return
+    }
+    navigate('/review')
+  }
+
+  const handleApprove = async (preferNext: boolean) => {
     if (!itemId) return
     try {
-      await approve(itemId, currentReviewer, notes || undefined)
-      navigate('/review')
+      const result = await approve(itemId, currentReviewer, notes || undefined)
+      goAfterDecision({
+        nextId: result.next_pending_id,
+        shipments: result.shipments || item?.shipments,
+        preferNext,
+      })
     } catch {
       // Error handled in hook
     }
@@ -41,9 +82,12 @@ export const ReviewItemDetailPage = () => {
   const handleReject = async () => {
     if (!itemId || !rejectReason) return
     try {
-      await reject(itemId, currentReviewer, rejectReason)
+      const result = await reject(itemId, currentReviewer, rejectReason)
       setShowRejectModal(false)
-      navigate('/review')
+      goAfterDecision({
+        nextId: result.next_pending_id,
+        preferNext: true,
+      })
     } catch {
       // Error handled in hook
     }
@@ -53,7 +97,11 @@ export const ReviewItemDetailPage = () => {
     if (!itemId) return
     try {
       await skip(itemId)
-      navigate('/review')
+      if (item?.next_pending_id) {
+        navigate(`/review/${item.next_pending_id}`)
+      } else {
+        navigate('/review')
+      }
     } catch {
       // Error handled in hook
     }
@@ -93,10 +141,10 @@ export const ReviewItemDetailPage = () => {
   }
 
   const issues = Array.isArray(item.issues_detected) ? item.issues_detected : []
+  const hasNext = Boolean(item.next_pending_id)
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button variant="ghost" onClick={() => navigate('/review')}>
@@ -128,7 +176,25 @@ export const ReviewItemDetailPage = () => {
         </Button>
       </div>
 
-      {/* Action Error */}
+      {item.shipments && item.shipments.length > 0 && (
+        <Card className="border-slate-200 bg-slate-50">
+          <CardContent className="flex flex-wrap items-center gap-3 pt-4 text-sm">
+            <Ship className="h-4 w-4 text-slate-600" />
+            <span className="font-medium text-slate-800">Linked shipment(s):</span>
+            {item.shipments.map((s) => (
+              <Link
+                key={s.id}
+                to={`/shipments/${s.id}`}
+                className="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-slate-800 hover:bg-slate-100"
+              >
+                {s.importer_name || s.bol_number || s.awb_number || s.id.slice(0, 8)}
+                <span className="ml-1 text-xs text-slate-500">→ continue job</span>
+              </Link>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       {actionError && (
         <div className="flex gap-2 p-4 bg-red-50 border border-red-200 rounded-lg">
           <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
@@ -136,9 +202,7 @@ export const ReviewItemDetailPage = () => {
         </div>
       )}
 
-      {/* Main Content - Split View */}
       <div className="grid grid-cols-2 gap-6">
-        {/* Left: Document Viewer */}
         <Card>
           <CardHeader>
             <CardTitle>Document Preview</CardTitle>
@@ -153,9 +217,7 @@ export const ReviewItemDetailPage = () => {
           </CardContent>
         </Card>
 
-        {/* Right: Extractions and Review */}
         <div className="space-y-6">
-          {/* Issues */}
           {issues.length > 0 && (
             <Card className="border-yellow-300 bg-yellow-50">
               <CardHeader>
@@ -168,10 +230,7 @@ export const ReviewItemDetailPage = () => {
                 <ul className="space-y-2">
                   {issues.map((issue, index) => (
                     <li key={index} className="text-sm text-yellow-800">
-                      {typeof issue === 'object' && issue !== null
-                        ? JSON.stringify(issue)
-                        : String(issue)
-                      }
+                      {formatIssue(issue)}
                     </li>
                   ))}
                 </ul>
@@ -179,7 +238,6 @@ export const ReviewItemDetailPage = () => {
             </Card>
           )}
 
-          {/* Review Reason */}
           <Card>
             <CardHeader>
               <CardTitle>Review Reason</CardTitle>
@@ -194,10 +252,12 @@ export const ReviewItemDetailPage = () => {
             </CardContent>
           </Card>
 
-          {/* Extractions */}
           <Card>
-            <CardHeader>
-              <CardTitle>Extracted Fields ({item.extractions?.length || 0})</CardTitle>
+            <CardHeader className="pb-2">
+              <CardTitle>Extracted fields</CardTitle>
+              <p className="text-xs font-normal text-slate-500">
+                Deduped by field name · grouped for review · fix conflicts before approve
+              </p>
             </CardHeader>
             <CardContent>
               {item.extractions && item.extractions.length > 0 ? (
@@ -214,7 +274,6 @@ export const ReviewItemDetailPage = () => {
             </CardContent>
           </Card>
 
-          {/* Notes */}
           <Card>
             <CardHeader>
               <CardTitle>Review Notes</CardTitle>
@@ -230,22 +289,26 @@ export const ReviewItemDetailPage = () => {
             </CardContent>
           </Card>
 
-          {/* Actions */}
           <Card>
-            <CardContent className="pt-4">
+            <CardContent className="pt-4 space-y-2">
               <ReviewActions
-                onApprove={handleApprove}
+                onApprove={() => handleApprove(false)}
+                onApproveAndNext={() => handleApprove(true)}
                 onReject={() => setShowRejectModal(true)}
                 onSkip={handleSkip}
                 isLoading={actionLoading}
                 disabled={item.status === 'approved' || item.status === 'rejected'}
+                hasNext={hasNext}
               />
+              <p className="text-xs text-slate-500">
+                Approve clears this HITL exception. Prefer <strong>Approve &amp; next</strong> when clearing a stack;
+                otherwise you&apos;ll return to the linked shipment when there is exactly one.
+              </p>
             </CardContent>
           </Card>
         </div>
       </div>
 
-      {/* Reject Modal */}
       {showRejectModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">

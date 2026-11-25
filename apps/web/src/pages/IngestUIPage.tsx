@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { UploadForm } from '../components/UploadForm'
+import { Link } from 'react-router-dom'
+import { UploadForm, type UploadResponse } from '../components/UploadForm'
 import { ModeSelector } from '../components/ModeSelector'
 import { GuidedMapping } from '../components/GuidedMapping'
 import { AdvancedBatch } from '../components/AdvancedBatch'
 import { JobsDashboard } from '../components/JobsDashboard'
 import { RetryPanel } from '../components/RetryPanel'
+import { UploadNextSteps } from '../components/UploadNextSteps'
 
 interface SelectedJob {
   id: string
@@ -14,21 +16,29 @@ type ModePanel = 'none' | 'mode' | 'guided' | 'advanced'
 type ActionPanel = 'none' | 'retry'
 
 export const IngestUIPage: React.FC = () => {
-  const [_uploadedJobId, setUploadedJobId] = useState<string | null>(null)
+  const [uploadedJobId, setUploadedJobId] = useState<string | null>(null)
+  const [uploadedFileId, setUploadedFileId] = useState<string | null>(null)
+  const [uploadedFilename, setUploadedFilename] = useState<string | null>(null)
   const [selectedJob, setSelectedJob] = useState<SelectedJob | null>(null)
   const [modePanel, setModePanel] = useState<ModePanel>('none')
   const [actionPanel, setActionPanel] = useState<ActionPanel>('none')
   const [refreshKey, setRefreshKey] = useState(0)
 
-  const handleUploadSuccess = (_fileId: string, jobId: string) => {
+  const handleUploadSuccess = (_fileId: string, jobId: string, meta?: UploadResponse) => {
     setUploadedJobId(jobId)
+    setUploadedFileId(_fileId)
+    setUploadedFilename(meta?.filename || null)
     setSelectedJob({ id: jobId })
-    setModePanel('mode')
-    // Trigger dashboard refresh
+    setModePanel('none')
+    setActionPanel('none')
     setRefreshKey((k) => k + 1)
+    // Scroll next-steps into view after paint
+    requestAnimationFrame(() => {
+      document.getElementById('upload-next-steps')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
   }
 
-  const handleJobSelect = (job: any) => {
+  const handleJobSelect = (job: { id: string }) => {
     setSelectedJob({ id: job.id })
     setModePanel('none')
     setActionPanel('none')
@@ -53,38 +63,64 @@ export const IngestUIPage: React.FC = () => {
 
   const handleRetrySuccess = (newJobId: string) => {
     setSelectedJob({ id: newJobId })
+    setUploadedJobId(newJobId)
     setActionPanel('none')
     setRefreshKey((k) => k + 1)
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Trade Document Ingestion</h1>
-        <p className="text-gray-600 mt-1">
-          Upload Commercial Invoices, Bills of Lading, Packing Lists, and Arrival Notices for automated AI extraction and shipment assembly
+        <h1 className="text-3xl font-bold text-gray-900">Ingest documents</h1>
+        <p className="mt-1 text-gray-600">
+          Upload a commercial invoice, B/L, packing list, or arrival notice. Extraction starts
+          automatically — then follow the next steps to shipment and entry.
+        </p>
+        <p className="mt-2 text-sm text-slate-500">
+          Path:{' '}
+          <span className="font-medium text-slate-700">
+            Upload → Extract → Doc exceptions (if needed) → Shipment assembly → Entry / ACE
+          </span>
+          {' · '}
+          <Link to="/dashboard" className="text-blue-700 hover:underline">
+            Workbench
+          </Link>
         </p>
       </div>
 
-      {/* Upload Form */}
-      <section className="bg-white rounded-lg border border-gray-200">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">Upload Trade Documents</h2>
-          <p className="text-sm text-gray-600 mt-1">
-            Drag and drop PDFs, spreadsheets, or customs packets to start automated extraction
+      <section className="rounded-lg border border-gray-200 bg-white">
+        <div className="border-b border-gray-200 p-6">
+          <h2 className="text-xl font-semibold text-gray-900">Upload</h2>
+          <p className="mt-1 text-sm text-gray-600">
+            PDF, spreadsheet, or customs packet — processing is queued as soon as upload succeeds.
           </p>
         </div>
-        <UploadForm onUploadSuccess={handleUploadSuccess} />
+        <UploadForm onUploadSuccess={handleUploadSuccess} hideInlineSuccess />
       </section>
 
-      {/* Mode Selection */}
-      {_uploadedJobId && selectedJob && modePanel !== 'none' && (
-        <section className="bg-white rounded-lg border border-gray-200">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900">Extraction Mode</h2>
-            <p className="text-sm text-gray-600 mt-1">
-              Choose how to process the uploaded document
+      {uploadedJobId && (
+        <div id="upload-next-steps">
+          <UploadNextSteps
+            jobId={uploadedJobId}
+            fileId={uploadedFileId || undefined}
+            filename={uploadedFilename || undefined}
+            onDismiss={() => {
+              setUploadedJobId(null)
+              setUploadedFileId(null)
+              setUploadedFilename(null)
+              setModePanel('none')
+            }}
+            onShowAdvanced={() => setModePanel('mode')}
+          />
+        </div>
+      )}
+
+      {uploadedJobId && selectedJob && modePanel !== 'none' && (
+        <section className="rounded-lg border border-amber-200 bg-amber-50/40">
+          <div className="border-b border-amber-100 p-6">
+            <h2 className="text-xl font-semibold text-gray-900">Advanced extraction mode</h2>
+            <p className="mt-1 text-sm text-gray-600">
+              Optional. Most broker packets should stay on automatic extraction.
             </p>
           </div>
 
@@ -135,30 +171,30 @@ export const IngestUIPage: React.FC = () => {
         </section>
       )}
 
-      {/* Monitor Processing */}
-      <section className="bg-white rounded-lg border border-gray-200">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">Live Ingestion Pipeline</h2>
-          <p className="text-sm text-gray-600 mt-1">
-            Real-time OCR, classification, entity extraction, and shipment auto-linking status
+      <section id="live-pipeline" className="scroll-mt-6 rounded-lg border border-gray-200 bg-white">
+        <div className="border-b border-gray-200 p-6">
+          <h2 className="text-xl font-semibold text-gray-900">Live ingest pipeline</h2>
+          <p className="mt-1 text-sm text-gray-600">
+            Your upload appears here. Status moves queued → processing → completed (or failed).
+            {uploadedJobId ? ' The job you just uploaded is highlighted.' : ''}
           </p>
         </div>
         <div className="p-6">
           <JobsDashboard
             key={refreshKey}
+            highlightJobId={uploadedJobId || undefined}
             onJobSelect={handleJobSelect}
             onRetryClick={handleRetryClick}
           />
         </div>
       </section>
 
-      {/* Retry Failed Jobs */}
       {selectedJob && actionPanel === 'retry' && (
-        <section className="bg-white rounded-lg border border-gray-200">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900">Retry Failed Document</h2>
-            <p className="text-sm text-gray-600 mt-1">
-              Re-queue failed ingestion jobs with optional extractor overrides
+        <section className="rounded-lg border border-gray-200 bg-white">
+          <div className="border-b border-gray-200 p-6">
+            <h2 className="text-xl font-semibold text-gray-900">Retry failed document</h2>
+            <p className="mt-1 text-sm text-gray-600">
+              Re-queue failed ingestion with optional extractor overrides
             </p>
           </div>
           <div className="p-6">
@@ -173,13 +209,6 @@ export const IngestUIPage: React.FC = () => {
           </div>
         </section>
       )}
-
-      {/* Info Footer */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <p className="text-sm text-blue-800">
-          <span className="font-medium">Workflow:</span> Upload → Select Mode → Monitor → (Optional) Retry Failed
-        </p>
-      </div>
     </div>
   )
 }
